@@ -106,7 +106,7 @@ except Exception as _remote_exc:  # pragma: no cover
     REMOTE_ERROR = str(_remote_exc)
 
 APP = "hop"
-VERSION = os.environ.get("HOP_TEST_VERSION") or "2.0.0"  # HOP_TEST_VERSION: pretend to be older, to test updates
+VERSION = os.environ.get("HOP_TEST_VERSION") or "2.0.1"  # HOP_TEST_VERSION: pretend to be older, to test updates
 DEFAULT_PORT = 8765
 EASY_PORT = 80
 DISCOVERY_PORT = 8766

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1
+
+- Direct **Download** buttons for Windows and Mac on the GitHub page.
+- A clearer "How it works" picture.
+- More reliable automatic builds: every release is started, signed in to and updated once on Windows and Mac before it's published.
+
 ## 2.0.0 — Hop
 
 - **New name and icon:** Local View is now **Hop**. Settings, pairings and the shared folder carry over automatically.
