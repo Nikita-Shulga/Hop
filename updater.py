@@ -151,6 +151,9 @@ def unpack(zpath, work, place):
         new = os.path.join(out, "Hop")
     if not os.path.isdir(new):
         raise RuntimeError("The download doesn't contain Hop.")
+    if place["kind"] == "win" and not (os.path.isfile(os.path.join(new, "Hop.exe")) and
+                                        os.path.isdir(os.path.join(new, "_internal"))):
+        raise RuntimeError("The download doesn't contain a complete Windows app.")
     return {"work": work, "new": new}
 
 
@@ -207,37 +210,76 @@ public static class HopBreakaway {
 } catch { [Console]::Out.WriteLine($_.Exception.Message); exit 1 }
 '''
 
-WIN_APPLY = r'''# Hop update hand-over (Windows): waits for Hop to quit, copies the new version over the app folder,
-# then reopens it. Only Hop's own files are touched: _internal is replaced, Hop.exe is overwritten.
+WIN_APPLY = r'''# Hop update hand-over (Windows): replace the executable and runtime together, or restore both.
 param([int]$ProcessId,[string]$Source,[string]$Target,[string]$Log,[string]$Work)
 $ErrorActionPreference='Stop'
 function Note($text){try{Add-Content -LiteralPath $Log -Value ((Get-Date).ToString('s')+' '+$text) -Encoding UTF8}catch{}}
-Note "Update: waiting for Hop ($ProcessId) to quit."
-try{Wait-Process -Id $ProcessId -Timeout 60 -ErrorAction Stop}catch{}
-$deadline=(Get-Date).AddSeconds(30)
-while((Get-Date) -lt $deadline){
-  $busy=Get-Process -ErrorAction SilentlyContinue | Where-Object { try{$_.Path -and $_.Path.StartsWith($Target,[StringComparison]::OrdinalIgnoreCase)}catch{$false} }
-  if(-not $busy){break}
-  Start-Sleep -Milliseconds 500
-}
-$internal=Join-Path $Target '_internal'
-$backup=Join-Path $Work 'previous-internal'
+$movedInternal=$false; $movedExe=$false; $installedInternal=$false; $installedExe=$false
+$replaced=$false; $restored=$true
 try{
-  if(-not (Test-Path -LiteralPath (Join-Path $Target 'Hop.exe'))){throw "Hop.exe is not in $Target"}
-  if(Test-Path -LiteralPath $internal){Move-Item -LiteralPath $internal -Destination $backup}
-  & robocopy.exe $Source $Target /E /R:5 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
-  if($LASTEXITCODE -ge 8){throw "robocopy failed with code $LASTEXITCODE"}
+  $Target=(Resolve-Path -LiteralPath $Target).ProviderPath.TrimEnd('\')
+  $Source=(Resolve-Path -LiteralPath $Source).ProviderPath.TrimEnd('\')
+  $Work=(Resolve-Path -LiteralPath $Work).ProviderPath.TrimEnd('\')
+  # Validate containment before moving or recursively removing anything.
+  $prefix=$Target+'\'; $workPrefix=$Work+'\'
+  if($Target -eq [IO.Path]::GetPathRoot($Target).TrimEnd('\') -or
+     $Work -eq $Target -or $Work.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or
+     $Target.StartsWith($workPrefix,[StringComparison]::OrdinalIgnoreCase) -or
+     -not $Source.StartsWith($workPrefix,[StringComparison]::OrdinalIgnoreCase)){
+    throw 'Invalid update directories'
+  }
+  $exe=Join-Path $Target 'Hop.exe'; $internal=Join-Path $Target '_internal'
+  $newExe=Join-Path $Source 'Hop.exe'; $newInternal=Join-Path $Source '_internal'
+  $backup=Join-Path $Work 'previous-internal'; $backupExe=Join-Path $Work 'previous-Hop.exe'
+  if(-not (Test-Path -LiteralPath $exe -PathType Leaf) -or
+     -not (Test-Path -LiteralPath $newExe -PathType Leaf) -or
+     -not (Test-Path -LiteralPath $newInternal -PathType Container)){
+    throw 'The update does not contain a complete Windows app'
+  }
+  Note "Update: waiting for Hop ($ProcessId) to quit."
+  if(Get-Process -Id $ProcessId -ErrorAction SilentlyContinue){
+    Wait-Process -Id $ProcessId -Timeout 60 -ErrorAction Stop
+  }
+  $deadline=(Get-Date).AddSeconds(30)
+  do{
+    $busy=Get-Process -ErrorAction SilentlyContinue | Where-Object {
+      try{$_.Path -and $_.Path.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)}catch{$false}
+    }
+    if(-not $busy){break}
+    Start-Sleep -Milliseconds 500
+  }while((Get-Date) -lt $deadline)
+  if($busy){throw 'Hop is still running; its files were left unchanged'}
+  if(Test-Path -LiteralPath $internal){
+    Move-Item -LiteralPath $internal -Destination $backup; $movedInternal=$true
+  }
+  Move-Item -LiteralPath $exe -Destination $backupExe; $movedExe=$true
+  Move-Item -LiteralPath $newInternal -Destination $internal; $installedInternal=$true
+  Move-Item -LiteralPath $newExe -Destination $exe; $installedExe=$true
+  $replaced=$true
   Note 'Update: files replaced.'
 }catch{
   Note ('Update failed: '+$_.Exception.Message)
-  if((Test-Path -LiteralPath $backup) -and -not (Test-Path -LiteralPath $internal)){
-    Move-Item -LiteralPath $backup -Destination $internal
-    Note 'Update: previous version restored.'
+  try{
+    if($installedExe){Remove-Item -LiteralPath $exe -Force}
+    if($installedInternal){Remove-Item -LiteralPath $internal -Recurse -Force}
+    if($movedExe){Move-Item -LiteralPath $backupExe -Destination $exe}
+    if($movedInternal){Move-Item -LiteralPath $backup -Destination $internal}
+    if($movedExe -or $movedInternal){Note 'Update: previous version restored.'}
+  }catch{
+    $restored=$false
+    try{New-Item -ItemType File -Path (Join-Path $Work '.keep-for-recovery') -Force | Out-Null}catch{}
+    Note ('Update rollback failed; recovery files kept in '+$Work+': '+$_.Exception.Message)
   }
 }
-Start-Process -FilePath (Join-Path $Target 'Hop.exe') -WorkingDirectory $Target
-Start-Sleep -Seconds 5
-try{Remove-Item -LiteralPath $Work -Recurse -Force}catch{}
+if($restored -and $exe -and (Test-Path -LiteralPath $exe)){
+  try{Start-Process -FilePath $exe -WorkingDirectory $Target}catch{Note ('Could not reopen Hop: '+$_.Exception.Message); exit 1}
+}
+if($replaced){
+  Start-Sleep -Seconds 5
+  try{Remove-Item -LiteralPath $Work -Recurse -Force}catch{}
+  exit 0
+}
+exit 1
 '''
 
 
@@ -275,6 +317,8 @@ def cleanup(place):
         for name in os.listdir(base):
             if name.startswith(".hop-update-"):
                 p = os.path.join(base, name)
+                if os.path.isfile(os.path.join(p, ".keep-for-recovery")):
+                    continue
                 if time.time() - os.path.getmtime(p) > 3600:
                     shutil.rmtree(p, ignore_errors=True)
     except OSError:

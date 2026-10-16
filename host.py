@@ -93,7 +93,7 @@ from aiohttp import (ClientSession, ClientTimeout, TCPConnector, ThreadedResolve
 
 import mss  # noqa: E402
 from PIL import Image  # noqa: E402
-from pynput.keyboard import Controller as KeyboardController, Key  # noqa: E402
+from pynput.keyboard import Controller as KeyboardController, Key, KeyCode  # noqa: E402
 from pynput.mouse import Button, Controller as MouseController  # noqa: E402
 
 import updater  # noqa: E402  (one-click updates from GitHub Releases)
@@ -106,7 +106,7 @@ except Exception as _remote_exc:  # pragma: no cover
     REMOTE_ERROR = str(_remote_exc)
 
 APP = "hop"
-VERSION = os.environ.get("HOP_TEST_VERSION") or "2.0.1"  # HOP_TEST_VERSION: pretend to be older, to test updates
+VERSION = os.environ.get("HOP_TEST_VERSION") or "2.0.2"  # HOP_TEST_VERSION: pretend to be older, to test updates
 DEFAULT_PORT = 8765
 EASY_PORT = 80
 DISCOVERY_PORT = 8766
@@ -487,7 +487,38 @@ def open_mac_pane(which):
 
 
 def system_notify(text):
-    """Best-effort desktop notification (macOS only, via osascript)."""
+    """Best-effort native desktop notification; never blocks the server loop."""
+    if OS_NAME == "windows":
+        # Windows PowerShell and Windows Forms ship with Windows 10/11. No extra
+        # Python/WinRT package or persistent notification registration is needed.
+        # Base64 transports the script as UTF-16; quote text as data, never code.
+        message = str(text)[:200].replace("'", "''")
+        script = r"""
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+$icon = New-Object System.Windows.Forms.NotifyIcon
+try {
+  $icon.Icon = [System.Drawing.SystemIcons]::Information
+  $icon.Text = 'Hop'
+  $icon.Visible = $true
+  $icon.ShowBalloonTip(5000, 'Hop', '%s', [System.Windows.Forms.ToolTipIcon]::Info)
+  $until = [DateTime]::UtcNow.AddSeconds(8)
+  while ([DateTime]::UtcNow -lt $until) {
+    [System.Windows.Forms.Application]::DoEvents()
+    Start-Sleep -Milliseconds 100
+  }
+} finally { $icon.Dispose() }
+""" % message
+        shell = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
+                             r"System32\WindowsPowerShell\v1.0\powershell.exe")
+        try:
+            subprocess.Popen([shell, "-NoProfile", "-NonInteractive", "-EncodedCommand",
+                              base64.b64encode(script.encode("utf-16-le")).decode("ascii")],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             creationflags=NO_WINDOW)
+        except Exception as e:
+            log.debug("Notification failed: %s", e)
+        return
     if OS_NAME != "mac":
         return
     def q(s):
@@ -543,7 +574,8 @@ def downloads_dir():
 
 SHARED_DIR = os.path.join(downloads_dir(), "Hop")
 WIN_RESERVED = frozenset(["CON", "PRN", "AUX", "NUL"] + ["COM%d" % i for i in range(1, 10)] +
-                         ["LPT%d" % i for i in range(1, 10)])
+                         ["LPT%d" % i for i in range(1, 10)] +
+                         [p + n for p in ("COM", "LPT") for n in "¹²³"])
 
 
 def display_path(p):
@@ -568,7 +600,7 @@ def safe_filename(raw):
     if not name:
         name = "file"
     stem, ext = os.path.splitext(name)
-    if stem.split(".")[0].upper() in WIN_RESERVED:
+    if stem.split(".")[0].rstrip(" .").upper() in WIN_RESERVED:
         stem = "_" + stem
     while len((stem + ext).encode("utf-8")) > 200 and stem:
         stem = stem[:-1]
@@ -1433,6 +1465,13 @@ def _build_keymap():
 
 KEYMAP = _build_keymap()
 
+# Browser shortcut keys are normalized to their physical US-keyboard positions.
+# pynput's character path uses the current layout; on e.g. a Russian layout an
+# ASCII letter becomes a Unicode packet, so Ctrl+A inserts "a" instead of selecting.
+WIN_SHORTCUT_VK = {c: ord(c.upper()) for c in "abcdefghijklmnopqrstuvwxyz0123456789"}
+WIN_SHORTCUT_VK.update(dict(zip(";=,-./`[\\]'", (0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF,
+                                               0xC0, 0xDB, 0xDC, 0xDD, 0xDE))))
+
 
 def map_key(k):
     if not isinstance(k, str) or not k:
@@ -1460,6 +1499,7 @@ class InputState(object):
     def __init__(self):
         self.held_keys = set()
         self.held_buttons = set()
+        self.key_codes = {}
 
     @staticmethod
     def to_screen(mon, x, y):
@@ -1511,9 +1551,18 @@ class InputState(object):
             log.debug("Unknown key %r", k)
             return
         if down:
+            if k in self.key_codes:
+                key = self.key_codes[k]
+            elif OS_NAME == "windows" and self.held_keys.intersection((Key.ctrl, Key.alt, Key.cmd)):
+                vk = WIN_SHORTCUT_VK.get(k.lower())
+                if vk is not None:
+                    key = KeyCode.from_vk(vk)
             keyboard.press(key)
             self.held_keys.add(key)
+            self.key_codes[k] = key
         else:
+            # Release the same native key even if the modifier was released first.
+            key = self.key_codes.pop(k, key)
             keyboard.release(key)
             self.held_keys.discard(key)
 
@@ -1528,6 +1577,7 @@ class InputState(object):
             except Exception as e:
                 log.debug("release key %r failed: %s", key, e)
         self.held_keys.clear()
+        self.key_codes.clear()
         for btn in list(self.held_buttons):
             try:
                 mouse.release(btn)
@@ -2253,6 +2303,7 @@ class HopServer(object):
                 cloud_touch = True
                 log.info("Internet access %s", "on" if on else "off")
         changed = False
+        control_changed = False
         for k in list(DEFAULT_SETTINGS) + ["shortName"]:
             if k not in d:
                 continue
@@ -2265,15 +2316,19 @@ class HopServer(object):
                 self.cfg[k] = v
                 changed = True
                 log.info("Setting %s = %s", k, v)
-                if k == "allowControl" and not v:
-                    for s in list(self.sessions.values()):
-                        s.release_input()
+                if k == "allowControl":
+                    control_changed = True
+                    if not v:
+                        for s in list(self.sessions.values()):
+                            s.release_input()
                 if k == "shortName":
                     self._probed = None
                     if self._addr_event is not None:
                         self._addr_event.set()
         if changed or cloud_touch:
             self.save()
+        if control_changed:
+            await self.broadcast({"t": "control", "allowed": self.allow_control})
         if cloud_touch:
             await self.start_cloud()
         self.update_awake()
@@ -2578,6 +2633,8 @@ class HopServer(object):
                     size = 0
                     while True:
                         chunk = await part.read_chunk(1 << 20)
+                        if not self.allow_control or self.paused or s.closed:
+                            raise PermissionError("Sharing or control was turned off during the upload")
                         if not chunk:
                             break
                         size += len(chunk)
@@ -2605,6 +2662,8 @@ class HopServer(object):
                 self.notify("Received %s from %s" % (fname, s.device))
         except _TooLarge as e:
             return self._err("%s is larger than 4 GB" % e.args[0], 413)
+        except PermissionError as e:
+            return self._err(str(e), 403)
         except OSError as e:
             log.warning("Upload failed: %s", e)
             return self._err("Couldn't save the file: %s" % (e.strerror or e), 507)
@@ -3603,9 +3662,13 @@ class RemoteSession(Session):
                 await self.send_json({"t": "up.err", "id": uid, "msg": "This computer only allows viewing"})
                 return
             try:
-                expect = int(d.get("size") or 0)
+                expect = int(d.get("size"))
             except (TypeError, ValueError):
-                expect = 0
+                await self.send_json({"t": "up.err", "id": uid, "msg": "Invalid file size"})
+                return
+            if expect < 0:
+                await self.send_json({"t": "up.err", "id": uid, "msg": "Invalid file size"})
+                return
             name = safe_filename(d.get("name"))
             if expect > UPLOAD_MAX:
                 await self.send_json({"t": "up.err", "id": uid, "msg": "%s is larger than 4 GB" % name})
@@ -3617,7 +3680,8 @@ class RemoteSession(Session):
             except OSError as e:
                 await self.send_json({"t": "up.err", "id": uid, "msg": "Couldn't save the file: %s" % (e.strerror or e)})
                 return
-            self._up = {"id": uid, "name": name, "tmp": tmp, "f": f, "got": 0, "folder": folder}
+            self._up = {"id": uid, "name": name, "tmp": tmp, "f": f, "got": 0,
+                        "expected": expect, "folder": folder}
             await self.send_json({"t": "up.ready", "id": uid})
             return
         if u is None or u["id"] != uid:
@@ -3635,6 +3699,9 @@ class RemoteSession(Session):
                 await self._up_fail(uid, "The upload was damaged in transit")
                 return
             u["got"] += len(raw)
+            if u["got"] > u["expected"]:
+                await self._up_fail(uid, "The upload doesn't match its expected size")
+                return
             if u["got"] > UPLOAD_MAX:
                 await self._up_fail(uid, "%s is larger than 4 GB" % u["name"])
                 return
@@ -3643,6 +3710,12 @@ class RemoteSession(Session):
             except OSError as e:
                 await self._up_fail(uid, "Couldn't save the file: %s" % (e.strerror or e))
         elif t == "up.end":
+            if not srv.allow_control:
+                await self._up_fail(uid, "This computer only allows viewing")
+                return
+            if u["got"] != u["expected"]:
+                await self._up_fail(uid, "The upload is incomplete; send the file again")
+                return
             self._up = None
             try:
                 await self.loop.run_in_executor(io_ex, u["f"].close)

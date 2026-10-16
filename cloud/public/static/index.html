@@ -1154,6 +1154,12 @@ function connect() {
 // Messages from the host — the same over the Wi-Fi WebSocket and the internet data channel.
 function handleMsg(m, st) {
   if (m.t === 'hello') { st.gotHello = true; clearTimeout(connectTimer); onHello(m); }
+  else if (m.t === 'control' && hello) {
+    hello.control = m.allowed === true; controlOff = !hello.control;
+    if (!hello.control) resetInputState(true);
+    applyCaps(); updateExtendUI();
+    toast(hello.control ? 'Control enabled by the host' : 'The host switched to view only', 2500);
+  }
   else if (m.t === 'cursor') onCursor(m);
   else if (m.t === 'clip') onClip(m);
   else if (m.t === 'clip.ok') onClipOk();

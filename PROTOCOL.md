@@ -93,6 +93,9 @@ When the host has "Allow control" off, the server silently ignores `move`, `down
 
 Server tracks keys/buttons held per connection and releases them on disconnect.
 Server prints connect/disconnect lines with client IP.
+Changing the host's Allow control setting broadcasts `{"t":"control","allowed":true|false}`
+to existing LAN and internet sessions. Viewers update capabilities immediately; disabling control
+also releases held input. Older viewers remain protected by host-side permission checks.
 
 ## Host window API (loopback only)
 `GET /host` serves `static/host.html` with a random per-process token substituted for `__LV_TOKEN__`

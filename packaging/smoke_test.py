@@ -6,6 +6,7 @@ then:  python packaging/smoke_test.py 8799 123456
 Checks the viewer page, the info API, PIN sign-in over the WebSocket and (when the machine can capture its
 screen) one video frame. Exit code 0 = OK.
 """
+import argparse
 import asyncio
 import json
 import sys
@@ -13,7 +14,7 @@ import sys
 import aiohttp
 
 
-async def main(port, pin):
+async def main(port, pin, require_video=False):
     base = "http://127.0.0.1:%d" % port
     async with aiohttp.ClientSession() as s:
         for attempt in range(150):  # the app may still be starting (first launch can be slow)
@@ -65,9 +66,19 @@ async def main(port, pin):
             print("FAIL: no hello after sign-in")
             return 1
         print("video frames:", frames if frames else "none (this machine can't capture its screen)")
+        if not frames and require_video:
+            print("FAIL: screen capture produced no video frames")
+            return 1
+        if not frames:
+            print("VIDEO NOT VERIFIED: this was only a startup/authentication check")
         print("SMOKE TEST PASSED")
         return 0
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main(int(sys.argv[1]), sys.argv[2])))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("port", type=int)
+    parser.add_argument("pin")
+    parser.add_argument("--require-video", action="store_true", help="fail unless real capture produces a frame")
+    args = parser.parse_args()
+    sys.exit(asyncio.run(main(args.port, args.pin, args.require_video)))

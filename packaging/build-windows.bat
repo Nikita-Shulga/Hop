@@ -15,8 +15,10 @@ if not defined VERSION (
 )
 
 rem 1. Find Python 3.10+
-set "PY="
-py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1 && set "PY=py -3"
+set "PY=%PYTHON%"
+if not defined PY (
+  py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1 && set "PY=py -3"
+)
 if not defined PY (
   python -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1 && set "PY=python"
 )

@@ -35,8 +35,26 @@ jobs:
         run: bash packaging/build-mac.sh
       - name: Build (Windows)
         if: runner.os == 'Windows'
+        env:
+          PYTHON: python
         shell: cmd
         run: packaging\build-windows.bat
+      - name: Regression tests (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/venv/bin/python" -m pip install -r requirements-test.txt
+          "$RUNNER_TEMP/venv/bin/python" -m pytest tests -q
+      - name: Regression tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\.venv\Scripts\python.exe -m pip install -r requirements-test.txt
+          .\.venv\Scripts\python.exe -m pytest tests -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check shared viewer and JavaScript
+        shell: bash
+        run: node packaging/check-js.mjs
       # Start the built app (no window) and sign in to it, so a broken build never gets published.
       - name: Smoke test (macOS)
         if: runner.os == 'macOS'
@@ -49,7 +67,7 @@ jobs:
         shell: pwsh
         run: |
           Start-Process -FilePath "dist\Hop\Hop.exe" -ArgumentList "--headless","--no-easy-port","--port","8799","--pin","123456"
-          .\.venv\Scripts\python.exe packaging\smoke_test.py 8799 123456
+          .\.venv\Scripts\python.exe packaging\smoke_test.py 8799 123456 --require-video
           if ($LASTEXITCODE -ne 0) { Get-Content "$env:USERPROFILE\.hop.log" -ErrorAction SilentlyContinue; exit 1 }
       # Rehearse a one-click update: a copy of the app replaces itself with the new ZIP and reopens.
       - name: Update rehearsal (macOS)
@@ -127,6 +145,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           name: Hop ${{ github.ref_name }}
+          body_path: packaging/release-notes.md
           files: |
             dist/*.zip
             dist/SHA256SUMS.txt

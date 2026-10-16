@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.2
+
+- Windows keyboard shortcuts now use native virtual keys, so Ctrl+A/C/V and other shortcuts work when the host keyboard layout is not English. Ordinary Unicode typing is preserved.
+- Windows updates now replace the executable and runtime together and restore the previous version if replacement fails. Unrelated files are preserved, incomplete downloads are rejected, and recovery files are retained if rollback fails.
+- Changing **Allow control** updates already-connected viewers immediately, including when control is turned back on.
+- Internet file transfers reject incomplete or oversized payloads, and transfers stop when control is revoked. Additional Windows reserved filenames are handled safely on both platforms.
+- Desktop notifications are now implemented on Windows as well as macOS.
+- Added cross-platform HTTP, WebSocket, WebRTC, file-transfer and updater regression tests. Release builds check viewer parity and Windows screen capture.
+- Windows CI uses the configured Python interpreter consistently.
+
 ## 2.0.1
 
 - Direct **Download** buttons for Windows and Mac on the GitHub page.
