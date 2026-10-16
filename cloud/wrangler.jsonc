@@ -1,0 +1,23 @@
+// Local View connection server (Cloudflare Workers free plan).
+// Deploy: see cloud/README.md. `public/` is generated from ../static by `npm run build`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "localview",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none",
+    // The Worker sees every request first, so the page only exists at the private address.
+    "run_worker_first": true
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "observability": { "enabled": true }
+  // Optional relay for connections that can't go direct (Cloudflare Realtime TURN, 1,000 GB/month free,
+  // then billed): set the secrets TURN_KEY_ID and TURN_KEY_API_TOKEN with `npx wrangler secret put`.
+}

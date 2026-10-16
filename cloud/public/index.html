@@ -1,0 +1,2828 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0A0A0B">
+<meta name="color-scheme" content="dark light">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-title" content="Local View">
+<meta name="application-name" content="Local View">
+<title>Local View</title>
+<link rel="manifest" id="manifestLink" href="/static/manifest.webmanifest">
+<script>
+// On a private address (/k/<key>/) the Home Screen app must reopen that same address.
+if (/^\/k\/[A-Za-z0-9_-]{16,64}\//.test(location.pathname)) document.getElementById('manifestLink').href = 'manifest.webmanifest';
+</script>
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230A0A0B'/%3E%3Crect x='6' y='8' width='20' height='13' rx='2.5' fill='none' stroke='%23A0A0A8' stroke-width='1.6'/%3E%3Cpath d='M11 18a5 5 0 0 1 10 0z' fill='%23F5A13A'/%3E%3Cpath d='M9 18h14' stroke='%23F69C34' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M12.5 24.5h7' stroke='%23F69C34' stroke-opacity='.5' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+/* apply the saved theme before first paint (System follows prefers-color-scheme) */
+(function () {
+  var t = 'system';
+  try { var v = localStorage.getItem('lv.theme'); if (v) t = JSON.parse(v); } catch (e) {}
+  var light = t === 'light' || (t !== 'dark' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
+  if (light) document.documentElement.setAttribute('data-mode', 'light');
+  var sa = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  if (sa) document.documentElement.classList.add('standalone');
+})();
+</script>
+<link rel="stylesheet" href="/static/theme.css">
+<style>
+/* ——— LocalView viewer — layout on top of the shared Quiet AI theme ——— */
+:root{
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);
+}
+*{-webkit-tap-highlight-color:transparent}
+html,body{overflow:hidden;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+body{position:fixed;top:0;left:0;right:0;bottom:0;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body::after{display:none!important}
+[hidden]{display:none!important}
+button{touch-action:manipulation}
+a{color:inherit;text-decoration:none}
+@keyframes fade{from{opacity:0}}
+@keyframes slidein{from{opacity:0;transform:translateX(12px)}}
+@keyframes caret{50%{opacity:0}}
+
+/* ——— Connect screen ——— */
+#connect{position:fixed;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;
+  display:flex;justify-content:center;padding:var(--sat) var(--sar) var(--sab) var(--sal)}
+.col{width:100%;max-width:452px;margin:auto 0;display:flex;flex-direction:column;padding:6px 0 14px;animation:fade .4s var(--ease)}
+.col .titlebar{padding:0 10px 0 20px}
+.col main{flex:none;padding:2px 16px 0}
+.chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px 0 6px;border-radius:6px;background:var(--fill);box-shadow:inset 0 0 0 1px var(--line);font-size:11.5px;font-weight:500;color:var(--text-3);white-space:nowrap}
+.chip svg{width:12px;height:12px}
+.hero .summary .sep{color:var(--text-3);padding:0 2px}
+
+/* PIN — one real input over six visual boxes */
+.pin{position:relative}
+.pin-boxes{display:grid;grid-template-columns:repeat(var(--n,6),minmax(0,1fr));gap:8px}
+.pin-box{position:relative;height:54px;border-radius:10px;background:var(--panel);box-shadow:var(--panel-shadow);display:grid;place-items:center;
+  font:600 24px/1 var(--display);letter-spacing:-.02em;color:var(--text);font-variant-numeric:tabular-nums;transition:box-shadow .15s,background-color .15s}
+.pin-box.filled{animation:pop .16s var(--ease)}
+.pin.focus .pin-box.cur{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 75%,transparent),0 0 0 3px color-mix(in srgb,var(--amber) 14%,transparent)}
+.pin.focus .pin-box.cur:empty::after{content:"";width:1.5px;height:22px;border-radius:1px;background:var(--amber);animation:caret 1.1s steps(1) infinite}
+.pin.sel .pin-box.filled{background:color-mix(in srgb,var(--amber) 14%,var(--fill))}
+.pin.err .pin-box{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--red) 50%,transparent)}
+.pin.err .pin-box.filled{color:var(--red-text)}
+.pin.err.sel .pin-box.filled{background:color-mix(in srgb,var(--red) 10%,var(--fill))}
+#pin{position:absolute;top:0;left:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;font-size:16px;color:transparent;background:transparent;
+  caret-color:transparent;cursor:text;-webkit-user-select:text;user-select:text;outline:none}
+.perr{margin:8px 4px 0;font-size:12px;line-height:16px;color:var(--red-text)}
+.perr:empty{display:none}
+
+/* Device rows (chat-list styling) */
+.chat-list{overflow:visible}
+.chat-list li.peer{padding:0;height:40px}
+.chat-list li.peer:hover{background:transparent}
+.pl{display:flex;align-items:center;gap:10px;width:100%;height:100%;padding:0 10px;border-radius:8px;color:inherit;transition:background-color .15s}
+a.pl:hover{background:var(--fill)}
+a.pl:active{background:var(--fill-2)}
+.pl .os{width:16px;height:16px;flex:none;color:var(--text-3)}
+.pl .title{flex:0 1 auto;min-width:64px}
+.oschip{flex:none;display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:5px;background:var(--fill);box-shadow:inset 0 0 0 1px var(--line);font-size:11px;font-weight:500;color:var(--text-2)}
+.pl .grow{flex:1;min-width:6px}
+.pl .time{flex:0 3 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl .chev{width:14px;height:14px;flex:none;color:var(--text-3);margin-right:-4px;transition:transform .2s var(--ease),color .15s}
+a.pl:hover .chev{color:var(--text);transform:translateX(2px)}
+.pl .here{font-size:11.5px;font-weight:500;color:var(--amber-text);white-space:nowrap;flex:none}
+.chat-list li.empty{min-height:64px}
+.addip{display:flex;gap:8px;padding:8px;box-shadow:inset 0 1px 0 var(--line)}
+.addip .input{flex:1;min-width:0;-webkit-user-select:text;user-select:text}
+@media (pointer:coarse){.input{font-size:16px}}
+@media (max-width:420px){.pl .oschip{display:none}}
+
+.col .footer{padding:20px 16px 4px}
+.col .footer .foot{text-align:center;margin-top:12px}
+.cta:disabled{opacity:.7}
+
+/* ——— Viewer ——— */
+#viewer{position:fixed;top:0;left:0;right:0;height:100%;background:var(--bg);touch-action:none;overflow:hidden}
+#stage{position:absolute;top:var(--sat);left:var(--sal);right:var(--sar);bottom:var(--sab);touch-action:none}
+#viewer.kb #stage{bottom:var(--krh,0px)}
+#screen{position:absolute;top:0;left:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+#hot{position:absolute;top:0;left:50%;transform:translateX(-50%);width:360px;max-width:100%;height:14px;z-index:9}
+
+#toolbar{position:absolute;top:calc(var(--sat) + 8px);left:calc(var(--sal) + 8px);right:calc(var(--sar) + 8px);z-index:10;
+  display:flex;justify-content:center;pointer-events:none}
+#bar,#pill{pointer-events:auto}
+#bar{display:flex;align-items:center;gap:2px;padding:4px;max-width:100%;overflow-x:auto;scrollbar-width:none;touch-action:pan-x;
+  border-radius:12px;background:var(--elevated);box-shadow:var(--elevated-shadow);animation:pop .16s var(--ease)}
+#bar::-webkit-scrollbar{display:none}
+#bar .tb{flex:none;color:var(--text-2)}
+#bar .tb:hover{color:var(--text)}
+#bar .tb:active{background:var(--fill-3)}
+#bar .tb.on{background:color-mix(in srgb,var(--amber) 16%,transparent);color:var(--amber-text)}
+#bar .tb.danger:hover{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+#zoomv{width:auto;min-width:38px;padding:0 6px;font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--text)}
+.tbadge{flex:none;display:flex;align-items:center;gap:7px;height:30px;padding:0 10px 0 9px;margin-right:2px;border-radius:7px;background:var(--fill);
+  box-shadow:inset 0 0 0 1px var(--line);font-size:12px;font-weight:500;white-space:nowrap}
+#statName{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+#statTxt{color:var(--text-3);font-variant-numeric:tabular-nums}
+.dot{position:relative;width:6px;height:6px;border-radius:50%;background:var(--green);flex:none}
+.dot::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--green);animation:ping 2s var(--ease) infinite}
+.dot.bad{background:var(--amber)}
+.dot.bad::after{border-color:var(--amber)}
+#pill{display:none;align-items:center;gap:7px;height:24px;padding:0 11px 0 10px;border-radius:12px;background:var(--elevated);box-shadow:var(--elevated-shadow);
+  font-size:11.5px;font-weight:500;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;animation:pop .16s var(--ease)}
+#toolbar.collapsed #bar{display:none}
+#toolbar.collapsed #pill{display:flex}
+@media (pointer:coarse){#bar .tb{width:34px;height:34px}#zoomv{width:auto}.tbadge{height:34px}}
+@media (max-width:480px){
+  #toolbar{left:calc(var(--sal) + 6px);right:calc(var(--sar) + 6px);top:calc(var(--sat) + 6px)}
+  #statName,#bar .tb-sep{display:none}
+  #bar .tb{width:31px}
+  #zoomv{min-width:32px;padding:0 3px}
+  .tbadge{padding:0 8px;gap:6px}
+}
+
+#keyrow{position:absolute;left:0;right:0;bottom:0;z-index:12;display:grid;grid-template-columns:repeat(7,1fr);gap:5px;
+  padding:6px calc(var(--sar) + 6px) calc(6px + var(--sab)) calc(var(--sal) + 6px);
+  background:var(--elevated);box-shadow:inset 0 1px 0 var(--line-2),0 -10px 30px rgba(0,0,0,.22)}
+@media (min-width:640px){#keyrow{grid-template-columns:repeat(14,1fr)}}
+.k{height:38px;min-width:0;padding:0 2px;border-radius:8px;background:var(--fill-2);box-shadow:inset 0 0 0 1px var(--line-2),0 1px 1px rgba(0,0,0,.12);
+  color:var(--text);font:500 13px/1 var(--sans);display:flex;align-items:center;justify-content:center;text-align:center;touch-action:none;
+  transition:background-color .12s,box-shadow .12s,color .12s}
+.k.held{background:color-mix(in srgb,var(--amber) 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 55%,transparent);color:var(--amber-text)}
+.k.press{background:var(--fill-3)}
+.k svg{width:16px;height:16px}
+
+#overlay{position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:color-mix(in srgb,var(--bg) 60%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:fade .25s var(--ease)}
+.ovcard{width:100%;max-width:340px;animation:pop .22s var(--ease)}
+.ovcard .headline{font-size:21px;line-height:26px;margin-top:14px}
+.ovcard .summary{white-space:normal}
+.ovcard .ovact{position:relative;z-index:1;margin-top:14px}
+.ovcard .cta{height:36px;font-size:13px}
+
+/* ——— Sheets ——— */
+.sheet{top:0;z-index:50;display:block;opacity:1;transform:none;pointer-events:auto;transition:none;
+  background:rgba(0,0,0,.38);animation:fade .2s var(--ease)}
+.sheet-card{position:absolute;top:calc(8px + var(--sat));right:calc(8px + var(--sar));bottom:calc(8px + var(--sab));width:404px;max-width:calc(100% - 16px);display:flex;flex-direction:column;
+  background:var(--bg);border-radius:14px;box-shadow:var(--elevated-shadow);overflow:hidden;animation:slidein .3s var(--ease)}
+.sheet-bar{height:46px}
+.sheet-body{-webkit-overflow-scrolling:touch;touch-action:pan-y;-webkit-user-select:none;user-select:none}
+.sheet-body > .block-head:first-child{margin-top:4px}
+@media (max-width:600px){
+  .sheet{background:var(--bg)}
+  .sheet-card{top:0;left:0;right:0;bottom:0;width:auto;max-width:none;border-radius:0;box-shadow:none;padding:var(--sat) var(--sar) 0 var(--sal)}
+  .sheet-body{padding-bottom:calc(24px + var(--sab))}
+}
+@media (pointer:coarse){.back{height:34px}}
+.srow .seg.inline{width:auto;flex:none}
+.srow .seg.inline button{padding:0 11px;min-width:38px;font-variant-numeric:tabular-nums}
+.srow .select{flex:none;max-width:62%}
+.select-value{overflow:hidden;text-overflow:ellipsis}
+.select:disabled{opacity:.5}
+.range{flex:none;display:flex;align-items:center;gap:10px;width:46%;max-width:210px}
+.range output{min-width:20px;text-align:right;font-size:12.5px;font-weight:500;color:var(--text-2);font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:22px;margin:0;background:transparent;touch-action:pan-x}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
+  background:linear-gradient(90deg,var(--amber-hi),var(--amber)) no-repeat 0 0/var(--p,50%) 100%,var(--fill-3)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.4),inset 0 0 0 1px rgba(0,0,0,.06);transition:transform .15s var(--ease)}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.1)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--fill-3)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--amber-hi),var(--amber))}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.prose strong{font-weight:500;color:var(--text)}
+.prose p{color:var(--text-2)}
+#menu{z-index:70;max-height:calc(100% - 16px);overflow-y:auto}
+
+/* ——— Notice (toast) ——— */
+#toast.notice{left:50%;right:auto;bottom:calc(var(--sab) + 72px);width:max-content;max-width:min(420px,calc(100% - 32px));padding:10px 14px 10px 12px;
+  opacity:0;transform:translate(-50%,6px);pointer-events:none;animation:none;transition:opacity .2s var(--ease),transform .3s var(--ease)}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast i{width:6px;height:6px;border-radius:50%;background:var(--amber);flex:none}
+#toast.error i{background:var(--red)}
+
+/* ——— v1.1: toolbar additions ——— */
+#bMore{display:none}
+.tbadge.vo{gap:6px;padding:0 9px 0 7px;color:var(--amber-text);background:color-mix(in srgb,var(--amber) 10%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 28%,transparent)}
+.tbadge.vo svg{width:14px;height:14px}
+@media (max-width:860px){#statName{display:none}}
+@media (max-width:480px){
+  #bar [data-ovf]{display:none!important}
+  #bMore{display:grid}
+  .tbadge.vo span{display:none}
+  .tbadge.vo{padding:0 8px}
+}
+
+/* menus: action items, headers, separators, key hints */
+.menu .mhead{padding:7px 8px 5px;font-size:11.5px;font-weight:500;color:var(--text-3);white-space:nowrap}
+.menu .msep{height:1px;margin:4px 6px;background:var(--line)}
+.menu .hint{margin-left:14px;font-size:11.5px;font-weight:500;color:var(--text-3);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.menu .micon{width:16px;display:grid;place-items:center}
+.menu .micon:empty{display:none}
+.menu button:has(.micon:empty){padding-left:8px}
+.menu button:disabled{opacity:.4}
+.menu .mnote{max-width:250px;padding:6px 8px 7px;font-size:11.5px;line-height:16px;color:var(--text-3);white-space:normal}
+@media (pointer:coarse){.menu button{height:36px}}
+
+/* connect: add-to-home-screen tip */
+.tip{display:flex;align-items:center;gap:12px;padding:10px 6px 10px 12px;animation:rise .45s var(--ease) both}
+.tip .tile{width:32px;height:32px;flex:none;border-radius:8px;display:grid;place-items:center;background:var(--fill-2);box-shadow:inset 0 0 0 1px var(--line);color:var(--amber-text)}
+.tip .tile svg{width:16px;height:16px}
+.tip .stext small svg{display:inline-block;width:13px;height:13px;vertical-align:-2px;margin:0 1px;color:var(--text)}
+.tip .tb{flex:none;align-self:flex-start}
+
+/* sheets: clipboard + files */
+.sheet-body .panel.pad{padding:10px}
+textarea.input{display:block;width:100%;min-height:96px;max-height:40vh;padding:9px 10px;resize:vertical;font:400 13px/18px var(--sans);
+  -webkit-user-select:text;user-select:text;margin:0}
+@media (pointer:coarse){textarea.input{font-size:16px;line-height:21px}}
+.actrow{display:flex;align-items:center;gap:10px;margin-top:10px}
+.actrow .note{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.actrow .button{display:inline-flex;align-items:center;gap:6px;flex:none}
+.actrow .button svg{width:14px;height:14px}
+.button.ghost{background:var(--fill);color:var(--text);box-shadow:var(--select-shadow);font-weight:500}
+.button.ghost:hover:not(:disabled){background:var(--fill-2);filter:none}
+.button.done{background:color-mix(in srgb,var(--green) 18%,var(--fill));color:var(--green);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--green) 35%,transparent)}
+.clipbox{min-height:64px;max-height:38vh;overflow:auto;-webkit-overflow-scrolling:touch;padding:9px 10px;border-radius:7px;background:var(--input);
+  box-shadow:inset 0 0 0 1px var(--line-2);font-size:13px;line-height:18px;white-space:pre-wrap;word-break:break-word;
+  -webkit-user-select:text;user-select:text;cursor:text;touch-action:pan-y}
+.clipbox.empty{display:grid;place-items:center;color:var(--text-3);cursor:default;-webkit-user-select:none;user-select:none}
+.offnote{display:flex;align-items:center;gap:8px;margin-top:8px;padding:0 4px;font-size:12px;line-height:16px;color:var(--amber-text)}
+.offnote::before{content:"";width:6px;height:6px;flex:none;border-radius:50%;background:var(--amber)}
+.folder-row{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px}
+.folder-row .tile{width:32px;height:32px;flex:none;border-radius:8px;display:grid;place-items:center;background:var(--fill-2);box-shadow:inset 0 0 0 1px var(--line);color:var(--text-2)}
+.folder-row .tile svg{width:16px;height:16px}
+.folder-row .stext small{font:400 11.5px/16px ui-monospace,"Cascadia Mono",Consolas,monospace;color:var(--text-2);word-break:break-all;-webkit-user-select:text;user-select:text}
+.folder-row .button{display:inline-flex;align-items:center;gap:6px;flex:none}
+.folder-row .button svg{width:14px;height:14px}
+.upl{position:relative;padding:10px 12px 12px;box-shadow:inset 0 1px 0 var(--line)}
+.upl-top{display:flex;align-items:center;gap:10px;font-size:12px;line-height:16px}
+.upl-top span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-2)}
+.upl-top output{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.upl-top .link{flex:none;font-size:12px}
+.prog{height:4px;margin-top:8px;border-radius:2px;background:var(--fill-3);overflow:hidden}
+.prog i{display:block;height:100%;width:0;border-radius:2px;background:linear-gradient(90deg,var(--amber-hi),var(--amber));transition:width .2s linear}
+.upl.err .upl-top span{color:var(--red-text)}
+.upl.err .prog i{background:var(--red)}
+.upl.ok .prog i{background:var(--green)}
+.chat-list li.file{padding:0;height:44px}
+.chat-list li.file:hover{background:transparent}
+.chat-list li.file::before{left:44px}
+a.fl{display:flex;align-items:center;gap:10px;width:100%;height:100%;padding:0 8px 0 10px;border-radius:8px;transition:background-color .15s}
+a.fl:hover{background:var(--fill)}
+a.fl:active{background:var(--fill-2)}
+.fl .ficon{width:24px;height:24px;flex:none;border-radius:6px;display:grid;place-items:center;background:var(--fill-2);box-shadow:inset 0 0 0 1px var(--line);
+  font:600 7.5px/1 var(--sans);letter-spacing:.02em;color:var(--text-2);text-transform:uppercase;overflow:hidden}
+.fl .fmeta{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.fl .fmeta .title{flex:none}
+.fl .fmeta small{font-size:11.5px;line-height:14px;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fl .dl{width:28px;height:28px;flex:none;border-radius:7px;display:grid;place-items:center;color:var(--text-3);transition:background-color .15s,color .15s}
+.fl .dl svg{width:16px;height:16px}
+a.fl:hover .dl{color:var(--text);background:var(--fill-2)}
+.chat-list li.file.fresh .ficon{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 45%,transparent);color:var(--amber-text)}
+.list-err{padding:16px 14px;text-align:center;font-size:12.5px;line-height:18px;color:var(--text-2)}
+.list-err strong{display:block;font-weight:500;color:var(--text)}
+
+/* drop overlay */
+#drop{position:fixed;top:0;left:0;right:0;bottom:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:color-mix(in srgb,var(--bg) 55%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:fade .15s var(--ease)}
+#drop .dropcard{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:380px;padding:30px 24px 26px;border-radius:16px;
+  background:var(--elevated);box-shadow:var(--elevated-shadow);outline:1.5px dashed color-mix(in srgb,var(--amber) 55%,transparent);outline-offset:-10px;
+  text-align:center;animation:pop .18s var(--ease);pointer-events:none}
+#drop .dropcard .tile{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--amber) 14%,transparent);color:var(--amber-text)}
+#drop .dropcard .tile svg{width:22px;height:22px}
+#drop .dropcard strong{font:600 17px/22px var(--display);letter-spacing:-.02em}
+#drop .dropcard span{font-size:12.5px;color:var(--text-2)}
+#drop.off .dropcard{outline-color:color-mix(in srgb,var(--red) 50%,transparent)}
+#drop.off .dropcard .tile{background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red-text)}
+
+/* notice with action */
+#toast.act{pointer-events:auto;padding:6px 6px 6px 12px}
+#toast .tact{width:auto;height:28px;padding:0 10px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text);background:var(--fill-2);box-shadow:inset 0 0 0 1px var(--line-2)}
+#toast .tact:hover{background:var(--fill-3)}
+#toast .tx{width:24px}
+#overlay{padding:calc(24px + var(--sat)) calc(24px + var(--sar)) calc(24px + var(--sab)) calc(24px + var(--sal))}
+
+#kbd{position:fixed;top:calc(var(--sat) + 60px);left:50%;width:1px;height:1px;opacity:0;border:0;padding:0;margin:0;
+  font-size:16px;color:transparent;background:transparent;caret-color:transparent;outline:none;pointer-events:none;z-index:-1}
+/* Internet mode (page served by the Local View connection server) */
+body.cloud #connectForm, body.cloud #lanDevices{display:none}
+.cfield{display:flex;flex-direction:column;margin-bottom:10px}
+.cfield .block-head{margin-bottom:6px}
+.input.big{height:46px;padding:0 14px;border-radius:10px;font:500 19px/1 var(--sans);letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.input.big.pw{letter-spacing:.02em}
+.input.big::placeholder{letter-spacing:.08em}
+.remember{display:flex;align-items:center;gap:8px;margin:4px 4px 0;font-size:12.5px;color:var(--text-2);cursor:pointer}
+.remember input{accent-color:var(--amber);width:15px;height:15px;margin:0}
+#recentList .forget{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--text-3);flex-shrink:0}
+#recentList .forget:hover{background:var(--fill-2);color:var(--text)}
+#recentList .forget svg{width:13px;height:13px}
+#hero.pairing .headline{font-size:38px;line-height:44px;letter-spacing:.06em}
+#hero.pairing .summary{white-space:normal;overflow:visible}
+#rv{position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+
+<!-- ================= CONNECT ================= -->
+<div id="connect">
+  <div class="col">
+    <header class="titlebar">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 48 28" aria-hidden="true"><defs><linearGradient id="lvSun" x1="0" y1="9.5" x2="0" y2="17.5" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFD07A"/><stop offset="1" stop-color="#F28422"/></linearGradient></defs><rect x="7" y="1.5" width="34" height="21" rx="4.5" stroke="currentColor" stroke-opacity=".5" stroke-width="2.4"/><path d="M16 17.5A8 8 0 0 1 32 17.5Z" fill="url(#lvSun)" stroke="none"/><path d="M12 17.5H36" stroke="#F69C34" stroke-opacity=".92" stroke-width="2.4"/><path d="M18 26.5H30" stroke="#F69C34" stroke-opacity=".45" stroke-width="2.4"/></svg>
+        <span class="brand-name">Local <span>View</span></span>
+      </div>
+      <div class="tb-actions">
+        <button class="tb" id="bTheme" type="button" aria-label="Switch light or dark" title="Light / dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg></button>
+        <button class="tb" id="bSettings0" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6.5M12 5h1.5M2.5 11h1.5M7 11h6.5"/><circle cx="10.5" cy="5" r="1.5"/><circle cx="5.5" cy="11" r="1.5"/></svg></button>
+      </div>
+    </header>
+
+    <main>
+      <section id="hero" class="hero" data-tone="preview" aria-live="polite">
+        <div class="hero-top">
+          <span class="badge"><i></i><span id="badgeText">Looking…</span></span>
+          <span class="chip" title="Streams stay on your local network"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.8" y="7" width="8.4" height="6.2" rx="1.5"/><path d="M5.8 7V5.4a2.2 2.2 0 0 1 4.4 0V7"/></svg>Local network</span>
+        </div>
+        <h1 id="headline" class="headline">Finding host…</h1>
+        <p id="summary" class="summary">&nbsp;</p>
+        <canvas id="signal" class="signal" aria-hidden="true"></canvas>
+      </section>
+
+      <form id="connectForm" class="block" autocomplete="off">
+        <div class="block-head"><h2><label for="pin">PIN</label></h2><span class="note">Shown on the host</span></div>
+        <div class="pin" id="pinWrap">
+          <div class="pin-boxes" id="pinBoxes" aria-hidden="true"></div>
+          <input id="pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" aria-label="PIN">
+        </div>
+        <div class="perr" id="connectErr" role="alert"></div>
+      </form>
+
+      <form id="cloudForm" class="block" autocomplete="on" hidden>
+        <div class="cfield">
+          <div class="block-head"><h2><label for="cid">Computer ID</label></h2><span class="note">Shown in Local View on that computer</span></div>
+          <input id="cid" name="username" class="input big" type="text" inputmode="numeric" autocomplete="username" placeholder="123 456 789" maxlength="11" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next">
+        </div>
+        <div class="cfield">
+          <div class="block-head"><h2><label for="cpw">Password</label></h2></div>
+          <input id="cpw" name="password" class="input big pw" type="password" autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" maxlength="64">
+        </div>
+        <label class="remember"><input type="checkbox" id="cRemember" checked>Remember on this device</label>
+        <div class="perr" id="cloudErr" role="alert"></div>
+      </form>
+
+      <section class="block" id="recentBlock" hidden>
+        <div class="block-head"><h2>Your computers</h2><span class="note" id="recentNote"></span></div>
+        <div class="panel list-panel"><ul class="chat-list" id="recentList" aria-label="Recent computers"></ul></div>
+      </section>
+
+      <section class="block" id="lanDevices">
+        <div class="block-head"><h2>Devices on this network</h2><span class="note peer-note"></span></div>
+        <div class="panel list-panel">
+          <ul class="chat-list" id="peers1" aria-label="Devices"></ul>
+          <form class="addip" data-addip autocomplete="off">
+            <input class="input" type="text" inputmode="url" placeholder="mac.local or 192.168.1.20" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Computer address or IP">
+            <button class="button" type="submit">Go</button>
+          </form>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <button class="cta" id="connectBtn" type="submit" form="connectForm"><span id="ctaText">Connect</span><kbd>↵</kbd></button>
+      <p class="foot">Use the same PIN on all your computers to hop between them.</p>
+      <section class="block" id="a2hs" hidden>
+        <div class="panel tip" role="note">
+          <span class="tile"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2.6"/><path d="M8 5.4v5.2M5.4 8h5.2"/></svg></span>
+          <div class="stext"><strong>Add to Home Screen</strong>
+            <small>Tap <svg viewBox="0 0 16 16" aria-label="Share"><path d="M8 2.2v7.6M5.4 4.6L8 2.2l2.6 2.4"/><path d="M5.6 6.6H4.4c-.6 0-1 .4-1 1v5.2c0 .6.4 1 1 1h7.2c.6 0 1-.4 1-1V7.6c0-.6-.4-1-1-1h-1.2"/></svg> Share, then “Add to Home Screen” — Local View opens full screen, like an app.</small></div>
+          <button class="tb" id="a2hsX" type="button" aria-label="Dismiss tip" title="Dismiss"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button>
+        </div>
+      </section>
+    </footer>
+  </div>
+</div>
+
+<!-- ================= VIEWER ================= -->
+<div id="viewer" hidden>
+  <div id="stage"><canvas id="screen" tabindex="-1"></canvas></div>
+  <div id="hot"></div>
+  <div id="toolbar">
+    <button id="pill" type="button" aria-label="Show toolbar" title="Show toolbar"><i class="dot" id="pillDot"></i><span id="pillTxt">Local View</span></button>
+    <div id="bar" role="toolbar" aria-label="Viewer controls">
+      <div id="stat" class="tbadge" title=""><i class="dot" id="statDot"></i><span id="statName">Host</span><span id="statTxt">–</span></div>
+      <div id="viewOnly" class="tbadge vo" title="View only — control is turned off on the host" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 8s2.2-4.2 6.2-4.2S14.2 8 14.2 8 12 12.2 8 12.2 1.8 8 1.8 8z"/><circle cx="8" cy="8" r="1.9"/></svg><span>View only</span></div>
+      <button class="tb" id="bMode" type="button" title="Input mode" aria-label="Input mode" data-touch data-ovf></button>
+      <span id="zoomGrp" style="display:contents">
+        <button class="tb" id="bZoomOut" type="button" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8"/></svg></button>
+        <button class="tb" id="zoomv" type="button" title="Fit to screen" aria-label="Fit to screen">1×</button>
+        <button class="tb" id="bZoomIn" type="button" title="Zoom in" aria-label="Zoom in"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8M8 4v8"/></svg></button>
+      </span>
+      <button class="tb" id="bKbd" type="button" title="Keyboard" aria-label="Keyboard" data-touch><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="4" width="12.4" height="8.2" rx="1.6"/><path d="M4.4 6.9h.01M6.8 6.9h.01M9.2 6.9h.01M11.6 6.9h.01M5.6 9.6h4.8"/></svg></button>
+      <button class="tb" id="bKeys" type="button" title="Shortcuts" aria-label="Shortcuts" aria-haspopup="menu"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 6V4.5A1.5 1.5 0 1 0 4.5 6H6zm0 0h4M6 6v4m4-4V4.5A1.5 1.5 0 1 1 11.5 6H10zm0 0v4m0 0h1.5A1.5 1.5 0 1 1 10 11.5V10zm0 0H6m0 0v1.5A1.5 1.5 0 1 1 4.5 10H6z"/></svg></button>
+      <button class="tb" id="bClip" type="button" title="Clipboard" aria-label="Clipboard" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="3" width="9.6" height="11" rx="1.8"/><path d="M6 3V2.6c0-.5.4-.8.8-.8h2.4c.5 0 .8.4.8.8V3c0 .5-.4.8-.8.8H6.8C6.4 3.8 6 3.5 6 3z"/><path d="M5.8 7.4h4.4M5.8 10h2.8"/></svg></button>
+      <button class="tb" id="bFiles" type="button" title="Files" aria-label="Files" hidden data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 4.6c0-.7.5-1.2 1.2-1.2h2.8l1.4 1.5h5c.7 0 1.2.5 1.2 1.2v5.8c0 .7-.5 1.2-1.2 1.2H3.4c-.7 0-1.2-.5-1.2-1.2z"/><path d="M8 7.2v3.6M6.4 9.2L8 10.8l1.6-1.6"/></svg></button>
+      <button class="tb" id="bDevices" type="button" title="Devices" aria-label="Devices" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="3" width="9.6" height="7" rx="1.3"/><path d="M4.6 12.8h4"/><rect x="11.8" y="6" width="2.8" height="6.8" rx=".8"/></svg></button>
+      <button class="tb" id="bSettings" type="button" title="Settings" aria-label="Settings" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6.5M12 5h1.5M2.5 11h1.5M7 11h6.5"/><circle cx="10.5" cy="5" r="1.5"/><circle cx="5.5" cy="11" r="1.5"/></svg></button>
+      <button class="tb" id="bExtend" type="button" title="Use as a second screen" aria-label="Use as a second screen" data-ovf hidden><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.6" y="3.4" width="7.4" height="5.6" rx="1.1"/><rect x="7" y="6.6" width="7.4" height="5.6" rx="1.1"/><path d="M4 11.6h2.4"/></svg></button>
+      <button class="tb" id="bFull" type="button" title="Fullscreen" aria-label="Fullscreen" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.8 6V3.6c0-.4.4-.8.8-.8H6M10 2.8h2.4c.4 0 .8.4.8.8V6M13.2 10v2.4c0 .4-.4.8-.8.8H10M6 13.2H3.6c-.4 0-.8-.4-.8-.8V10"/></svg></button>
+      <button class="tb" id="bHide" type="button" title="Hide toolbar" aria-label="Hide toolbar" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 9.8L8 6.3l3.5 3.5"/></svg></button>
+      <button class="tb" id="bMore" type="button" title="More" aria-label="More" aria-haspopup="menu"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.6 8h.01M8 8h.01M12.4 8h.01" stroke-width="2.2"/></svg></button>
+      <span class="tb-sep"></span>
+      <button class="tb danger" id="bDisc" type="button" title="Disconnect" aria-label="Disconnect"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v4.6M4.9 4.6a4.6 4.6 0 1 0 6.2 0"/></svg></button>
+    </div>
+  </div>
+  <div id="keyrow" hidden>
+    <button class="k" data-k="Escape">Esc</button>
+    <button class="k" data-k="Tab">Tab</button>
+    <button class="k" data-k="Control" data-sticky>Ctrl</button>
+    <button class="k" data-k="Alt" data-sticky id="kAlt">Alt</button>
+    <button class="k" data-k="Meta" data-sticky id="kMeta">Win</button>
+    <button class="k" data-k="Shift" data-sticky>Shift</button>
+    <button class="k" data-k="Delete">Del</button>
+    <button class="k" data-k="ArrowLeft" aria-label="Left"><svg viewBox="0 0 16 16"><path d="M9.5 4.5L6 8l3.5 3.5"/></svg></button>
+    <button class="k" data-k="ArrowUp" aria-label="Up"><svg viewBox="0 0 16 16"><path d="M4.5 9.5L8 6l3.5 3.5"/></svg></button>
+    <button class="k" data-k="ArrowDown" aria-label="Down"><svg viewBox="0 0 16 16"><path d="M4.5 6.5L8 10l3.5-3.5"/></svg></button>
+    <button class="k" data-k="ArrowRight" aria-label="Right"><svg viewBox="0 0 16 16"><path d="M6.5 4.5L10 8l-3.5 3.5"/></svg></button>
+    <button class="k" data-k="Backspace" aria-label="Backspace"><svg viewBox="0 0 16 16"><path d="M5.6 3.8h7.2c.7 0 1.2.5 1.2 1.2v6c0 .7-.5 1.2-1.2 1.2H5.6L2 8z"/><path d="M7.6 6.4l3 3.2M10.6 6.4l-3 3.2"/></svg></button>
+    <button class="k" data-k="Enter" aria-label="Enter"><svg viewBox="0 0 16 16"><path d="M12.8 3.8v3.4c0 .9-.7 1.6-1.6 1.6H3.6M6.2 6.2L3.6 8.8l2.6 2.6"/></svg></button>
+    <button class="k" data-act="hidekb" title="Hide keyboard" aria-label="Hide keyboard"><svg viewBox="0 0 16 16"><path d="M4.5 6.5L8 10l3.5-3.5"/><path d="M5 13h6" stroke-opacity=".5"/></svg></button>
+  </div>
+  <div id="overlay" hidden>
+    <div class="hero ovcard" data-tone="countdown">
+      <div class="hero-top"><span class="badge"><i></i><span>Reconnecting</span></span></div>
+      <p class="headline" id="ovTitle">Connection lost</p>
+      <p class="summary" id="ovText">Connecting…</p>
+      <canvas class="signal" id="ovSignal" aria-hidden="true"></canvas>
+      <div class="ovact"><button class="cta secondary" id="ovCancel" type="button">Cancel</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SETTINGS ================= -->
+<div class="sheet" id="sheetSettings" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Settings">
+    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>Back</button><h2>Settings</h2><span></span></div>
+    <div class="sheet-body">
+      <div class="block-head"><h2>Mode</h2></div>
+      <div class="panel">
+        <div class="srow"><div class="stext"><strong id="modeTitle">Control or second screen</strong><small id="modeHint">Control shows the other computer's screen. Second screen turns this screen into an extra display for it.</small></div></div>
+        <div class="srow"><div class="seg" id="sView" role="group" aria-label="Mode"><span class="seg-thumb" aria-hidden="true"></span>
+          <button type="button" data-v="control">Control</button><button type="button" data-v="extend">Second screen</button></div></div>
+      </div>
+
+      <div class="block-head"><h2>Stream</h2></div>
+      <div class="panel">
+        <div class="srow"><div class="stext"><strong>Display</strong><small id="monHint">Connect to choose a display</small></div>
+          <button class="select" id="sMonitor" type="button" aria-haspopup="menu"><span class="select-value">—</span><svg class="updown" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 6.5L8 4l2.5 2.5M5.5 9.5L8 12l2.5-2.5"/></svg></button></div>
+        <div class="srow"><div class="stext"><strong>Quality</strong><small>JPEG quality — lower is faster</small></div>
+          <div class="range"><input type="range" id="sQuality" min="20" max="95" step="5" aria-label="Quality"><output id="sQualityV"></output></div></div>
+        <div class="srow"><div class="stext"><strong>Resolution</strong><small>Maximum stream width</small></div>
+          <button class="select" id="sMaxw" type="button" aria-haspopup="menu"><span class="select-value"></span><svg class="updown" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 6.5L8 4l2.5 2.5M5.5 9.5L8 12l2.5-2.5"/></svg></button></div>
+        <div class="srow"><div class="stext"><strong>Frame rate</strong><small>Frames per second</small></div>
+          <div class="seg inline" id="sFps" role="group" aria-label="Frame rate"><span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" data-v="5">5</button><button type="button" data-v="10">10</button><button type="button" data-v="20">20</button><button type="button" data-v="30">30</button></div></div>
+      </div>
+
+      <div class="block-head"><h2>Keyboard</h2></div>
+      <div class="panel">
+        <div class="srow"><div class="stext"><strong>Swap Ctrl ↔ Cmd</strong><small id="swapHint"></small></div>
+          <label class="switch"><input type="checkbox" id="sSwap" aria-label="Swap Ctrl and Cmd"><span></span></label></div>
+      </div>
+
+      <div id="touchHelp" data-touch>
+        <div class="block-head"><h2>Gestures</h2></div>
+        <div class="panel">
+          <div class="srow prose"><p><strong>Trackpad</strong> — drag to move the pointer · tap to click · double-tap to double-click · tap, then press and drag to drag · long-press to right-click.</p></div>
+          <div class="srow prose"><p><strong>Touch</strong> — tap where you want to click · long-press to right-click · drag to drag.</p></div>
+          <div class="srow prose"><p><strong>Both</strong> — pinch to zoom (move while pinching to pan) · two-finger drag to scroll · two-finger tap to right-click · two-finger double-tap to zoom in or back to fit · three-finger tap for the keyboard. Rotate the phone for a bigger picture.</p></div>
+        </div>
+      </div>
+
+      <div class="block-head"><h2>Appearance</h2></div>
+      <div class="panel">
+        <div class="srow appearance">
+          <div id="themeSeg" class="seg" role="group" aria-label="Theme"><span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" data-v="system"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.2" width="11" height="7.6" rx="1.4"/><path d="M6 13h4"/></svg>System</button>
+            <button type="button" data-v="light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/></svg>Light</button>
+            <button type="button" data-v="dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg>Dark</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="block-head"><h2>About</h2><span class="note">Local View</span></div>
+      <div class="panel">
+        <div class="srow prose"><p id="aboutText">Shows and controls this computer from any browser on the same network. On Wi-Fi nothing goes through the internet — no accounts, no cloud.</p></div>
+      </div>
+      <p class="foot">Use the same PIN on all your computers to hop between them from the Devices list.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= DEVICES ================= -->
+<div class="sheet" id="sheetDevices" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Devices">
+    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>Back</button><h2>Devices</h2><span></span></div>
+    <div class="sheet-body">
+      <div class="block-head"><h2>On this network</h2><span class="note peer-note"></span></div>
+      <div class="panel list-panel">
+        <ul class="chat-list" id="peers2" aria-label="Devices"></ul>
+        <form class="addip" data-addip autocomplete="off">
+          <input class="input" type="text" inputmode="url" placeholder="mac.local or 192.168.1.20" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Computer address or IP">
+          <button class="button" type="submit">Go</button>
+        </form>
+      </div>
+      <p class="foot">Computers running LocalView appear here automatically. Your PIN is carried over when you switch.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CLIPBOARD ================= -->
+<div class="sheet" id="sheetClip" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Clipboard">
+    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>Back</button><h2>Clipboard</h2><span></span></div>
+    <div class="sheet-body">
+      <div class="block-head"><h2><label for="clipOut">Send text to <span class="hn">the host</span></label></h2></div>
+      <div class="panel pad">
+        <textarea id="clipOut" class="input" rows="4" placeholder="Paste or type here…" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+        <div class="actrow"><span class="note" id="clipOutNote">Goes to the clipboard on <span class="hn">the host</span></span>
+          <button class="button" id="clipSend" type="button" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3.4M4.4 6.8L8 3.2l3.6 3.6"/></svg><span>Send</span></button></div>
+      </div>
+      <p class="offnote" id="clipOff" hidden>View only — sending is turned off on the host.</p>
+
+      <div class="block-head"><h2>From <span class="hn">the host</span></h2><button class="link" id="clipRefresh" type="button">Refresh</button></div>
+      <div class="panel pad">
+        <div class="clipbox empty" id="clipIn" aria-live="polite">Loading…</div>
+        <div class="actrow"><span class="note" id="clipInNote"></span>
+          <button class="button ghost" id="clipCopy" type="button" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.2" y="5.2" width="8" height="8" rx="1.6"/><path d="M10.8 5.2V4.4c0-.9-.7-1.6-1.6-1.6H4.4c-.9 0-1.6.7-1.6 1.6v4.8c0 .9.7 1.6 1.6 1.6h.8"/></svg><span>Copy</span></button></div>
+      </div>
+      <p class="foot">Text only. When something new is copied on <span class="hn">the host</span>, a notice offers to copy it here too.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= FILES ================= -->
+<div class="sheet" id="sheetFiles" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Files">
+    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>Back</button><h2>Files</h2><span></span></div>
+    <div class="sheet-body">
+      <div class="block-head"><h2>Shared folder</h2><span class="note">on <span class="hn">the host</span></span></div>
+      <div class="panel">
+        <div class="folder-row">
+          <span class="tile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 4.6c0-.7.5-1.2 1.2-1.2h2.8l1.4 1.5h5c.7 0 1.2.5 1.2 1.2v5.8c0 .7-.5 1.2-1.2 1.2H3.4c-.7 0-1.2-.5-1.2-1.2z"/></svg></span>
+          <div class="stext"><strong>Local View</strong><small id="filesFolder">~/Downloads/Local View</small></div>
+          <button class="button" id="filesUpload" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V3.4M4.6 6.6L8 3.2l3.4 3.4M3 12.8h10"/></svg><span>Upload</span></button>
+        </div>
+        <div class="upl" id="upl" hidden>
+          <div class="upl-top"><span id="uplName"></span><output id="uplPct"></output><button class="link" id="uplCancel" type="button">Cancel</button></div>
+          <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Upload progress"><i id="uplBar"></i></div>
+        </div>
+      </div>
+      <p class="offnote" id="filesOff" hidden>View only — uploading is turned off on the host. You can still download.</p>
+      <input type="file" id="filesInput" multiple hidden>
+
+      <div class="block-head"><h2>Files</h2><span class="note" id="filesCount"></span></div>
+      <div class="panel list-panel">
+        <ul class="chat-list" id="filesList" aria-label="Files on the host"></ul>
+      </div>
+      <p class="foot"><span id="filesHow">Tap</span> a file to download it. Files dropped into this folder on <span class="hn">the host</span> appear here.</p>
+    </div>
+  </div>
+</div>
+
+<div id="drop" hidden aria-hidden="true">
+  <div class="dropcard">
+    <span class="tile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V3.4M4.6 6.6L8 3.2l3.4 3.4M3 12.8h10"/></svg></span>
+    <strong id="dropTitle">Drop to send</strong>
+    <span id="dropSub">Saved to the shared folder</span>
+  </div>
+</div>
+
+<div id="menu" class="menu" role="menu" hidden></div>
+<input id="kbd" type="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="enter" aria-hidden="true" tabindex="-1">
+<div id="toast" class="notice" role="status"><i></i><span id="toastText"></span><button class="tact" id="toastAct" type="button" hidden></button><button class="tx" id="toastX" type="button" aria-label="Dismiss" title="Dismiss" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></div>
+
+<video id="rv" playsinline muted autoplay aria-hidden="true"></video>
+<script>
+(function () {
+'use strict';
+
+/* ================= utils ================= */
+var $ = function (s) { return document.querySelector(s); };
+var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function now() { return performance.now(); }
+var LS = {
+  get: function (k, d) { try { var v = localStorage.getItem('lv.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set: function (k, v) { try { localStorage.setItem('lv.' + k, JSON.stringify(v)); } catch (e) {} },
+  del: function (k) { try { localStorage.removeItem('lv.' + k); } catch (e) {} }
+};
+var ua = navigator.userAgent, plat = navigator.platform || '';
+var isIOS = /iPhone|iPad|iPod/.test(ua) || (plat === 'MacIntel' && navigator.maxTouchPoints > 1);
+var isMacClient = isIOS || /Mac/.test(plat);
+var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+var isPhone = coarse && Math.min(screen.width, screen.height) < 600;
+var OS_NAMES = { mac: 'macOS', windows: 'Windows', linux: 'Linux' };
+
+var isStandalone = document.documentElement.classList.contains('standalone');
+
+/* notice; `action` = {label, fn} adds a button (e.g. "Copy") and a dismiss ×, and keeps it up longer */
+var toastTimer = null, toastAction = null;
+function toast(msg, ms, isError, action) {
+  var t = $('#toast'), a = $('#toastAct'), x = $('#toastX');
+  $('#toastText').textContent = msg; t.classList.toggle('error', !!isError);
+  toastAction = action ? action.fn : null;
+  a.hidden = x.hidden = !action; if (action) a.textContent = action.label;
+  t.classList.toggle('act', !!action); t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, ms || (action ? 8000 : 2500));
+}
+function hideToast() { clearTimeout(toastTimer); var t = $('#toast'); t.classList.remove('show'); t.classList.remove('act'); toastAction = null; }
+$('#toastAct').addEventListener('click', function () { var f = toastAction; hideToast(); if (f) f(); });
+$('#toastX').addEventListener('click', hideToast);
+$('#toast').addEventListener('mousedown', function (e) { if (e.target.closest('button')) e.preventDefault(); });
+
+/* copy text locally — navigator.clipboard only exists in secure contexts (https / localhost); plain http needs execCommand */
+function execCopy(s) {
+  var prev = document.activeElement, ta = document.createElement('textarea'), ok = false;
+  ta.value = s; ta.setAttribute('readonly', ''); ta.setAttribute('aria-hidden', 'true');
+  ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:0;opacity:0;font-size:16px;-webkit-user-select:text;user-select:text';
+  document.body.appendChild(ta);
+  try {
+    ta.focus({ preventScroll: true }); ta.select();
+    var r = document.createRange(); r.selectNodeContents(ta); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    ta.setSelectionRange(0, s.length);
+    ok = document.execCommand('copy');
+  } catch (e) { ok = false; }
+  try { window.getSelection().removeAllRanges(); } catch (e) {}
+  document.body.removeChild(ta);
+  if (prev && prev !== document.body && prev.focus) { try { prev.focus({ preventScroll: true }); } catch (e) {} }
+  return ok;
+}
+function copyText(s) {
+  if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(s).then(function () { return true; }, function () { return execCopy(s); });
+  }
+  return Promise.resolve(execCopy(s));
+}
+function fmtSize(n) {
+  n = +n || 0;
+  if (n < 1000) return n + ' B';
+  var u = ['KB', 'MB', 'GB', 'TB'], i = -1;
+  do { n /= 1024; i++; } while (n >= 1000 && i < u.length - 1);
+  return (n < 10 ? n.toFixed(1) : Math.round(n)) + ' ' + u[i];
+}
+function ago(t) {
+  t = +t || 0; if (t > 1e12) t /= 1000;
+  var d = Date.now() / 1000 - t;
+  if (d < 45) return 'Just now';
+  if (d < 90) return '1 min ago';
+  if (d < 3600) return Math.round(d / 60) + ' min ago';
+  if (d < 86400) { var h = Math.round(d / 3600); return h + (h === 1 ? ' hour ago' : ' hours ago'); }
+  var dt = new Date(t * 1000), y = new Date(); y.setDate(y.getDate() - 1);
+  if (dt.toDateString() === y.toDateString()) return 'Yesterday';
+  var o = { month: 'short', day: 'numeric' }; if (dt.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
+  try { return dt.toLocaleDateString(undefined, o); } catch (e) { return dt.toDateString(); }
+}
+function urlHost(u) { return String(u || '').replace(/^[a-z]+:\/\//i, '').replace(/\/.*$/, ''); }
+
+/* ================= elements ================= */
+var connectEl = $('#connect'), viewer = $('#viewer'), stage = $('#stage'), canvas = $('#screen');
+var ctx = canvas.getContext('2d', { alpha: false });
+var pinInput = $('#pin'), connectBtn = $('#connectBtn'), connectErr = $('#connectErr');
+var pinWrap = $('#pinWrap'), pinBoxes = $('#pinBoxes'), hero = $('#hero');
+var toolbar = $('#toolbar'), overlay = $('#overlay'), ovText = $('#ovText');
+var kbd = $('#kbd'), keyrow = $('#keyrow');
+var sheetSettings = $('#sheetSettings'), sheetDevices = $('#sheetDevices'), sheetClip = $('#sheetClip'), sheetFiles = $('#sheetFiles');
+var SHEETS = [sheetSettings, sheetDevices, sheetClip, sheetFiles];
+
+/* ================= state ================= */
+var settings = Object.assign({ monitor: 1, quality: isPhone ? 55 : 65, maxw: isPhone ? 1280 : 1920, fps: 20 }, LS.get('settings', {}));
+var mode = LS.get('mode', 'trackpad'); // 'trackpad' | 'touch' (touch input only)
+var pin = '';
+var hostInfo = null, hello = null, peers = null;
+var ws = null, wantConnected = false, authFailed = false, everHello = false, retry = 0, retryTimer = null, connectTimer = null;
+var bmp = null, imgW = 16, imgH = 9;
+var cursor = { x: 0.5, y: 0.5, visible: false };
+var local = { x: 0.5, y: 0.5, until: 0 };   // locally predicted cursor (touch)
+var panC = { x: 0.5, y: 0.5 };
+var zoom = 1;
+var view = { ox: 0, oy: 0, w: 1, h: 1, vw: 1, vh: 1 };
+var stats = { frames: 0, bytes: 0 };
+var pendingAck = false;
+
+function hostOs() { return (hello && hello.os) || (hostInfo && hostInfo.os) || ''; }
+var controlOff = false; // set when the host refuses an upload with 403 mid-session
+function canControl() { return !!hello && hello.control !== false && !controlOff; }
+function hasFeature(f) { return !!(hello && Array.isArray(hello.features) && hello.features.indexOf(f) >= 0); }
+function hostName() { return (hello && hello.name) || (hostInfo && hostInfo.name) || 'the host'; }
+function swapDefault() { return isMacClient !== (hostOs() === 'mac'); }
+function swapOn() { return !!LS.get('swap.' + (hostOs() || 'x'), swapDefault()); }
+var swap = false;
+
+function wsOpen() { return !!ws && (ws.readyState === 1 || ws.readyState === 'open'); }
+function send(o) {
+  if (!wsOpen()) return;
+  var s = JSON.stringify(o);
+  try {
+    if (s.length > 15000 && ws.readyState === 'open') {
+      // Data-channel messages are capped at 64 KiB: send long JSON in pieces of at most 15000 UTF-16 units
+      // (≤ 3 UTF-8 bytes each, quotes escaped), never splitting a surrogate pair.
+      var id = Math.random().toString(36).slice(2, 10), pieces = [], pos = 0;
+      while (pos < s.length) {
+        var end = Math.min(s.length, pos + 15000), c = s.charCodeAt(end - 1);
+        if (end < s.length && c >= 0xD800 && c <= 0xDBFF) end--;
+        pieces.push(s.slice(pos, end)); pos = end;
+      }
+      for (var i = 0; i < pieces.length; i++) ws.send(JSON.stringify({ t: 'chunk', id: id, i: i, n: pieces.length, s: pieces[i] }));
+    } else ws.send(s);
+  } catch (e) {}
+}
+function r5(v) { return Math.round(v * 100000) / 100000; }
+
+/* ================= theme ================= */
+var themePref = LS.get('theme', 'system');
+if (['system', 'light', 'dark'].indexOf(themePref) < 0) themePref = 'system';
+var mqLight = window.matchMedia ? matchMedia('(prefers-color-scheme: light)') : null;
+var bgColor = null;
+function isLight() { return themePref === 'light' || (themePref === 'system' && !!(mqLight && mqLight.matches)); }
+function applyTheme() {
+  var light = isLight(), root = document.documentElement;
+  if (light) root.setAttribute('data-mode', 'light'); else root.removeAttribute('data-mode');
+  var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', light ? '#F3F3F5' : '#0A0A0B');
+  palette = null; bgColor = null;
+  var tb = $('#bTheme'); tb.innerHTML = light ? MOON_SVG : SUN_SVG; tb.title = light ? 'Switch to dark' : 'Switch to light';
+  setSeg($('#themeSeg'), themePref);
+  requestDraw(); kickSignal();
+}
+var MOON_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg>';
+var SUN_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/></svg>';
+function setTheme(t) { themePref = t; LS.set('theme', t); applyTheme(); }
+if (mqLight) {
+  var onScheme = function () { if (themePref === 'system') applyTheme(); };
+  if (mqLight.addEventListener) mqLight.addEventListener('change', onScheme); else if (mqLight.addListener) mqLight.addListener(onScheme);
+}
+$('#bTheme').addEventListener('click', function () { setTheme(isLight() ? 'dark' : 'light'); });
+function viewBg() {
+  if (!bgColor) bgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0A0A0B';
+  return bgColor;
+}
+
+/* ================= segmented controls / select menus ================= */
+function placeThumb(seg) {
+  var b = seg.querySelector('[aria-pressed="true"]'), t = seg.querySelector('.seg-thumb');
+  if (!b || !t || !b.offsetWidth) return;
+  t.style.width = b.offsetWidth + 'px'; t.style.transform = 'translateX(' + b.offsetLeft + 'px)';
+}
+function placeThumbs() { $$('.seg').forEach(placeThumb); }
+function setSeg(seg, v) {
+  Array.prototype.forEach.call(seg.querySelectorAll('button[data-v]'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === String(v))); });
+  placeThumb(seg);
+}
+function segInit(seg, onPick) {
+  Array.prototype.forEach.call(seg.querySelectorAll('button[data-v]'), function (b) {
+    b.addEventListener('click', function () { setSeg(seg, b.dataset.v); onPick(b.dataset.v); });
+  });
+}
+window.addEventListener('resize', placeThumbs);
+
+var CHECK_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l2.8 2.8 6.2-6.4"/></svg>';
+var menuEl = $('#menu'), openSel = null;
+function makeSelect(btn, onPick) {
+  var s = { btn: btn, options: [], value: null, onPick: onPick };
+  btn.addEventListener('click', function (e) { e.stopPropagation(); showMenu(s); });
+  return s;
+}
+function setSelectOptions(s, opts) { s.options = opts; s.btn.disabled = !opts.length; setSelect(s, s.value); }
+function setSelect(s, v) {
+  s.value = v;
+  var o = s.options.filter(function (x) { return String(x.value) === String(v); })[0];
+  s.btn.querySelector('.select-value').textContent = o ? o.label : '—';
+}
+function closeMenu() {
+  if (!openSel) return;
+  var wasToolbar = toolbar.contains(openSel.btn);
+  openSel.btn.setAttribute('aria-expanded', 'false'); menuEl.hidden = true; openSel = null;
+  if (wasToolbar && !coarse && !tbHover && !anySheet() && !viewer.hidden) expandToolbar(true); // resume auto-hide
+}
+function placeMenu(btn) {
+  menuEl.hidden = false;
+  var r = btn.getBoundingClientRect(), m = menuEl.getBoundingClientRect();
+  var top = r.bottom + 6; if (top + m.height > window.innerHeight - 10) top = r.top - m.height - 6;
+  menuEl.style.top = Math.max(8, top) + 'px';
+  menuEl.style.left = Math.max(8, Math.min(window.innerWidth - m.width - 8, r.right - m.width)) + 'px';
+}
+function showMenu(s) {
+  if (openSel === s) { closeMenu(); return; }
+  closeMenu();
+  if (!s.options.length) return;
+  menuEl.textContent = '';
+  s.options.forEach(function (o) {
+    var sel = String(o.value) === String(s.value);
+    var b = document.createElement('button'); b.type = 'button';
+    b.setAttribute('role', 'menuitemradio'); b.setAttribute('aria-checked', String(sel));
+    b.innerHTML = '<span class="check">' + (sel ? CHECK_SVG : '') + '</span><span class="label"></span>';
+    b.querySelector('.label').textContent = o.label;
+    b.addEventListener('click', function () { closeMenu(); if (!sel) { setSelect(s, o.value); s.onPick(o.value); } });
+    menuEl.appendChild(b);
+  });
+  placeMenu(s.btn);
+  s.btn.setAttribute('aria-expanded', 'true'); openSel = s;
+  if (!coarse) (menuEl.querySelector('[aria-checked="true"]') || menuEl.firstChild).focus();
+}
+/* action menu anchored to `btn`; items: {head}, {sep}, {note}, or {label, hint, icon, disabled, fn} */
+function showActions(btn, items) {
+  if (openSel && openSel.btn === btn) { closeMenu(); return; }
+  closeMenu();
+  menuEl.textContent = '';
+  items.forEach(function (it) {
+    var el;
+    if (it.head) { el = document.createElement('div'); el.className = 'mhead'; el.textContent = it.head; }
+    else if (it.sep) { el = document.createElement('div'); el.className = 'msep'; el.setAttribute('role', 'separator'); }
+    else if (it.note) { el = document.createElement('div'); el.className = 'mnote'; el.textContent = it.note; }
+    else {
+      el = document.createElement('button'); el.type = 'button'; el.setAttribute('role', 'menuitem');
+      el.innerHTML = '<span class="micon">' + (it.icon || '') + '</span><span class="label"></span>' + (it.hint ? '<span class="hint"></span>' : '');
+      el.querySelector('.label').textContent = it.label;
+      if (it.hint) el.querySelector('.hint').textContent = it.hint;
+      if (it.checked) { var mi = el.querySelector('.micon'); mi.className = 'check'; mi.innerHTML = CHECK_SVG; }
+      el.disabled = !!it.disabled;
+      el.addEventListener('click', function () { closeMenu(); it.fn(); });
+    }
+    menuEl.appendChild(el);
+  });
+  placeMenu(btn);
+  btn.setAttribute('aria-expanded', 'true'); openSel = { btn: btn };
+  var first = menuEl.querySelector('button:not(:disabled)');
+  if (!coarse && first) first.focus();
+}
+document.addEventListener('click', function (e) { if (openSel && !menuEl.contains(e.target)) closeMenu(); });
+window.addEventListener('resize', closeMenu);
+$$('.sheet-body').forEach(function (b) { b.addEventListener('scroll', closeMenu, { passive: true }); });
+menuEl.addEventListener('keydown', function (e) {
+  var items = Array.prototype.slice.call(menuEl.querySelectorAll('button:not(:disabled)')), i = items.indexOf(document.activeElement);
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+  if (e.key === 'Tab') e.preventDefault();
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  if (openSel) { var b = openSel.btn; closeMenu(); e.preventDefault(); if (!coarse) b.focus(); return; }
+  if (anySheet()) { e.preventDefault(); closeSheets(); }
+});
+
+/* ================= signal strip (as in Quiet AI) ================= */
+var SIGS = [], palette = null, sigRaf = 0;
+var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function makeSignal(c) { var s = { canvas: c, mode: 'idle', amp: 0.3, heights: [] }; SIGS.push(s); return s; }
+var heroSig = makeSignal($('#signal')), ovSig = makeSignal($('#ovSignal'));
+ovSig.mode = 'connecting';
+// restart the (self-stopping) loop whenever a strip gets laid out — e.g. the connect screen or overlay is shown
+if (window.ResizeObserver) { var sigRO = new ResizeObserver(function () { kickSignal(); }); SIGS.forEach(function (s) { sigRO.observe(s.canvas); }); }
+window.addEventListener('resize', function () { kickSignal(); });
+document.addEventListener('visibilitychange', function () { if (!document.hidden) kickSignal(); });
+function readPalette() {
+  var st = getComputedStyle(document.documentElement), v = function (n) { return st.getPropertyValue(n).trim(); };
+  palette = { ink: v('--sig-ink'), rest: v('--sig-rest'), green: v('--sig-green'), amber: v('--sig-amber') };
+}
+function setSignal(s, m, amp) { s.mode = m; if (amp != null) s.amp = amp; kickSignal(); }
+function kickSignal() { if (!sigRaf) sigRaf = requestAnimationFrame(drawSignals); }
+function drawSignals(ts) {
+  sigRaf = 0;
+  var any = false;
+  SIGS.forEach(function (s) { if (drawSignal(s, ts)) any = true; });
+  if (any) sigRaf = requestAnimationFrame(drawSignals);   // stops by itself while no strip is on screen
+}
+function drawSignal(s, ts) {
+  var c = s.canvas, w = c.clientWidth, h = c.clientHeight;
+  if (!w || !h) return false;
+  var dpr = window.devicePixelRatio || 1;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+  if (!palette) readPalette();
+  var x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
+  var bar = 2, step = 4, n = Math.floor((w + step - bar) / step), off = Math.round((w - (n * step - (step - bar))) / 2);
+  var t = reduceMotion ? 0 : ts / 1000;
+  for (var i = 0; i < n; i++) {
+    var edge = Math.min(1, Math.min(i + 1, n - i) / 10);
+    var env = Math.pow(Math.sin(Math.PI * (i + 0.5) / n), 0.5);
+    var target = 2, color = palette.rest;
+    if (s.mode === 'idle') {
+      var wave = 0.5 + 0.5 * (Math.sin(i * 0.27 + t * 1.5) * 0.5 + Math.sin(i * 0.11 - t * 0.95) * 0.3 + Math.sin(i * 0.73 + t * 2.6) * 0.2);
+      target = 2 + (h - 2) * s.amp * env * wave;
+      color = 'rgba(' + palette.ink + ',' + (0.1 + 0.32 * wave * env).toFixed(3) + ')';
+    } else if (s.mode === 'connecting') {
+      var ripple = 0.5 + 0.5 * Math.sin(t * 2.4 - i * 0.18);
+      target = h * (0.3 + 0.18 * ripple) * env + 4;
+      color = 'rgba(' + palette.amber + ',' + (0.75 + 0.25 * ripple).toFixed(3) + ')';
+    } else if (s.mode === 'ok') {
+      target = h * 0.22; color = palette.green;
+    }
+    var prev = s.heights[i] == null ? 2 : s.heights[i], cur = prev + (target - prev) * 0.1; s.heights[i] = cur;
+    x.globalAlpha = edge; x.fillStyle = color;
+    var bh = Math.max(2, cur), y = Math.round((h - bh) / 2 * 2) / 2;
+    x.beginPath(); if (x.roundRect) x.roundRect(off + i * step, y, bar, bh, 1); else x.rect(off + i * step, y, bar, bh); x.fill();
+  }
+  x.globalAlpha = 1;
+  return true;
+}
+function setHero(tone, badge, sig) {
+  hero.dataset.tone = tone; $('#badgeText').textContent = badge;
+  setSignal(heroSig, sig, sig === 'idle' ? 0.42 : null);
+}
+function errBadge(msg) { return /locked/i.test(msg) ? 'Locked out' : /directly|reach/i.test(msg) ? 'Unreachable' : /pin/i.test(msg) ? 'Wrong PIN' : /password/i.test(msg) && !/many/i.test(msg) ? 'Wrong password' : /confirmed/i.test(msg) ? 'Not confirmed' : /many|paused/i.test(msg) ? 'Paused' : /offline|turned off/i.test(msg) ? 'Offline' : /could not|connect/i.test(msg) ? 'Unreachable' : 'Error'; }
+
+/* ================= PIN boxes ================= */
+function renderPin() {
+  var v = pinInput.value, len = Array.from(v).length, chars = Array.from(v);
+  var n = Math.max(6, len), focused = document.activeElement === pinInput;
+  pinBoxes.style.setProperty('--n', n);
+  while (pinBoxes.children.length < n) { var d = document.createElement('div'); d.className = 'pin-box'; pinBoxes.appendChild(d); }
+  while (pinBoxes.children.length > n) pinBoxes.removeChild(pinBoxes.lastChild);
+  var cur = Math.min(len, n - 1);
+  for (var i = 0; i < n; i++) {
+    var b = pinBoxes.children[i], ch = chars[i] || '';
+    if (b.textContent !== ch) { b.textContent = ch; b.classList.remove('filled'); if (ch) { void b.offsetWidth; b.classList.add('filled'); } }
+    b.classList.toggle('cur', i === cur);
+  }
+  pinWrap.classList.toggle('focus', focused);
+  var sel = false;
+  try { sel = focused && len > 0 && pinInput.selectionStart === 0 && pinInput.selectionEnd === v.length; } catch (e) {}
+  pinWrap.classList.toggle('sel', sel);
+}
+function setPinValue(v) { pinInput.value = v; renderPin(); }
+pinInput.addEventListener('input', function () { pinWrap.classList.remove('err'); connectErr.textContent = ''; renderPin(); });
+['focus', 'blur', 'select', 'keyup', 'click'].forEach(function (ev) { pinInput.addEventListener(ev, function () { setTimeout(renderPin, 0); }); });
+document.addEventListener('selectionchange', function () { if (document.activeElement === pinInput) renderPin(); });
+
+/* ================= host info / peers ================= */
+function loadInfo() {
+  var km = location.pathname.match(/^\/k\/([A-Za-z0-9_-]{16,64})\/?/);
+  if (km) { CLOUD_KEY = km[1]; enterCloudMode(); return Promise.resolve(); }
+  if (location.pathname === '/remote') { // computer to computer: this computer's own Local View serves the page
+    return fetch('/api/remote-config', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.base || !j.key) throw new Error('no server');
+      CLOUD_BASE = j.base; CLOUD_KEY = j.key; enterCloudMode();
+    }).catch(function () { enterCloudMode(); cloudError('Turn on Internet access in Local View on this computer first.'); });
+  }
+  return fetch('/api/info', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+    if (j && j.cloud) { enterCloudMode(); return; }
+    hostInfo = j;
+    $('#headline').textContent = j.name || location.hostname;
+    renderSummary();
+    document.title = 'Local View · ' + (j.name || location.hostname);
+    if (hero.dataset.tone === 'preview') setHero('armed', 'Ready', 'idle');
+    swap = swapOn(); updateSwapUI(); updateKeyLabels(); setHostNames();
+  }).catch(function () {
+    $('#headline').textContent = location.hostname || 'Host';
+    $('#summary').textContent = location.host;
+    if (hero.dataset.tone === 'preview') setHero('armed', 'Ready', 'idle');
+  });
+}
+
+/* "macOS · mac.local" — the host's friendly address (v1.1 /api/info `url`/`short`), else whatever we were opened with */
+function hostAddress() {
+  var src = (hello && hello.url) ? hello : hostInfo;
+  if (src && src.url) return urlHost(src.url);
+  if (src && src.short) return src.short + '.local' + (location.port && location.port !== '80' ? ':' + location.port : '');
+  return location.host;
+}
+function renderSummary() {
+  var j = hostInfo || {}, sm = $('#summary'), addr = hostAddress();
+  sm.textContent = '';
+  if (j.os) { sm.appendChild(document.createTextNode(OS_NAMES[j.os] || j.os)); var sp = document.createElement('span'); sp.className = 'sep'; sp.textContent = ' · '; sm.appendChild(sp); }
+  sm.appendChild(document.createTextNode(addr));
+  sm.title = addr !== location.host ? 'Also at ' + location.host : '';
+}
+function setHostNames() { var n = hostName(); $$('.hn').forEach(function (e) { e.textContent = n; }); }
+
+function currentPin() { return (connectEl.hidden ? pin : pinInput.value.trim()) || pin; }
+
+var OS_ICON = {
+  mac: '<svg class="os" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3.5" width="10" height="7" rx="1.2"/><path d="M1.8 12.6h12.4"/></svg>',
+  windows: '<svg class="os" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3" width="11" height="7.6" rx="1.4"/><path d="M6 13h4"/></svg>'
+};
+var CHEV = '<svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>';
+function peerHref(d, p) { return 'http://' + d.ip + ':' + d.port + '/' + (p ? '#pin=' + encodeURIComponent(p) : ''); }
+function renderPeers() {
+  var p = currentPin();
+  var key = JSON.stringify(peers && peers.map(function (d) { return [d.name, d.os, d.ip, d.port, !!d.self, d.short || '']; }));
+  ['#peers1', '#peers2'].forEach(function (sel) {
+    var el = $(sel);
+    if (el.dataset.key !== key) {
+      el.dataset.key = key; el.textContent = '';
+      if (!peers || !peers.length) {
+        var li0 = document.createElement('li'); li0.className = 'empty';
+        var st = document.createElement('strong'); st.textContent = !peers ? 'Looking for devices…' : 'No devices found';
+        li0.appendChild(st);
+        if (peers) { var sm = document.createElement('span'); sm.textContent = 'Computers running LocalView show up here.'; li0.appendChild(sm); }
+        el.appendChild(li0);
+      } else peers.forEach(function (d) {
+        var li = document.createElement('li'); li.className = 'peer' + (d.self ? ' self' : '');
+        var a = document.createElement(d.self ? 'div' : 'a'); a.className = 'pl';
+        if (!d.self) { a.dataset.ip = d.ip; a.dataset.port = d.port; }
+        a.innerHTML = OS_ICON[d.os] || OS_ICON.windows;
+        // v1.1 hosts report a friendly short name ("mac" → mac.local); older ones only their IP
+        var ipTxt = d.ip + (String(d.port) !== '8765' ? ':' + d.port : '');
+        var n = document.createElement('span'); n.className = 'title';
+        n.textContent = d.short ? d.short + '.local' : (d.name || d.ip);
+        n.title = (d.name ? d.name + ' — ' : '') + ipTxt; a.appendChild(n);
+        if (d.os) { var c = document.createElement('span'); c.className = 'oschip'; c.textContent = OS_NAMES[d.os] || d.os; a.appendChild(c); }
+        var g0 = document.createElement('span'); g0.className = 'grow'; a.appendChild(g0);
+        var ip = document.createElement('span'); ip.className = 'time'; ip.textContent = d.short ? (d.name || ipTxt) : ipTxt; a.appendChild(ip);
+        if (d.self) { var h = document.createElement('span'); h.className = 'here'; h.textContent = 'This host'; a.appendChild(h); }
+        else { var lv = document.createElement('i'); lv.className = 'live'; lv.title = 'Reachable'; a.appendChild(lv); a.insertAdjacentHTML('beforeend', CHEV); }
+        li.appendChild(a); el.appendChild(li);
+      });
+    }
+    Array.prototype.forEach.call(el.querySelectorAll('a.pl'), function (a) { a.href = peerHref({ ip: a.dataset.ip, port: a.dataset.port }, p); });
+  });
+  $$('.peer-note').forEach(function (nt) { nt.textContent = peers && peers.length ? peers.length + (peers.length === 1 ? ' device' : ' devices') : ''; });
+}
+function fetchPeers() {
+  if (CLOUD) return;
+  fetch('/api/peers', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+    var list = (j && j.peers) || [];
+    list.sort(function (a, b) { return (b.self ? 1 : 0) - (a.self ? 1 : 0) || String(a.name).localeCompare(String(b.name)); });
+    peers = list; renderPeers();
+  }).catch(function () { if (!peers) { peers = []; renderPeers(); } });
+}
+setInterval(function () {
+  if (document.hidden) return;
+  if (!connectEl.hidden || !sheetDevices.hidden) fetchPeers();
+}, 3000);
+
+$$('[data-addip]').forEach(function (f) {
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var addr = parseAddr(f.querySelector('input').value);
+    if (!addr) { toast('Enter an address like mac, mac.local or 192.168.1.20'); return; }
+    var p = currentPin();
+    location.href = 'http://' + addr + '/' + (p ? '#pin=' + encodeURIComponent(p) : '');
+  });
+});
+/* "mac" → mac.local:8765 · "mac.local" · "192.168.1.20" · "192.168.1.20:8800" · "[fe80::1]:8765" (main port 8765 always works) */
+function parseAddr(raw) {
+  var v = String(raw || '').trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/[\/?#].*$/, '').replace(/\.$/, '');
+  if (!v) return null;
+  var host, port = '', m = v.match(/^\[([0-9a-f:.%]+)\](?::(\d{1,5}))?$/i);
+  if (m) { host = '[' + m[1] + ']'; port = m[2] || ''; }
+  else {
+    m = v.match(/^([a-z0-9.-]+)(?::(\d{1,5}))?$/i);
+    if (!m || /^[.-]|[.-]$|\.\./.test(m[1])) return null;
+    host = m[1].toLowerCase(); port = m[2] || '';
+    if (host.indexOf('.') < 0 && host !== 'localhost') host += '.local'; // bare word: mDNS name
+  }
+  if (port && (+port < 1 || +port > 65535)) return null;
+  return host + ':' + (port || '8765');
+}
+pinInput.addEventListener('input', renderPeers);
+
+/* ================= screens ================= */
+function setCta(label, busy) { $('#ctaText').textContent = label; connectBtn.disabled = !!busy; }
+function showConnect(err) {
+  closeSheets();
+  viewer.hidden = true; connectEl.hidden = false; overlay.hidden = true;
+  setCta('Connect', false);
+  if (err) setHero('error', errBadge(err), 'error'); else setHero('armed', 'Ready', 'idle');
+  hero.classList.remove('pairing');
+  if (CLOUD) {
+    $('#headline').textContent = 'Your computers, anywhere';
+    $('#summary').textContent = 'Enter the ID and password shown in Local View';
+    $('#cloudErr').textContent = err || '';
+    document.title = 'Local View';
+    renderRecents();
+    if (err && !isTouch) { var f = /password/i.test(err) ? $('#cpw') : $('#cid'); f.focus(); f.select(); }
+  } else {
+    connectErr.textContent = err || '';
+    pinWrap.classList.toggle('err', !!err);
+    if (pin) setPinValue(pin);
+    if (err && !isTouch) { pinInput.focus(); pinInput.select(); renderPin(); }
+    document.title = 'Local View · ' + ((hostInfo && hostInfo.name) || location.hostname);
+    fetchPeers();
+  }
+  releaseWake();
+}
+function showViewer() {
+  if (connectEl.hidden && !viewer.hidden) return;
+  connectEl.hidden = true; viewer.hidden = false;
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  fitViewport(); applyMode(); requestDraw();
+  expandToolbar(true);
+}
+
+/* ================= connection ================= */
+function startConnect(p) {
+  pin = String(p || '').trim();
+  if (!pin) { connectErr.textContent = 'Enter the PIN shown on the host'; pinWrap.classList.add('err'); return; }
+  connectErr.textContent = ''; pinWrap.classList.remove('err');
+  setCta('Connecting…', true);
+  setHero('countdown', 'Connecting', 'connecting');
+  everHello = false; retry = 0;
+  connect();
+}
+
+function connect() {
+  if (CLOUD) { connectCloud(); return; }
+  clearTimeout(retryTimer); clearTimeout(connectTimer);
+  if (ws) { var old = ws; ws = null; try { old.onclose = null; old.close(); } catch (e) {} }
+  wantConnected = true; authFailed = false;
+  var st = { gotHello: false, sock: null };
+  var sock;
+  try { sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); }
+  catch (e) { onClosed(false); return; }
+  sock.binaryType = 'arraybuffer';
+  ws = sock; st.sock = sock;
+  connectTimer = setTimeout(function () { if (ws === sock && !st.gotHello) { try { sock.close(); } catch (e) {} } }, 10000);
+  sock.onopen = function () { sock.send(JSON.stringify({ t: 'auth', pin: pin })); };
+  sock.onmessage = function (ev) {
+    if (sock !== ws) return;
+    if (typeof ev.data !== 'string') { onFrame(ev.data); return; }
+    var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    handleMsg(m, st);
+  };
+  sock.onerror = function () {};
+  sock.onclose = function () {
+    if (sock !== ws) return;
+    ws = null; clearTimeout(connectTimer);
+    onClosed(st.gotHello);
+  };
+}
+
+// Messages from the host — the same over the Wi-Fi WebSocket and the internet data channel.
+function handleMsg(m, st) {
+  if (m.t === 'hello') { st.gotHello = true; clearTimeout(connectTimer); onHello(m); }
+  else if (m.t === 'cursor') onCursor(m);
+  else if (m.t === 'clip') onClip(m);
+  else if (m.t === 'clip.ok') onClipOk();
+  else if (m.t === 'files') onFilesChanged();
+  else if (m.t === 'files.list') onFilesList(m);
+  else if (/^down\./.test(m.t)) onDown(m);
+  else if (/^up\./.test(m.t)) onUp(m);
+  else if (/^extend\./.test(m.t)) onExtendMsg(m);
+  else if (m.t === 'error') onServerError(String(m.msg || 'Error'), st.gotHello);
+  else if (m.t === 'pending' && !st.gotHello) {
+    // Host asks its user to approve us (or, for a new internet device, to type the code shown here):
+    // keep waiting instead of timing out.
+    clearTimeout(connectTimer);
+    connectTimer = setTimeout(function () { if (ws === st.sock && !st.gotHello) { try { st.sock.close(); } catch (e) {} } }, ((+m.timeout || 30) + 5) * 1000);
+    if (m.code) { showPairCode(m.code, m.msg); return; }
+    var wait = String(m.msg || 'Waiting for approval on the host…');
+    setHero('countdown', 'Waiting', 'connecting'); setCta(wait, true);
+    if (!overlay.hidden) ovText.textContent = wait;
+  }
+}
+
+var MAXWS = [960, 1280, 1600, 1920, 2560, 3840], FPSS = [5, 10, 20, 30];
+function onHello(m) {
+  hello = m; everHello = true; retry = 0; controlOff = false;
+  if (CLOUD) saveRecent(m); else LS.set('pin', pin);
+  if (hostInfo && (m.short || m.url)) { hostInfo.short = m.short || hostInfo.short; hostInfo.url = m.url || hostInfo.url; }
+  setHostNames(); renderSummary(); applyCaps();
+  swap = swapOn(); updateSwapUI(); updateKeyLabels();
+  var mons = m.monitors || [];
+  renderMonitors(mons);
+  if (mons.length && !mons.some(function (mo) { return mo.index === +settings.monitor; })) settings.monitor = mons[0].index;
+  setSelect(selMonitor, settings.monitor);
+  var cur = mons.filter(function (mo) { return mo.index === +settings.monitor; })[0];
+  if (!bmp && cur) { imgW = cur.width; imgH = cur.height; }
+  send({ t: 'settings', monitor: +settings.monitor, quality: +settings.quality, maxw: +settings.maxw, fps: +settings.fps });
+  document.title = (m.name || 'Host') + ' · Local View';
+  $('#statName').textContent = m.name || 'Host';
+  setHero('armed', 'Connected', 'ok');
+  hero.classList.remove('pairing');
+  overlay.hidden = true;
+  showViewer();
+  extendState = 'off'; updateExtendUI();
+  if (wantExtend) setTimeout(startExtend, 300); // second screen requested by link, or restored after a dropout
+  keepAwake();
+  // new session token: refresh anything that was built with the old one
+  if (!sheetClip.hidden) requestClip();
+  if (!sheetFiles.hidden) fetchFiles(); else filesState.stale = true;
+}
+
+function onServerError(msg, gotHello) {
+  // The host ended the session on purpose: say why and don't reconnect.
+  if (gotHello && /paused|disconnected by the host|turned off/i.test(msg)) {
+    authFailed = true; wantConnected = false; clearTimeout(retryTimer);
+    teardownRtc(); hello = null; everHello = false;
+    if (ws) { var s0 = ws; ws = null; try { s0.onclose = null; s0.close(); } catch (e) {} }
+    showConnect(msg); return;
+  }
+  if (!gotHello) {
+    authFailed = true; wantConnected = false;
+    if (/pin/i.test(msg)) LS.del('pin');
+    if (CLOUD && /password/i.test(msg)) forgetPassword(cloudId);
+    showConnect(msg);
+  } else toast(msg, 3500, true);
+}
+
+function onClosed(hadHello) {
+  resetInputState(false);
+  if (!wantConnected || authFailed) return;
+  if (!everHello) { wantConnected = false; showConnect('Could not connect to the host'); return; }
+  var delay = Math.min(10000, 500 * Math.pow(2, retry)); retry++;
+  overlay.hidden = false;
+  ovText.textContent = 'Reconnecting' + (retry > 1 ? ' — attempt ' + retry : '') + '…';
+  kickSignal();
+  retryTimer = setTimeout(connect, delay);
+}
+
+function disconnect() {
+  wantConnected = false; clearTimeout(retryTimer); clearTimeout(connectTimer);
+  send({ t: 'releaseall' });
+  if (ws) { var s = ws; ws = null; try { s.onclose = null; s.close(); } catch (e) {} }
+  teardownRtc();
+  resetInputState(false);
+  if (extendState !== 'off') send({ t: 'extend.stop' });
+  wantExtend = false; extendState = 'off';
+  everHello = false; hello = null;
+  if (upl) { try { upl.abort(); } catch (e) {} }
+  filesState.list = null; filesState.err = null; hostClip = null; cdl = null; cup = null;
+  if (bmp && bmp.close) bmp.close(); bmp = null;
+  kbd.blur(); exitFullscreen();
+  showConnect('');
+}
+
+$('#connectForm').addEventListener('submit', function (e) { e.preventDefault(); startConnect(pinInput.value); });
+$('#ovCancel').addEventListener('click', disconnect);
+$('#bDisc').addEventListener('click', disconnect);
+
+/* ================= frames / drawing ================= */
+function decode(buf) {
+  var blob = new Blob([buf], { type: 'image/jpeg' });
+  if (window.createImageBitmap) return createImageBitmap(blob);
+  return new Promise(function (res, rej) {
+    var url = URL.createObjectURL(blob), im = new Image();
+    im.onload = function () { URL.revokeObjectURL(url); res(im); };
+    im.onerror = function () { URL.revokeObjectURL(url); rej(new Error('decode')); };
+    im.src = url;
+  });
+}
+function ack() { if (document.hidden) pendingAck = true; else send({ t: 'ack' }); }
+function onFrame(buf) {
+  stats.frames++; stats.bytes += buf.byteLength;
+  decode(buf).then(function (b) {
+    if (bmp && bmp.close && bmp !== b) bmp.close();
+    bmp = b; imgW = b.width || b.naturalWidth; imgH = b.height || b.naturalHeight;
+    requestDraw(); ack();
+  }, function () { ack(); });
+}
+function onCursor(m) {
+  cursor.x = +m.x; cursor.y = +m.y; cursor.visible = !!m.visible;
+  if (!g && now() > local.until) { local.x = cursor.x; local.y = cursor.y; }
+  requestDraw();
+}
+
+var drawQueued = false;
+function requestDraw() { if (!drawQueued) { drawQueued = true; requestAnimationFrame(draw); } }
+function displayCursor() {
+  if (now() < local.until) return { x: local.x, y: local.y, visible: true };
+  return cursor;
+}
+function layout() {
+  var vw = stage.clientWidth || 1, vh = stage.clientHeight || 1;
+  var fit = Math.min(vw / imgW, vh / imgH);
+  var s = fit * zoom, w = imgW * s, h = imgH * s;
+  // Trackpad mode on a touch screen: keep the cursor inside the zoomed view (until the user pans by hand)
+  if (zoom > 1 && followCursor && isTouch && mode === 'trackpad') {
+    var c = displayCursor();
+    if (c.visible) keepInView(c, w, h, vw, vh);
+  }
+  var ox = w <= vw ? (vw - w) / 2 : clamp(vw / 2 - panC.x * w, vw - w, 0);
+  var oy = h <= vh ? (vh - h) / 2 : clamp(vh / 2 - panC.y * h, vh - h, 0);
+  if (w > vw) panC.x = (vw / 2 - ox) / w; // store the clamped centre so the next pan starts from what is visible
+  if (h > vh) panC.y = (vh / 2 - oy) / h;
+  view = { ox: ox, oy: oy, w: w, h: h, vw: vw, vh: vh };
+}
+function keepInView(c, w, h, vw, vh) {
+  var mx = Math.min(vw * 0.18, 80), my = Math.min(vh * 0.18, 80);
+  var sx = vw / 2 + (c.x - panC.x) * w, sy = vh / 2 + (c.y - panC.y) * h;
+  if (sx < mx) panC.x -= (mx - sx) / w; else if (sx > vw - mx) panC.x += (sx - (vw - mx)) / w;
+  if (sy < my) panC.y -= (my - sy) / h; else if (sy > vh - my) panC.y += (sy - (vh - my)) / h;
+}
+function draw() {
+  drawQueued = false;
+  if (viewer.hidden) return;
+  var dpr = Math.min(window.devicePixelRatio || 1, 3);
+  var vw = stage.clientWidth, vh = stage.clientHeight;
+  var W = Math.max(1, Math.round(vw * dpr)), H = Math.max(1, Math.round(vh * dpr));
+  if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+  layout();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = viewBg(); ctx.fillRect(0, 0, vw, vh);
+  if (bmp) {
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bmp, view.ox, view.oy, view.w, view.h);
+  }
+  var c = displayCursor();
+  if (c.visible && bmp) drawCursor(view.ox + c.x * view.w, view.oy + c.y * view.h);
+  if (now() < local.until) setTimeout(requestDraw, Math.max(16, local.until - now() + 5));
+}
+function drawCursor(x, y) {
+  ctx.save();
+  ctx.translate(Math.round(x) + 0.5, Math.round(y) + 0.5);
+  ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(0, 17); ctx.lineTo(4.2, 13.2); ctx.lineTo(7.2, 19.8); ctx.lineTo(10.2, 18.5);
+  ctx.lineTo(7.3, 12); ctx.lineTo(12.6, 12); ctx.closePath();
+  ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.lineWidth = 1.4; ctx.lineJoin = 'round'; ctx.strokeStyle = '#000'; ctx.stroke();
+  ctx.restore();
+}
+
+/* stats */
+setInterval(function () {
+  var fps = stats.frames, kb = stats.bytes / 1024;
+  stats.frames = 0; stats.bytes = 0;
+  var ok = !!(wsOpen() && hello);
+  var txt = ok ? fps + ' fps' : '…';
+  $('#statTxt').textContent = txt; $('#pillTxt').textContent = ok ? ((hello.name || 'Host') + ' · ' + fps + ' fps') : 'Reconnecting…';
+  $('#statDot').classList.toggle('bad', !ok); $('#pillDot').classList.toggle('bad', !ok);
+  $('#stat').title = ok ? fps + ' frames/s · ' + (kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB/s' : Math.round(kb) + ' KB/s') : 'Disconnected';
+}, 1000);
+
+/* ================= viewport ================= */
+function fitViewport() {
+  var vv = window.visualViewport;
+  var h = vv ? vv.height : window.innerHeight;
+  var top = vv ? vv.offsetTop : 0;
+  viewer.style.height = Math.round(h) + 'px';
+  viewer.style.top = Math.round(top) + 'px';
+  if (!keyrow.hidden) viewer.style.setProperty('--krh', keyrow.offsetHeight + 'px');
+  requestDraw();
+}
+window.addEventListener('resize', fitViewport);
+// Rotating the phone: iOS reports the new size in steps, so fit a few times. The zoomed spot is kept
+// because the pan centre is stored relative to the picture.
+function refitSoon() { [30, 200, 500, 900].forEach(function (ms) { setTimeout(fitViewport, ms); }); }
+window.addEventListener('orientationchange', refitSoon);
+try { if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', refitSoon); } catch (e) {}
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', fitViewport);
+  visualViewport.addEventListener('scroll', fitViewport);
+}
+// Never let the browser zoom the page itself. Desktop Safari's trackpad pinch zooms the remote view instead
+// (on iPhone/iPad the touch handlers do it).
+var gz = null;
+document.addEventListener('gesturestart', function (e) {
+  e.preventDefault();
+  if (!isTouch && !viewer.hidden) { var sp = stagePt(e.clientX, e.clientY); gz = { z: zoom, x: sp.x, y: sp.y }; }
+});
+document.addEventListener('gesturechange', function (e) {
+  e.preventDefault();
+  if (gz && typeof e.scale === 'number') zoomAt(gz.z * e.scale, gz.x, gz.y);
+});
+document.addEventListener('gestureend', function (e) { e.preventDefault(); if (gz && zoom < 1.06) setZoom(1); gz = null; });
+document.addEventListener('dblclick', function (e) { if (!viewer.hidden) e.preventDefault(); });
+
+/* ================= wake lock / fullscreen ================= */
+var wakeLock = null;
+function keepAwake() {
+  try {
+    if (navigator.wakeLock && !wakeLock && !document.hidden) {
+      navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; l.addEventListener('release', function () { wakeLock = null; }); }, function () {});
+    }
+  } catch (e) {}
+}
+function releaseWake() { try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeLock = null; }
+
+var fsSupported = !isIOS && !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function exitFullscreen() {
+  try { if (document.fullscreenElement) document.exitFullscreen(); else if (document.webkitFullscreenElement) document.webkitExitFullscreen(); } catch (e) {}
+}
+// Inside a Local View app window, full screen is the window's own (window.pywebview.api).
+var appFull = false;
+function appApi() { return window.pywebview && window.pywebview.api && window.pywebview.api.toggle_fullscreen ? window.pywebview.api : null; }
+function syncFullBtn() { $('#bFull').classList.toggle('on', appApi() ? appFull : isFull()); }
+window.addEventListener('pywebviewready', function () {
+  var api = appApi(); if (!api) return;
+  $('#bFull').hidden = false;
+  api.is_fullscreen().then(function (f) { appFull = !!f; syncFullBtn(); }, function () {});
+});
+$('#bFull').hidden = !fsSupported;
+function toggleFull() {
+  var api = appApi();
+  if (api) { api.toggle_fullscreen().then(function (f) { appFull = !!f; syncFullBtn(); setTimeout(fitViewport, 350); }, function () {}); return; }
+  if (isFull()) { exitFullscreen(); return; }
+  var el = document.documentElement;
+  var p = el.requestFullscreen ? el.requestFullscreen() : (el.webkitRequestFullscreen && el.webkitRequestFullscreen());
+  if (p && p.then) p.then(function () {
+    try { if (navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock().catch(function () {}); } catch (e) {}
+  }, function () {});
+}
+function enterFull() { // best effort: browsers only allow it right after a click or key press
+  var api = appApi();
+  if (api) { // ask first: the app may already have opened this window full screen
+    api.is_fullscreen().then(function (f) { appFull = !!f; if (!appFull) toggleFull(); else syncFullBtn(); }, function () {});
+    return true;
+  }
+  if (fsSupported && !isFull()) { try { toggleFull(); } catch (e) {} }
+  return isFull();
+}
+$('#bFull').addEventListener('click', toggleFull);
+function onFsChange() {
+  syncFullBtn();
+  if (!isFull()) { try { if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock(); } catch (e) {} }
+  setTimeout(fitViewport, 50);
+}
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
+
+/* ================= toolbar ================= */
+var tbTimer = null, tbHover = false;
+function expandToolbar(autoHide) {
+  toolbar.classList.remove('collapsed');
+  clearTimeout(tbTimer);
+  if (autoHide && !coarse) tbTimer = setTimeout(function () { if (!tbHover && !anySheet() && !openSel) collapseToolbar(); }, 2500);
+}
+function collapseToolbar() { clearTimeout(tbTimer); toolbar.classList.add('collapsed'); }
+toolbar.addEventListener('mouseenter', function () { tbHover = true; if (!coarse) expandToolbar(false); });
+toolbar.addEventListener('mouseleave', function () {
+  tbHover = false;
+  if (!coarse) { clearTimeout(tbTimer); tbTimer = setTimeout(function () { if (!tbHover && !anySheet() && !openSel) collapseToolbar(); }, 1200); }
+});
+$('#hot').addEventListener('mouseenter', function () { if (!coarse) expandToolbar(true); });
+$('#pill').addEventListener('click', function () { expandToolbar(!coarse); });
+$('#bHide').addEventListener('click', collapseToolbar);
+// keep focus where it is (mobile keyboard stays open; desktop keys keep flowing to the remote)
+toolbar.addEventListener('mousedown', function (e) { if (e.target.closest('button')) e.preventDefault(); });
+$$('#toolbar button').forEach(function (b) { b.tabIndex = -1; });
+
+$$('[data-touch]').forEach(function (el) { if (!isTouch) el.hidden = true; });
+
+function applyMode() {
+  if (mode !== 'touch') mode = 'trackpad';
+  var b = $('#bMode');
+  b.innerHTML = mode === 'trackpad'
+    ? '<svg viewBox="0 0 16 16"><rect x="2.3" y="2.8" width="11.4" height="10.4" rx="2"/><path d="M2.3 9.6h11.4M8 9.6v3.6"/></svg>'
+    : '<svg viewBox="0 0 16 16"><path d="M6.4 8.6V3.4a1.1 1.1 0 0 1 2.2 0v4.2M8.6 6.9a1.1 1.1 0 0 1 2.2 0v1M10.8 7.4a1.1 1.1 0 0 1 2.2 0v2.6a4 4 0 0 1-4 4H8.3a3.8 3.8 0 0 1-3-1.5L3.1 9.7a1.05 1.05 0 0 1 1.6-1.3l1.7 1.7"/></svg>';
+  b.title = mode === 'trackpad' ? 'Trackpad mode (tap to switch to Touch)' : 'Touch mode (tap to switch to Trackpad)';
+  b.setAttribute('aria-label', mode === 'trackpad' ? 'Switch to Touch mode' : 'Switch to Trackpad mode');
+  requestDraw();
+}
+$('#bMode').addEventListener('click', function () {
+  mode = mode === 'trackpad' ? 'touch' : 'trackpad'; LS.set('mode', mode); applyMode();
+  toast(mode === 'trackpad' ? 'Trackpad mode' : 'Touch mode — tap where you want to click', 1600);
+});
+var ZMAX = 5, ZOOMS = [1, 1.5, 2, 3, 4, 5];
+var followCursor = true;
+function setZoom(z) {
+  zoom = clamp(z, 1, ZMAX);
+  if (zoom === 1) followCursor = true;
+  $('#zoomv').textContent = (Math.round(zoom * 10) / 10) + '×';
+  requestDraw();
+}
+// Zoom to z keeping the image point (u, v) — by default the one under stage point (sx, sy) — at (sx, sy).
+function zoomAt(z, sx, sy, u, v) {
+  if (u == null) { u = (sx - view.ox) / view.w; v = (sy - view.oy) / view.h; }
+  z = clamp(z, 1, ZMAX);
+  var vw = stage.clientWidth || 1, vh = stage.clientHeight || 1, fit = Math.min(vw / imgW, vh / imgH);
+  var w = imgW * fit * z, h = imgH * fit * z;
+  panC.x = (vw / 2 - (sx - u * w)) / w; panC.y = (vh / 2 - (sy - v * h)) / h;
+  followCursor = false;
+  setZoom(z);
+}
+// Move the zoomed picture by (dx, dy) screen pixels, like dragging it.
+function panBy(dx, dy) {
+  if (zoom <= 1) return;
+  panC.x -= dx / view.w; panC.y -= dy / view.h;
+  followCursor = false; requestDraw();
+}
+$('#bZoomIn').addEventListener('click', function () { setZoom(ZOOMS.filter(function (z) { return z > zoom + 0.01; })[0] || ZMAX); });
+$('#bZoomOut').addEventListener('click', function () { var l = ZOOMS.filter(function (z) { return z < zoom - 0.01; }); setZoom(l.length ? l[l.length - 1] : 1); });
+$('#zoomv').addEventListener('click', function () { setZoom(1); });
+
+/* ================= sheets ================= */
+function anySheet() { return SHEETS.some(function (s) { return !s.hidden; }); }
+function openSheet(s) {
+  closeSheets(); kbd.blur();
+  send({ t: 'releaseall' }); resetInputState(true);
+  s.hidden = false;
+  var body = s.querySelector('.sheet-body'); if (body) body.scrollTop = 0;
+  requestAnimationFrame(placeThumbs);
+  if (s === sheetDevices) { fetchPeers(); renderPeers(); }
+}
+function closeSheets() {
+  closeMenu();
+  // give the keyboard back to the remote (key capture skips focused text fields)
+  var a = document.activeElement; if (a && a.closest && a.closest('.sheet') && a.blur) a.blur();
+  SHEETS.forEach(function (s) { s.hidden = true; });
+}
+$$('.sheet').forEach(function (s) {
+  s.addEventListener('click', function (e) { if (e.target === s || e.target.closest('[data-close]')) closeSheets(); });
+});
+$('#bSettings').addEventListener('click', function () { openSheet(sheetSettings); });
+$('#bSettings0').addEventListener('click', function () { openSheet(sheetSettings); });
+$('#bDevices').addEventListener('click', function () { openSheet(sheetDevices); });
+
+/* ================= capabilities (hello.control / hello.features) ================= */
+function applyCaps() {
+  var ctl = canControl();
+  $('#viewOnly').hidden = !hello || ctl;
+  $('#bClip').hidden = !hasFeature('clipboard');
+  $('#bFiles').hidden = !hasFeature('files');
+  $('#bKeys').hidden = !ctl;
+  $('#bKbd').hidden = !isTouch || !ctl;
+  $('#bMode').hidden = !isTouch || !ctl;
+  if (!ctl && !keyrow.hidden) { kbd.blur(); kbClosed(); }
+  // clipboard: reading the host clipboard still works when control is off; sending does not
+  $('#clipOut').disabled = !ctl;
+  $('#clipOff').hidden = ctl;
+  updateClipSend();
+  // files: downloads still work; uploads need control
+  $('#filesUpload').disabled = !ctl;
+  $('#filesOff').hidden = ctl;
+  if (!ctl && openSel && openSel.btn === $('#bKeys')) closeMenu();
+}
+function setControlOff() {
+  if (controlOff) return;
+  controlOff = true; applyCaps();
+  toast('Control is off on the host — view only', 3500, true);
+}
+
+/* ================= shortcuts (host-native combos, sent as-is: no Ctrl↔Cmd swap) ================= */
+var SHORTCUTS = {
+  mac: [
+    { head: 'System' },
+    { label: 'Spotlight', keys: ['Meta', ' '], hint: '⌘Space' },
+    { label: 'App switcher', keys: ['Meta', 'Tab'], hint: '⌘Tab' },
+    { label: 'Mission Control', keys: ['Control', 'ArrowUp'], hint: '⌃↑' },
+    { sep: 1 },
+    { label: 'Copy', keys: ['Meta', 'c'], hint: '⌘C' },
+    { label: 'Paste', keys: ['Meta', 'v'], hint: '⌘V' },
+    { label: 'Undo', keys: ['Meta', 'z'], hint: '⌘Z' },
+    { sep: 1 },
+    { label: 'Close window', keys: ['Meta', 'w'], hint: '⌘W' },
+    { label: 'Quit app', keys: ['Meta', 'q'], hint: '⌘Q' },
+    { label: 'Screenshot', keys: ['Meta', 'Shift', '4'], hint: '⇧⌘4' },
+    { label: 'Lock screen', keys: ['Control', 'Meta', 'q'], hint: '⌃⌘Q' }
+  ],
+  windows: [
+    { head: 'System' },
+    { label: 'Start', keys: ['Meta'], hint: 'Win' },
+    { label: 'Task view', keys: ['Meta', 'Tab'], hint: 'Win+Tab' },
+    { label: 'Switch apps', keys: ['Alt', 'Tab'], hint: 'Alt+Tab' },
+    { sep: 1 },
+    { label: 'Copy', keys: ['Control', 'c'], hint: 'Ctrl+C' },
+    { label: 'Paste', keys: ['Control', 'v'], hint: 'Ctrl+V' },
+    { label: 'Undo', keys: ['Control', 'z'], hint: 'Ctrl+Z' },
+    { sep: 1 },
+    { label: 'Close window', keys: ['Alt', 'F4'], hint: 'Alt+F4' },
+    { label: 'Show desktop', keys: ['Meta', 'd'], hint: 'Win+D' },
+    { label: 'Task Manager', keys: ['Control', 'Shift', 'Escape'], hint: 'Ctrl+Shift+Esc' },
+    { label: 'Lock', keys: ['Meta', 'l'], hint: 'Win+L' }
+  ],
+  linux: [
+    { head: 'System' },
+    { label: 'Activities', keys: ['Meta'], hint: 'Super' },
+    { label: 'Switch apps', keys: ['Alt', 'Tab'], hint: 'Alt+Tab' },
+    { sep: 1 },
+    { label: 'Copy', keys: ['Control', 'c'], hint: 'Ctrl+C' },
+    { label: 'Paste', keys: ['Control', 'v'], hint: 'Ctrl+V' },
+    { label: 'Undo', keys: ['Control', 'z'], hint: 'Ctrl+Z' },
+    { sep: 1 },
+    { label: 'Close window', keys: ['Alt', 'F4'], hint: 'Alt+F4' }
+  ]
+};
+var comboBusy = false;
+function sendCombo(keys) {
+  if (!canControl() || comboBusy) return;
+  releaseSticky();
+  var seq = keys.map(function (k) { return { k: k, down: true }; })
+    .concat(keys.slice().reverse().map(function (k) { return { k: k, down: false }; }));
+  var i = 0; comboBusy = true;
+  (function step() {
+    var ev = seq[i++]; send({ t: 'key', k: ev.k, down: ev.down });
+    if (i < seq.length) setTimeout(step, 30); else comboBusy = false;
+  })();
+}
+function showShortcuts(anchor) {
+  var os = SHORTCUTS[hostOs()] ? hostOs() : 'windows';
+  var items = SHORTCUTS[os].map(function (s) {
+    if (s.head) return { head: 'Shortcuts on ' + hostName() };
+    if (s.sep) return s;
+    return { label: s.label, hint: s.hint, disabled: !canControl(), fn: function () { sendCombo(s.keys); } };
+  });
+  if (!canControl()) items.push({ note: 'View only — control is turned off on the host.' });
+  showActions(anchor, items);
+}
+$('#bKeys').addEventListener('click', function (e) { e.stopPropagation(); showShortcuts(this); });
+
+/* ================= "More" (narrow toolbars) ================= */
+$('#bMore').addEventListener('click', function (e) {
+  e.stopPropagation();
+  var more = this, items = [];
+  // buttons folded away at this width (CSS hides [data-ovf] ≤480px), in toolbar order
+  $$('#bar [data-ovf]').forEach(function (b) {
+    if (b.hidden) return;
+    var label = b.getAttribute('aria-label') || b.title, svg = b.querySelector('svg');
+    items.push({ label: label, icon: svg ? svg.outerHTML : '', checked: b.classList.contains('on') && (b.id === 'bFull' || b.id === 'bExtend'), fn: function () { b.click(); } });
+  });
+  if (canControl() && !$('#bKeys').hidden && getComputedStyle($('#bKeys')).display === 'none') {
+    items.unshift({ label: 'Shortcuts…', icon: $('#bKeys').querySelector('svg').outerHTML, fn: function () { setTimeout(function () { showShortcuts(more); }, 0); } });
+  }
+  showActions(more, items);
+});
+
+/* ================= clipboard ================= */
+var hostClip = null, clipGetTimer = null, clipSetTimer = null, clipPending = null, clipDoneTimer = null;
+var clipOut = $('#clipOut'), clipIn = $('#clipIn'), clipSendBtn = $('#clipSend'), clipCopyBtn = $('#clipCopy');
+var CLIP_MAX = 1024 * 1024;
+function utf8Len(s) { try { return new Blob([s]).size; } catch (e) { return s.length; } }
+function updateClipSend() {
+  if (clipSetTimer) return;
+  clipSendBtn.disabled = !canControl() || !clipOut.value;
+  var n = clipOut.value.length;
+  $('#clipOutNote').textContent = n ? n.toLocaleString() + (n === 1 ? ' character' : ' characters') : 'Goes to the clipboard on ' + hostName();
+}
+function setBtn(btn, label, done) {
+  btn.querySelector('span').textContent = label; btn.classList.toggle('done', !!done);
+}
+function renderClipIn() {
+  clearTimeout(clipGetTimer); clipGetTimer = null;
+  var has = !!hostClip;
+  clipIn.classList.toggle('empty', !has);
+  clipIn.textContent = has ? (hostClip.length > 200000 ? hostClip.slice(0, 200000) + '\n…' : hostClip) : 'No text on the clipboard of ' + hostName();
+  clipCopyBtn.disabled = !has;
+  $('#clipInNote').textContent = has ? hostClip.length.toLocaleString() + (hostClip.length === 1 ? ' character' : ' characters') : '';
+}
+function requestClip() {
+  if (!hello) return;
+  if (hostClip == null) { clipIn.classList.add('empty'); clipIn.textContent = 'Loading…'; clipCopyBtn.disabled = true; }
+  send({ t: 'clip.get' });
+  clearTimeout(clipGetTimer);
+  clipGetTimer = setTimeout(function () {
+    clipGetTimer = null;
+    if (hostClip == null) { clipIn.textContent = 'No answer from ' + hostName(); $('#clipInNote').textContent = ''; }
+  }, 5000);
+}
+function onClip(m) {
+  var s = typeof m.s === 'string' ? m.s : '';
+  hostClip = s; renderClipIn();
+  if (m.auto && s && sheetClip.hidden && !viewer.hidden) {
+    toast(hostName() + ' copied text', 9000, false, { label: 'Copy', fn: function () { doCopy(s); } });
+  }
+}
+function doCopy(s, btn) {
+  copyText(s).then(function (ok) {
+    if (!ok) { toast('Couldn’t copy — select the text and copy it yourself', 3500, true); return; }
+    if (btn) { setBtn(btn, 'Copied', true); clearTimeout(clipDoneTimer); clipDoneTimer = setTimeout(function () { setBtn(btn, 'Copy', false); }, 1600); }
+    else toast('Copied', 1500);
+  });
+}
+function sendClip() {
+  var v = clipOut.value;
+  if (!v || !canControl() || clipSetTimer) return;
+  if (utf8Len(v) > CLIP_MAX) { toast('Too long — 1 MB of text at most', 3000, true); return; }
+  send({ t: 'clip.set', s: v });
+  clipSendBtn.disabled = true; setBtn(clipSendBtn, 'Sending…', false);
+  clipSetTimer = setTimeout(function () {
+    clipSetTimer = null; clipPending = null; setBtn(clipSendBtn, 'Send', false); updateClipSend();
+    toast('No answer from ' + hostName() + ' — try again', 3000, true);
+  }, 6000);
+  clipPending = v;
+}
+function onClipOk() {
+  if (!clipSetTimer) return;
+  var v = clipPending; clipPending = null; clearTimeout(clipSetTimer); clipSetTimer = null;
+  if (typeof v === 'string') { hostClip = v; renderClipIn(); }
+  setBtn(clipSendBtn, 'Sent', true); clipSendBtn.disabled = true;
+  toast('On the clipboard of ' + hostName(), 2000);
+  setTimeout(function () { if (!clipSetTimer) { setBtn(clipSendBtn, 'Send', false); updateClipSend(); } }, 1600);
+}
+clipOut.addEventListener('input', updateClipSend);
+clipOut.addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendClip(); } });
+clipSendBtn.addEventListener('click', sendClip);
+clipCopyBtn.addEventListener('click', function () { if (hostClip) doCopy(hostClip, clipCopyBtn); });
+$('#clipRefresh').addEventListener('click', requestClip);
+$('#bClip').addEventListener('click', function () {
+  openSheet(sheetClip); updateClipSend(); requestClip();
+  if (!coarse && canControl()) setTimeout(function () { clipOut.focus(); }, 60);
+});
+if (!coarse) clipSendBtn.title = (isMacClient ? '⌘' : 'Ctrl+') + 'Enter';
+
+/* ================= files ================= */
+var filesState = { list: null, folder: '', err: null, stale: false, fresh: {} }, upl = null, filesSeq = 0, uplHideTimer = null;
+var FILE_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.4v7.2M4.8 7.6L8 10.8l3.2-3.2M3.4 12.8h9.2"/></svg>';
+function fetchFiles() {
+  if (CLOUD) { if (hello) { filesState.stale = false; send({ t: 'files.list' }); } return; } // over the data channel
+  if (!hello || !hello.token) return;
+  var seq = ++filesSeq; filesState.stale = false;
+  fetch('/api/files', { headers: { 'X-LV-Session': hello.token }, cache: 'no-store' }).then(function (r) {
+    if (!r.ok) throw r.status;
+    return r.json();
+  }).then(function (j) {
+    if (seq !== filesSeq) return;
+    filesState.list = (j && j.files) || []; filesState.folder = (j && j.folder) || ''; filesState.err = null;
+    renderFiles();
+  }).catch(function (st) {
+    if (seq !== filesSeq) return;
+    filesState.err = st === 401 ? 'Session expired — reconnecting should fix it.'
+      : st === 403 ? 'Files are turned off on the host.'
+      : typeof st === 'number' ? 'The host answered with an error (' + st + ').' : 'Couldn’t reach the host.';
+    renderFiles();
+  });
+}
+function fileExt(n) { var m = String(n).match(/\.([a-z0-9]{1,4})$/i); return m ? m[1] : ''; }
+function renderFiles() {
+  var ul = $('#filesList'), st = filesState;
+  if (st.folder) $('#filesFolder').textContent = st.folder;
+  ul.textContent = '';
+  $('#filesCount').textContent = st.list && st.list.length ? st.list.length + (st.list.length === 1 ? ' file' : ' files') : '';
+  if (st.err) {
+    var e = document.createElement('li'); e.className = 'empty';
+    var s1 = document.createElement('strong'); s1.textContent = 'Couldn’t load files'; e.appendChild(s1);
+    var s2 = document.createElement('span'); s2.textContent = st.err; e.appendChild(s2);
+    ul.appendChild(e); return;
+  }
+  if (!st.list) { var l0 = document.createElement('li'); l0.className = 'empty'; l0.innerHTML = '<strong>Loading…</strong>'; ul.appendChild(l0); return; }
+  if (!st.list.length) {
+    var em = document.createElement('li'); em.className = 'empty';
+    var a1 = document.createElement('strong'); a1.textContent = 'No files yet'; em.appendChild(a1);
+    var a2 = document.createElement('span'); a2.textContent = canControl() ? 'Upload something, or drop files into the folder on ' + hostName() + '.' : 'Files put in the folder on ' + hostName() + ' appear here.';
+    em.appendChild(a2); ul.appendChild(em); return;
+  }
+  var tok = hello && hello.token;
+  st.list.forEach(function (f) {
+    var li = document.createElement('li'); li.className = 'file' + (st.fresh[f.name] ? ' fresh' : '');
+    var a = document.createElement('a'); a.className = 'fl';
+    if (CLOUD) {
+      a.href = '#'; a.title = 'Download ' + f.name;
+      a.addEventListener('click', function (e) { e.preventDefault(); cloudDownload(f); });
+    } else {
+      a.href = '/api/files/download?name=' + encodeURIComponent(f.name) + '&s=' + encodeURIComponent(tok || '');
+      a.setAttribute('download', f.name); a.title = 'Download ' + f.name;
+    }
+    var ic = document.createElement('span'); ic.className = 'ficon'; ic.textContent = fileExt(f.name) || '•'; a.appendChild(ic);
+    var meta = document.createElement('span'); meta.className = 'fmeta';
+    var t = document.createElement('span'); t.className = 'title'; t.textContent = f.name; meta.appendChild(t);
+    var sm = document.createElement('small'); sm.textContent = fmtSize(f.size) + ' · ' + ago(f.mtime); meta.appendChild(sm);
+    a.appendChild(meta);
+    var dl = document.createElement('span'); dl.className = 'dl'; dl.innerHTML = FILE_SVG; a.appendChild(dl);
+    li.appendChild(a); ul.appendChild(li);
+  });
+}
+function onFilesChanged() { if (!sheetFiles.hidden) fetchFiles(); else filesState.stale = true; }
+setInterval(function () { if (!sheetFiles.hidden && filesState.list && !document.hidden) renderFiles(); }, 30000); // keep "5 min ago" fresh
+
+function showUpl(name, pct, state) {
+  var box = $('#upl'); clearTimeout(uplHideTimer);
+  box.hidden = false; box.classList.toggle('err', state === 'err'); box.classList.toggle('ok', state === 'ok');
+  $('#uplName').textContent = name;
+  $('#uplPct').textContent = pct == null ? '' : Math.round(pct) + '%';
+  $('#uplBar').style.width = (pct == null ? 100 : pct) + '%';
+  box.querySelector('.prog').setAttribute('aria-valuenow', String(Math.round(pct || 0)));
+  $('#uplCancel').hidden = !!state;
+  if (state) uplHideTimer = setTimeout(function () { box.hidden = true; }, state === 'err' ? 6000 : 2500);
+}
+function uploadFiles(list) {
+  var files = Array.prototype.slice.call(list || []);
+  if (!files.length || !hello) return;
+  if (!canControl()) { toast('Control is off on the host', 3000, true); return; }
+  if (upl) { toast('Wait for the current upload to finish', 2500); return; }
+  if (sheetFiles.hidden) openFiles();
+  var label = files.length === 1 ? files[0].name : files.length + ' files';
+  var total = files.reduce(function (s, f) { return s + (f.size || 0); }, 0);
+  if (CLOUD) { cloudUpload(files, label, total); return; }
+  var fd = new FormData(); files.forEach(function (f) { fd.append('file', f, f.name); });
+  var xhr = new XMLHttpRequest(); upl = xhr;
+  xhr.open('POST', '/api/files/upload');
+  xhr.setRequestHeader('X-LV-Session', hello.token || '');
+  showUpl('Sending ' + label + ' · ' + fmtSize(total), 0);
+  xhr.upload.onprogress = function (e) { if (e.lengthComputable && upl === xhr) showUpl('Sending ' + label + ' · ' + fmtSize(total), e.loaded / e.total * 99); };
+  xhr.onload = function () {
+    upl = null;
+    if (xhr.status >= 200 && xhr.status < 300) {
+      var saved = []; try { saved = JSON.parse(xhr.responseText).saved || []; } catch (e) {}
+      filesState.fresh = {}; saved.forEach(function (n) { filesState.fresh[n] = 1; });
+      showUpl((saved.length > 1 ? saved.length + ' files' : (saved[0] || label)) + ' sent to ' + hostName(), 100, 'ok');
+      fetchFiles();
+    } else if (xhr.status === 403) { showUpl('Control is off on the host', 100, 'err'); setControlOff(); }
+    else if (xhr.status === 401) showUpl('Session expired — reconnect and try again', 100, 'err');
+    else if (xhr.status === 413) showUpl('Too large for the host (4 GB max per file)', 100, 'err');
+    else showUpl('Upload failed' + (xhr.status ? ' (' + xhr.status + ')' : ''), 100, 'err');
+  };
+  xhr.onerror = function () { upl = null; showUpl('Upload failed — connection lost', 100, 'err'); };
+  xhr.onabort = function () { upl = null; showUpl('Upload cancelled', 0, 'err'); };
+  xhr.send(fd);
+}
+
+/* files over the internet: the same folder, carried on the encrypted data channel */
+function rid() { return Math.random().toString(36).slice(2, 12); }
+function onFilesList(m) {
+  filesState.list = m.files || []; filesState.folder = m.folder || ''; filesState.err = null;
+  renderFiles();
+}
+var cdl = null; // download in progress
+function b64ToBytes(s) { var bin = atob(s), a = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a; }
+function cloudDownload(f) {
+  if (upl) { toast('Wait for the current transfer to finish', 2500); return; }
+  var d = cdl = { id: rid(), name: f.name, size: f.size || 0, parts: [], got: 0 };
+  upl = { abort: function () { send({ t: 'down.abort', id: d.id }); if (cdl === d) cdl = null; upl = null; showUpl('Download cancelled', 0, 'err'); } };
+  showUpl('Receiving ' + d.name + ' · ' + fmtSize(d.size), 0);
+  send({ t: 'down', id: d.id, name: f.name });
+}
+function onDown(m) {
+  var d = cdl;
+  if (!d || m.id !== d.id) return;
+  if (m.t === 'down.start') { d.size = m.size || d.size; d.name = m.name || d.name; }
+  else if (m.t === 'down.data') {
+    var b = b64ToBytes(m.d || ''); d.parts.push(b); d.got += b.length;
+    showUpl('Receiving ' + d.name + ' · ' + fmtSize(d.size), d.size ? Math.min(99, d.got / d.size * 99) : 50);
+  } else if (m.t === 'down.end') {
+    cdl = null; upl = null;
+    var url = URL.createObjectURL(new Blob(d.parts)), a = document.createElement('a');
+    a.href = url; a.download = d.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
+    showUpl(d.name + ' downloaded', 100, 'ok');
+  } else if (m.t === 'down.err') { cdl = null; upl = null; showUpl(m.msg || 'Download failed', 100, 'err'); }
+}
+var cup = null; // upload in progress {id, file, pos, ctx}
+function cloudUpload(files, label, total) {
+  var idx = 0, sent = 0, saved = [], cancelled = false;
+  var ctx = {
+    fail: function (msg) { cup = null; upl = null; showUpl(msg, 100, 'err'); if (/only allows viewing/i.test(msg)) setControlOff(); },
+    next: function () {
+      if (cancelled) return;
+      if (idx >= files.length) {
+        cup = null; upl = null;
+        filesState.fresh = {}; saved.forEach(function (n) { filesState.fresh[n] = 1; });
+        showUpl((saved.length > 1 ? saved.length + ' files' : (saved[0] || label)) + ' sent to ' + hostName(), 100, 'ok');
+        fetchFiles(); return;
+      }
+      var f = files[idx++];
+      cup = { id: rid(), file: f, pos: 0, ctx: ctx };
+      send({ t: 'up.start', id: cup.id, name: f.name, size: f.size || 0 });
+    },
+    pump: function () {
+      var u = cup;
+      if (cancelled || !u) return;
+      var dc = ws;
+      if (!dc || dc.readyState !== 'open') { ctx.fail('Upload failed — connection lost'); return; }
+      if (dc.bufferedAmount > 1048576) { setTimeout(ctx.pump, 30); return; }   // let the network catch up
+      if (u.pos >= u.file.size) { send({ t: 'up.end', id: u.id }); return; }
+      u.file.slice(u.pos, u.pos + 36000).arrayBuffer().then(function (buf) {
+        if (cup !== u || cancelled) return;
+        var bytes = new Uint8Array(buf), bin = '';
+        for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        try { dc.send(JSON.stringify({ t: 'up.data', id: u.id, d: btoa(bin) })); } catch (e) { ctx.fail('Upload failed — connection lost'); return; }
+        u.pos += bytes.length; sent += bytes.length;
+        showUpl('Sending ' + label + ' · ' + fmtSize(total), total ? Math.min(99, sent / total * 99) : 50);
+        ctx.pump();
+      }, function () { ctx.fail('Couldn’t read ' + u.file.name); });
+    },
+    done: function (name) { saved.push(name); ctx.next(); }
+  };
+  upl = { abort: function () { cancelled = true; if (cup) send({ t: 'up.abort', id: cup.id }); cup = null; upl = null; showUpl('Upload cancelled', 0, 'err'); } };
+  showUpl('Sending ' + label + ' · ' + fmtSize(total), 0);
+  ctx.next();
+}
+function onUp(m) {
+  var u = cup;
+  if (!u || m.id !== u.id) return;
+  if (m.t === 'up.ready') u.ctx.pump();
+  else if (m.t === 'up.done') u.ctx.done(m.name || u.file.name);
+  else if (m.t === 'up.err') u.ctx.fail(m.msg || 'Upload failed');
+}
+$('#uplCancel').addEventListener('click', function () { if (upl) upl.abort(); });
+$('#filesUpload').addEventListener('click', function () { if (canControl()) $('#filesInput').click(); });
+$('#filesInput').addEventListener('change', function () { var fs = this.files; uploadFiles(fs); this.value = ''; });
+function openFiles() {
+  openSheet(sheetFiles);
+  $('#filesHow').textContent = coarse ? 'Tap' : 'Click';
+  if (!filesState.list || filesState.stale || filesState.err) { if (!filesState.list) renderFiles(); fetchFiles(); } else renderFiles();
+}
+$('#bFiles').addEventListener('click', openFiles);
+
+/* drag & drop files onto the viewer (desktop) */
+var drop = $('#drop'), dragDepth = 0, dragWatch = null;
+function hasFiles(e) { var t = e.dataTransfer && e.dataTransfer.types; return !!t && Array.prototype.indexOf.call(t, 'Files') >= 0; }
+function dropOk() { return !viewer.hidden && !!hello && hasFeature('files'); }
+function hideDrop() { dragDepth = 0; drop.hidden = true; clearTimeout(dragWatch); }
+document.addEventListener('dragenter', function (e) {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  if (!dropOk()) return;
+  if (dragDepth++ === 0) {
+    var ctl = canControl();
+    drop.classList.toggle('off', !ctl);
+    $('#dropTitle').textContent = ctl ? 'Drop to send to ' + hostName() : 'View only';
+    $('#dropSub').textContent = ctl ? 'Saved to ' + (filesState.folder || 'Downloads/Local View') : 'Uploading is turned off on the host';
+    drop.hidden = false;
+  }
+});
+document.addEventListener('dragover', function (e) {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); // never let the browser navigate away to a dropped file
+  e.dataTransfer.dropEffect = dropOk() && canControl() ? 'copy' : 'none';
+  // dragover repeats while the pointer is over the page; when it stops, the drag left the window
+  if (!drop.hidden) { clearTimeout(dragWatch); dragWatch = setTimeout(hideDrop, 500); }
+});
+document.addEventListener('dragleave', function (e) {
+  if (!hasFiles(e) || drop.hidden) return;
+  if (--dragDepth <= 0) hideDrop();
+});
+document.addEventListener('drop', function (e) {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  var was = !drop.hidden; hideDrop();
+  if (was && dropOk()) uploadFiles(e.dataTransfer.files);
+});
+window.addEventListener('blur', function () { if (!drop.hidden) hideDrop(); });
+
+/* ================= settings ================= */
+function saveSettings() { LS.set('settings', settings); }
+var sQ = $('#sQuality'), sQV = $('#sQualityV');
+function paintQuality() { sQV.textContent = sQ.value; sQ.style.setProperty('--p', ((sQ.value - sQ.min) / (sQ.max - sQ.min) * 100) + '%'); }
+sQ.value = settings.quality; paintQuality();
+if (MAXWS.indexOf(+settings.maxw) < 0) settings.maxw = 1920;
+if (FPSS.indexOf(+settings.fps) < 0) settings.fps = 20;
+var selMonitor = makeSelect($('#sMonitor'), function (v) {
+  settings.monitor = +v; saveSettings(); send({ t: 'settings', monitor: settings.monitor });
+  setZoom(1);
+});
+setSelectOptions(selMonitor, []);
+function renderMonitors(mons) {
+  setSelectOptions(selMonitor, mons.map(function (mo, i) {
+    return { value: mo.index, label: (mo.virtual ? 'Second screen' : 'Display ' + (i + 1)) + ' · ' + mo.width + '×' + mo.height };
+  }));
+  $('#monHint').textContent = mons.length > 1 ? mons.length + ' displays on ' + hostName() : 'Screen to show';
+}
+var selMaxw = makeSelect($('#sMaxw'), function (v) { settings.maxw = +v; saveSettings(); send({ t: 'settings', maxw: settings.maxw }); });
+setSelectOptions(selMaxw, MAXWS.map(function (v) { return { value: v, label: v + ' px' }; }));
+setSelect(selMaxw, +settings.maxw);
+segInit($('#sFps'), function (v) { settings.fps = +v; saveSettings(); send({ t: 'settings', fps: settings.fps }); });
+setSeg($('#sFps'), +settings.fps);
+
+/* ================= second screen ================= */
+// "Second screen" asks the host for an extra display the size of this screen (macOS hosts create a virtual
+// display; Windows hosts need a virtual display driver or an HDMI dummy plug) and streams that display here.
+var wantExtend = false, extendState = 'off'; // off | starting | on
+function extendSize() {
+  var w = Math.round(screen.width || window.innerWidth), h = Math.round(screen.height || window.innerHeight);
+  // hidpi off: the host captures at standard resolution, so a Retina virtual display would only cost CPU
+  return { w: w, h: h, hidpi: false };
+}
+function canExtend() { return hasFeature('extend') && canControl(); }
+function updateExtendUI() {
+  var on = extendState !== 'off';
+  $('#bExtend').hidden = !hello || !canControl();
+  $('#bExtend').classList.toggle('on', on);
+  $('#bExtend').title = on ? 'Stop being a second screen' : 'Use as a second screen';
+  setSeg($('#sView'), on ? 'extend' : 'control');
+  var hint = $('#modeHint');
+  if (!hello) hint.textContent = 'Control shows the other computer’s screen. Second screen turns this screen into an extra display for it.';
+  else if (!canControl()) hint.textContent = 'Second screen needs control, which is turned off on ' + hostName() + '.';
+  else if (!hasFeature('extend')) hint.textContent = hostName() + ' can’t add a display by itself. On Windows, install a virtual display driver (or plug in an HDMI dummy plug), then choose that display under Display.';
+  else hint.textContent = on ? 'This screen is an extra display for ' + hostName() + '. Move its mouse past the edge of its main screen.' : 'Control shows ' + hostName() + '’s screen. Second screen turns this screen into an extra display for it.';
+  $('#statName').textContent = (hello && hello.name ? hello.name : 'Host') + (extendState === 'on' ? ' · second screen' : '');
+}
+function startExtend() {
+  if (!hello) { wantExtend = true; return; }
+  if (!canControl()) { toast('Second screen needs control, which is off on ' + hostName(), 3500, true); updateExtendUI(); return; }
+  if (!hasFeature('extend')) { toast(hostName() + ' can’t add a display by itself — see Settings → Mode', 4500, true); openSheet(sheetSettings); updateExtendUI(); return; }
+  var z = extendSize();
+  wantExtend = true; extendState = 'starting'; updateExtendUI();
+  enterFull(); // works right away in Local View windows and after a click in browsers
+  send({ t: 'extend', w: z.w, h: z.h, hidpi: z.hidpi, side: 'right' });
+  // a sharp, smooth stream of the whole new display (not saved: Control mode keeps your settings)
+  send({ t: 'settings', maxw: Math.min(3840, Math.round(z.w * (z.hidpi ? 2 : 1))), fps: 30, quality: 70 });
+  toast('Adding a display to ' + hostName() + '…', 2000);
+}
+function stopExtend(silent) {
+  wantExtend = false;
+  if (extendState === 'off') { updateExtendUI(); return; }
+  extendState = 'off'; updateExtendUI();
+  send({ t: 'extend.stop' });
+  send({ t: 'settings', maxw: +settings.maxw, fps: +settings.fps, quality: +settings.quality });
+  if (!silent) toast(hostName() + ' is back to one screen here', 2200);
+}
+function onExtendMsg(m) {
+  if (m.t === 'extend.ok') {
+    if (!wantExtend) { send({ t: 'extend.stop' }); return; } // stopped while it was being added
+    extendState = 'on';
+    renderMonitors(m.monitors || []); setSelect(selMonitor, m.monitor);
+    if (m.width && m.height && !bmp) { imgW = m.width; imgH = m.height; }
+    setZoom(1); collapseToolbar(); updateExtendUI();
+    toast('This screen is now a second display for ' + hostName() + '. Move its mouse past the right edge of its screen.', 5000);
+    if (!appApi() && !isFull() && fsSupported) toast('Tip: click ⛶ in the toolbar for full screen', 4000);
+  } else if (m.t === 'extend.err') {
+    wantExtend = false; extendState = 'off'; updateExtendUI();
+    send({ t: 'settings', maxw: +settings.maxw, fps: +settings.fps, quality: +settings.quality });
+    toast(String(m.msg || 'Couldn’t add a display'), 6000, true);
+  } else if (m.t === 'extend.off') {
+    renderMonitors(m.monitors || []); setSelect(selMonitor, m.monitor);
+    settings.monitor = m.monitor;
+  }
+}
+segInit($('#sView'), function (v) { if (v === 'extend') startExtend(); else stopExtend(); });
+$('#bExtend').addEventListener('click', function () { if (extendState === 'off') startExtend(); else stopExtend(); });
+segInit($('#themeSeg'), setTheme);
+sQ.addEventListener('input', paintQuality);
+sQ.addEventListener('change', function () { settings.quality = +sQ.value; saveSettings(); send({ t: 'settings', quality: settings.quality }); });
+$('#sSwap').addEventListener('change', function (e) {
+  send({ t: 'releaseall' }); resetInputState(true);
+  swap = e.target.checked; LS.set('swap.' + (hostOs() || 'x'), swap); updateSwapUI();
+});
+function updateSwapUI() {
+  $('#sSwap').checked = swap;
+  $('#swapHint').textContent = (isMacClient ? 'This device: Apple' : 'This device: PC') + ' · Host: ' + (OS_NAMES[hostOs()] || '?');
+}
+function updateKeyLabels() {
+  var mac = hostOs() === 'mac';
+  $('#kMeta').textContent = mac ? 'Cmd' : 'Win';
+  $('#kAlt').textContent = mac ? 'Opt' : 'Alt';
+}
+
+/* ================= keyboard (physical) ================= */
+var CODE_CHARS = { Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', IntlBackslash: '\\', Semicolon: ';',
+  Quote: "'", Comma: ',', Period: '.', Slash: '/', Backquote: '`', Space: ' ', NumpadAdd: '+', NumpadSubtract: '-',
+  NumpadMultiply: '*', NumpadDivide: '/', NumpadDecimal: '.' };
+var KEY_ALIASES = { OS: 'Meta', Win: 'Meta', Esc: 'Escape', Spacebar: ' ', Up: 'ArrowUp', Down: 'ArrowDown', Left: 'ArrowLeft', Right: 'ArrowRight', Del: 'Delete' };
+var MODS = { Shift: 1, Control: 1, Alt: 1, Meta: 1, CapsLock: 1, AltGraph: 1 };
+function codeChar(code) {
+  if (!code) return null;
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
+  if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+  if (/^Numpad[0-9]$/.test(code)) return code.slice(6);
+  return CODE_CHARS[code] || null;
+}
+function swapName(k) { if (!swap) return k; return k === 'Control' ? 'Meta' : k === 'Meta' ? 'Control' : k; }
+function keyName(e) {
+  var k = e.key;
+  if (!k || k === 'Unidentified' || k === 'Dead' || k === 'Process') { k = codeChar(e.code); if (!k) return null; }
+  if (k.length === 1 || Array.from(k).length === 1) {
+    var altGr = e.getModifierState && e.getModifierState('AltGraph');
+    if ((e.ctrlKey || e.altKey || e.metaKey) && !altGr) { var c = codeChar(e.code); if (c) k = c; }
+  } else {
+    k = KEY_ALIASES[k] || k;
+    if (k === 'AltGraph') k = 'Alt';
+  }
+  return swapName(k);
+}
+var sentKeys = {}; // e.code -> k sent on keydown
+function captureKeys() {
+  if (viewer.hidden || anySheet() || openSel || !canControl()) return false;
+  var a = document.activeElement;
+  if (a && a !== kbd && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return false;
+  return true;
+}
+document.addEventListener('keydown', function (e) {
+  if (!captureKeys()) return;
+  if (e.isComposing || e.keyCode === 229) return;
+  if (document.activeElement === kbd && !e.ctrlKey && !e.metaKey && !e.altKey &&
+      (e.key === 'Backspace' || (e.key && Array.from(e.key).length === 1))) return; // handled by the input event
+  var k = keyName(e); if (k == null) return;
+  e.preventDefault(); e.stopPropagation();
+  sentKeys[e.code || k] = k;
+  send({ t: 'key', k: k, down: true });
+  if (!MODS[k]) releaseSticky();
+}, true);
+document.addEventListener('keyup', function (e) {
+  var id = e.code || keyName(e);
+  var k = sentKeys[id];
+  if (k == null) return;
+  e.preventDefault();
+  delete sentKeys[id];
+  send({ t: 'key', k: k, down: false });
+  // macOS browsers never deliver keyup for keys released while Cmd is held
+  if (isMacClient && e.key === 'Meta') {
+    Object.keys(sentKeys).forEach(function (c) { if (!MODS[sentKeys[c]]) { send({ t: 'key', k: sentKeys[c], down: false }); delete sentKeys[c]; } });
+  }
+}, true);
+
+/* ================= mouse (desktop) ================= */
+var pendingMove = null, moveRaf = false, heldButtons = {};
+function queueMove(p) {
+  pendingMove = p;
+  if (!moveRaf) {
+    moveRaf = true;
+    requestAnimationFrame(function () {
+      moveRaf = false;
+      if (pendingMove) { send({ t: 'move', x: r5(pendingMove.x), y: r5(pendingMove.y) }); pendingMove = null; }
+    });
+  }
+}
+function toNorm(cx, cy) {
+  var r = stage.getBoundingClientRect();
+  return { x: clamp((cx - r.left - view.ox) / view.w, 0, 1), y: clamp((cy - r.top - view.oy) / view.h, 0, 1) };
+}
+var BTN = { 0: 'left', 1: 'middle', 2: 'right' };
+var lastTouchTs = 0;
+function isSynthetic() { return now() - lastTouchTs < 800; }
+canvas.addEventListener('mousedown', function (e) {
+  if (isSynthetic() || !canControl()) return;
+  e.preventDefault();
+  if (document.activeElement && document.activeElement !== document.body && document.activeElement.blur) document.activeElement.blur();
+  if (!coarse && !toolbar.classList.contains('collapsed') && !tbHover) collapseToolbar();
+  var b = BTN[e.button]; if (!b) return;
+  var p = toNorm(e.clientX, e.clientY); pendingMove = null;
+  heldButtons[b] = 1;
+  send({ t: 'down', b: b, x: r5(p.x), y: r5(p.y) });
+});
+window.addEventListener('mousemove', function (e) {
+  if (viewer.hidden || isSynthetic() || !canControl()) return;
+  var held = Object.keys(heldButtons).length > 0;
+  if (e.target !== canvas && !held) return;
+  queueMove(toNorm(e.clientX, e.clientY));
+});
+window.addEventListener('mouseup', function (e) {
+  var b = BTN[e.button]; if (!b || !heldButtons[b]) return;
+  delete heldButtons[b];
+  var p = toNorm(e.clientX, e.clientY);
+  if (pendingMove) { send({ t: 'move', x: r5(pendingMove.x), y: r5(pendingMove.y) }); pendingMove = null; }
+  send({ t: 'up', b: b, x: r5(p.x), y: r5(p.y) });
+});
+canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+viewer.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+canvas.addEventListener('auxclick', function (e) { e.preventDefault(); });
+
+// Zoomed in with a mouse: holding the pointer near an edge glides the view that way.
+var mouseIn = null, edgeRaf = 0;
+function edgePan() {
+  edgeRaf = 0;
+  if (!mouseIn || zoom <= 1 || viewer.hidden || isSynthetic()) return;
+  var r = stage.getBoundingClientRect(), x = mouseIn.x - r.left, y = mouseIn.y - r.top, E = 40, SP = 14;
+  var dx = x < E ? (E - x) / E * SP : x > view.vw - E ? -(x - (view.vw - E)) / E * SP : 0;
+  var dy = y < E ? (E - y) / E * SP : y > view.vh - E ? -(y - (view.vh - E)) / E * SP : 0;
+  if (!dx && !dy) return;
+  var bx = view.ox, by = view.oy;
+  panBy(dx, dy); layout();
+  if (view.ox === bx && view.oy === by) return; // already at the picture's edge
+  if (canControl()) queueMove(toNorm(mouseIn.x, mouseIn.y));
+  edgeRaf = requestAnimationFrame(edgePan);
+}
+canvas.addEventListener('mousemove', function (e) {
+  if (isSynthetic()) return;
+  mouseIn = { x: e.clientX, y: e.clientY };
+  if (!edgeRaf && zoom > 1) edgeRaf = requestAnimationFrame(edgePan);
+});
+canvas.addEventListener('mouseleave', function () { mouseIn = null; });
+
+var wAcc = { x: 0, y: 0 }, wheelSnap = 0;
+canvas.addEventListener('wheel', function (e) {
+  e.preventDefault();
+  var k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? (stage.clientHeight || 800) : 1;
+  // Trackpad pinch (Chrome/Edge/Firefox send it as Ctrl+wheel) or Ctrl+scroll wheel: zoom the view at the pointer
+  if (e.ctrlKey) {
+    var sp = stagePt(e.clientX, e.clientY);
+    zoomAt(zoom * Math.exp(-e.deltaY * k * 0.01), sp.x, sp.y);
+    clearTimeout(wheelSnap); wheelSnap = setTimeout(function () { if (zoom < 1.06) setZoom(1); }, 250);
+    return;
+  }
+  if (!canControl()) return;
+  var dx = e.deltaX * k, dy = e.deltaY * k;
+  if (dy && wAcc.y && (dy > 0) !== (wAcc.y > 0)) wAcc.y = 0;
+  if (dx && wAcc.x && (dx > 0) !== (wAcc.x > 0)) wAcc.x = 0;
+  wAcc.x += dx; wAcc.y += dy;
+  var nx = Math.trunc(wAcc.x / 100), ny = Math.trunc(wAcc.y / 100);
+  if (nx || ny) { wAcc.x -= nx * 100; wAcc.y -= ny * 100; send({ t: 'scroll', dx: nx, dy: ny }); }
+}, { passive: false });
+
+/* ================= touch ================= */
+// One finger — Trackpad mode: drag moves the cursor · tap = click · double-tap = double-click ·
+//   tap, then press and drag = drag · long-press = right-click.
+//   Touch mode: tap = click there · long-press = right-click · drag = drag.
+// Two fingers — tap = right-click · double-tap = zoom in / back to fit · drag = scroll (keeps gliding
+//   after you let go) · pinch = zoom the view around your fingers (move them while pinching to pan).
+// Three-finger tap — show / hide the keyboard. View only: one finger pans the zoomed view.
+var g = null;            // current gesture
+var tap = null;          // deferred single click {timer, x, y, cx, cy}
+var twoTap = null;       // deferred two-finger tap: right-click unless a second one follows
+var longTimer = null, momentum = null;
+var TAP_MS = 280, MOVE_PX = 8, SCROLL_PX = 30, PINCH_PX = 18, LONG_MS = 500;
+
+function sendClick(b, p, n) {
+  if (!canControl()) return;
+  send({ t: 'click', b: b, x: r5(p.x), y: r5(p.y), n: n || 1 }); releaseSticky();
+}
+function flushTap() { if (tap) { clearTimeout(tap.timer); var t = tap; tap = null; sendClick('left', t, 1); } }
+function cancelTap() { if (tap) { clearTimeout(tap.timer); tap = null; } }
+function deferTap(p, cx, cy) {
+  cancelTap();
+  tap = { x: p.x, y: p.y, cx: cx, cy: cy, timer: 0 };
+  tap.timer = setTimeout(flushTap, TAP_MS);
+}
+function mid(ts) { return { x: (ts[0].clientX + ts[1].clientX) / 2, y: (ts[0].clientY + ts[1].clientY) / 2 }; }
+function dist(ts) { return Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY) || 1; }
+function stagePt(cx, cy) { var r = stage.getBoundingClientRect(); return { x: cx - r.left, y: cy - r.top }; }
+function showLocal(ms) { local.until = now() + (ms || 700); requestDraw(); }
+function buzz() { try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) {} }
+function endDrag(G) {
+  if (!G || !G.dragging) return;
+  var p = mode === 'trackpad' ? local : (G.lastP || local);
+  send({ t: 'up', b: 'left', x: r5(p.x), y: r5(p.y) });
+  G.dragging = false;
+}
+
+// Two-finger scrolling keeps going briefly after the fingers lift, slowing down like iOS.
+function stopMomentum() { if (momentum) { cancelAnimationFrame(momentum.raf); momentum = null; } }
+function startMomentum(vx, vy) {
+  stopMomentum();
+  if (!canControl() || Math.hypot(vx, vy) < 0.3) return; // px per ms
+  momentum = { vx: vx, vy: vy, ax: 0, ay: 0, t: now(), raf: 0 };
+  var step = function () {
+    var m = momentum; if (!m) return;
+    var t = now(), dt = Math.min(40, t - m.t); m.t = t;
+    var decay = Math.pow(0.9955, dt); m.vx *= decay; m.vy *= decay;
+    m.ax -= m.vx * dt; m.ay -= m.vy * dt;
+    var nx = Math.trunc(m.ax / SCROLL_PX), ny = Math.trunc(m.ay / SCROLL_PX);
+    if (nx || ny) { m.ax -= nx * SCROLL_PX; m.ay -= ny * SCROLL_PX; send({ t: 'scroll', dx: nx, dy: ny }); }
+    if (Math.hypot(m.vx, m.vy) < 0.04) { momentum = null; return; }
+    m.raf = requestAnimationFrame(step);
+  };
+  momentum.raf = requestAnimationFrame(step);
+}
+
+function anchorPinch(ts) {
+  var m = mid(ts), sp = stagePt(m.x, m.y);
+  g.pd0 = dist(ts); g.z0 = zoom;
+  g.u = (sp.x - view.ox) / view.w; g.v = (sp.y - view.oy) / view.h;
+}
+function startTwo(e) {
+  clearTimeout(longTimer);
+  var m = mid(e.touches);
+  g.two = true; g.twoStart = now(); g.kind = null;
+  g.mx = m.x; g.my = m.y; g.m0x = m.x; g.m0y = m.y; g.d0 = dist(e.touches);
+  g.ax = 0; g.ay = 0; g.vx = 0; g.vy = 0; g.lt = now();
+  g.twoSp = stagePt(m.x, m.y);
+  if (g.viewOnly) return;
+  if (mode === 'trackpad') {
+    if (g.dragging) endDrag(g);
+    else if (g.dragPending) flushPendingFirstTap();
+    g.twoP = { x: local.x, y: local.y };
+  } else {
+    flushTap(); endDrag(g);
+    var p = toNorm(m.x, m.y);
+    g.twoP = p;
+    pendingMove = null; send({ t: 'move', x: r5(p.x), y: r5(p.y) }); // scroll where the fingers are
+    local.x = p.x; local.y = p.y; showLocal(600);
+  }
+}
+function flushPendingFirstTap() { if (g && g.firstTapP) { sendClick('left', g.firstTapP, 1); g.firstTapP = null; } }
+function twoFingerTap(G) {
+  if (twoTap) { // second two-finger tap: zoom in there, or back to fit
+    clearTimeout(twoTap.timer); twoTap = null;
+    if (zoom > 1.01) setZoom(1); else zoomAt(2.5, G.twoSp.x, G.twoSp.y);
+    buzz(); return;
+  }
+  var p = G.viewOnly ? null : G.twoP;
+  twoTap = { timer: setTimeout(function () { twoTap = null; if (p) sendClick('right', p, 1); }, 300) };
+}
+
+canvas.addEventListener('touchstart', function (e) {
+  e.preventDefault();
+  lastTouchTs = now();
+  if (!hello) return;
+  var n = e.touches.length;
+  if (!g) {
+    stopMomentum();
+    var ct = e.changedTouches[0];
+    g = { start: now(), x0: ct.clientX, y0: ct.clientY, lx: ct.clientX, ly: ct.clientY, moved: false, two: false,
+          three: false, dragging: false, dragPending: false, longFired: false, firstTapP: null, lastP: null,
+          viewOnly: !canControl() };
+    if (!g.viewOnly && mode === 'trackpad') {
+      if (tap) { // second touch soon after a tap: double-click or tap-and-drag
+        g.dragPending = true; g.firstTapP = { x: tap.x, y: tap.y }; cancelTap();
+      }
+      local.x = local.until > now() || !cursor.visible ? local.x : cursor.x;
+      local.y = local.until > now() || !cursor.visible ? local.y : cursor.y;
+      if (!g.dragPending) {
+        longTimer = setTimeout(function () {
+          if (g && !g.moved && !g.two && !g.three) {
+            g.longFired = true; sendClick('right', { x: local.x, y: local.y }, 1); showLocal(600); buzz();
+          }
+        }, LONG_MS);
+      }
+    } else if (!g.viewOnly) {
+      var p = toNorm(ct.clientX, ct.clientY);
+      g.p0 = p; g.lastP = p;
+      local.x = p.x; local.y = p.y; showLocal(800);
+      longTimer = setTimeout(function () {
+        if (g && !g.moved && !g.two && !g.three && !g.dragging) {
+          flushTap(); g.longFired = true;
+          sendClick('right', g.p0, 1); buzz();
+        }
+      }, LONG_MS);
+    }
+  }
+  if (n >= 3) {
+    if (!g.three) { g.three = true; g.threeStart = now(); clearTimeout(longTimer); endDrag(g); }
+    return;
+  }
+  if (n >= 2 && !g.two) startTwo(e);
+  else if (n >= 2) { var m = mid(e.touches); g.mx = m.x; g.my = m.y; if (g.kind === 'pinch') anchorPinch(e.touches); }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', function (e) {
+  e.preventDefault();
+  lastTouchTs = now();
+  if (!g || g.three) return;
+  var ts = e.touches;
+  if (g.two) {
+    if (ts.length < 2) return;
+    var m = mid(ts), d = dist(ts), dx = m.x - g.mx, dy = m.y - g.my, t = now(), dt = Math.max(1, t - g.lt);
+    g.mx = m.x; g.my = m.y; g.lt = t;
+    if (!g.kind) {
+      if (Math.abs(d - g.d0) > PINCH_PX) { g.kind = 'pinch'; anchorPinch(ts); }
+      else if (Math.hypot(m.x - g.m0x, m.y - g.m0y) > 10) g.kind = g.viewOnly ? 'pan' : 'scroll';
+      else return;
+    }
+    if (g.kind === 'pinch') {
+      var sp = stagePt(m.x, m.y);
+      zoomAt(g.z0 * d / g.pd0, sp.x, sp.y, g.u, g.v);
+    } else if (g.kind === 'pan') {
+      panBy(dx, dy);
+    } else {
+      g.vx = g.vx * 0.5 + (dx / dt) * 0.5; g.vy = g.vy * 0.5 + (dy / dt) * 0.5;
+      // natural scrolling: fingers up => content down (dy > 0)
+      g.ay -= dy; g.ax -= dx;
+      var ny = Math.trunc(g.ay / SCROLL_PX), nx = Math.trunc(g.ax / SCROLL_PX);
+      if (nx || ny) { g.ax -= nx * SCROLL_PX; g.ay -= ny * SCROLL_PX; send({ t: 'scroll', dx: nx, dy: ny }); }
+    }
+    return;
+  }
+  var tt = ts[0];
+  var ddx = tt.clientX - g.lx, ddy = tt.clientY - g.ly;
+  g.lx = tt.clientX; g.ly = tt.clientY;
+  if (!g.moved) {
+    if (Math.abs(tt.clientX - g.x0) + Math.abs(tt.clientY - g.y0) < MOVE_PX) return;
+    g.moved = true; clearTimeout(longTimer);
+  }
+  if (g.viewOnly) { panBy(ddx, ddy); return; }
+  if (g.longFired) return;
+  if (mode === 'trackpad') {
+    if (g.dragPending && !g.dragging) {
+      g.dragging = true; g.firstTapP = null;
+      send({ t: 'down', b: 'left', x: r5(local.x), y: r5(local.y) });
+    }
+    var spd = Math.sqrt(ddx * ddx + ddy * ddy);
+    var mult = 1.5 * Math.min(2.2, 1 + spd / 40);
+    local.x = clamp(local.x + ddx * mult / view.w, 0, 1);
+    local.y = clamp(local.y + ddy * mult / view.h, 0, 1);
+    followCursor = true; // moving the cursor brings the zoomed view along again
+    showLocal(700);
+    queueMove({ x: local.x, y: local.y });
+  } else {
+    var p = toNorm(tt.clientX, tt.clientY);
+    if (!g.dragging) {
+      flushTap();
+      g.dragging = true;
+      send({ t: 'down', b: 'left', x: r5(g.p0.x), y: r5(g.p0.y) });
+    }
+    g.lastP = p; local.x = p.x; local.y = p.y; showLocal(700);
+    queueMove(p);
+  }
+}, { passive: false });
+
+function touchEnd(e, cancelled) {
+  e.preventDefault();
+  lastTouchTs = now();
+  if (!g) return;
+  if (e.touches.length > 0) {
+    if (g.two && e.touches.length >= 2) {
+      var m = mid(e.touches); g.mx = m.x; g.my = m.y;
+      if (g.kind === 'pinch') anchorPinch(e.touches);
+    }
+    return;
+  }
+  clearTimeout(longTimer);
+  var G = g; g = null;
+  var dur = now() - G.start;
+  if (pendingMove) { send({ t: 'move', x: r5(pendingMove.x), y: r5(pendingMove.y) }); pendingMove = null; }
+  if (cancelled) { endDrag(G); return; }
+  if (G.three) { if (now() - G.threeStart < 500 && canControl()) toggleKbd(); return; }
+  if (G.two) {
+    if (G.kind === 'pinch') { if (zoom < 1.06) setZoom(1); return; }
+    if (G.kind === 'scroll') { if (now() - G.lt < 90) startMomentum(G.vx, G.vy); return; }
+    if (!G.kind && now() - G.twoStart < 400) twoFingerTap(G);
+    return;
+  }
+  if (G.viewOnly) return;
+  if (mode === 'trackpad') {
+    var lp = { x: local.x, y: local.y };
+    if (G.dragging) { send({ t: 'up', b: 'left', x: r5(lp.x), y: r5(lp.y) }); return; }
+    if (G.longFired) return;
+    if (!G.moved && dur < 300) {
+      if (G.dragPending) sendClick('left', lp, 2);
+      else deferTap(lp);
+    } else if (G.dragPending && G.firstTapP) sendClick('left', G.firstTapP, 1); // long hold w/o move: honor first tap
+  } else {
+    if (G.dragging) { send({ t: 'up', b: 'left', x: r5(G.lastP.x), y: r5(G.lastP.y) }); showLocal(500); return; }
+    if (G.longFired || G.moved) return;
+    var p = G.p0;
+    if (tap && Math.abs(tap.cx - G.x0) < 30 && Math.abs(tap.cy - G.y0) < 30) { cancelTap(); sendClick('left', p, 2); }
+    else { flushTap(); deferTap(p, G.x0, G.y0); }
+    showLocal(500);
+  }
+}
+canvas.addEventListener('touchend', function (e) { touchEnd(e, false); }, { passive: false });
+canvas.addEventListener('touchcancel', function (e) { touchEnd(e, true); }, { passive: false });
+
+/* ================= mobile keyboard ================= */
+var SENT = '__';
+function resetKbd() { kbd.value = SENT; try { kbd.setSelectionRange(SENT.length, SENT.length); } catch (e) {} }
+resetKbd();
+var sticky = {};
+function stickyHeld() { return Object.keys(sticky).length > 0; }
+function releaseSticky() {
+  var ks = Object.keys(sticky); if (!ks.length) return;
+  ks.forEach(function (k) { send({ t: 'key', k: k, down: false }); });
+  sticky = {}; updateSticky();
+}
+function updateSticky() { $$('#keyrow [data-sticky]').forEach(function (b) { b.classList.toggle('held', !!sticky[b.dataset.k]); }); }
+function tapKey(k) {
+  send({ t: 'key', k: k, down: true }); send({ t: 'key', k: k, down: false });
+  if (!MODS[k]) releaseSticky();
+}
+function typeText(s) {
+  var parts = s.replace(/\r\n?/g, '\n').split('\n');
+  parts.forEach(function (part, i) {
+    if (i > 0) tapKey('Enter');
+    if (!part) return;
+    if (stickyHeld() && Array.from(part).length === 1) { tapKey(part); return; }
+    send({ t: 'text', s: part }); releaseSticky();
+  });
+}
+function syncKbd() {
+  var v = kbd.value;
+  if (v === SENT) return;
+  var i = 0;
+  while (i < v.length && i < SENT.length && v[i] === SENT[i]) i++;
+  var deleted = SENT.length - i, inserted = v.slice(i);
+  for (var j = 0; j < deleted; j++) tapKey('Backspace');
+  if (inserted) typeText(inserted);
+  resetKbd();
+}
+var composing = false;
+kbd.addEventListener('compositionstart', function () { composing = true; });
+kbd.addEventListener('compositionend', function () { composing = false; setTimeout(syncKbd, 0); });
+kbd.addEventListener('input', function (e) {
+  if (composing || e.isComposing) return;
+  if (e.inputType === 'deleteContentBackward' && kbd.value === SENT.slice(0, -1)) { tapKey('Backspace'); resetKbd(); return; }
+  syncKbd();
+});
+kbd.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && !e.isComposing && hello) { e.preventDefault(); e.stopPropagation(); tapKey('Enter'); }
+});
+function kbOpened() {
+  if (!keyrow.hidden) return;
+  resetKbd(); keyrow.hidden = false; viewer.classList.add('kb'); $('#bKbd').classList.add('on');
+  setTimeout(fitViewport, 50);
+}
+kbd.addEventListener('focus', kbOpened);
+kbd.addEventListener('blur', kbClosed);
+function kbClosed() {
+  if (keyrow.hidden) return;
+  keyrow.hidden = true; viewer.classList.remove('kb'); $('#bKbd').classList.remove('on');
+  releaseSticky();
+  setTimeout(function () { window.scrollTo(0, 0); fitViewport(); }, 50);
+}
+function toggleKbd() {
+  if (document.activeElement === kbd || !keyrow.hidden) { kbd.blur(); kbClosed(); }
+  else { kbd.focus(); resetKbd(); if (document.activeElement === kbd) kbOpened(); }
+}
+(function () {
+  var b = $('#bKbd');
+  b.addEventListener('touchstart', function (e) { e.preventDefault(); }, { passive: false });
+  b.addEventListener('touchend', function (e) { e.preventDefault(); toggleKbd(); }, { passive: false });
+  b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+  b.addEventListener('click', toggleKbd);
+})();
+$$('#keyrow .k').forEach(function (b) {
+  function act() {
+    if (b.dataset.act === 'hidekb') { kbd.blur(); kbClosed(); return; }
+    var k = b.dataset.k;
+    if (b.hasAttribute('data-sticky')) {
+      if (sticky[k]) { delete sticky[k]; send({ t: 'key', k: k, down: false }); }
+      else { sticky[k] = 1; send({ t: 'key', k: k, down: true }); }
+      updateSticky();
+    } else tapKey(k);
+    b.classList.add('press'); setTimeout(function () { b.classList.remove('press'); }, 120);
+  }
+  b.addEventListener('touchstart', function (e) { e.preventDefault(); act(); }, { passive: false });
+  b.addEventListener('mousedown', function (e) { e.preventDefault(); if (!isSynthetic()) act(); });
+});
+window.addEventListener('scroll', function () { if (window.scrollY || window.scrollX) window.scrollTo(0, 0); });
+
+/* ================= release on blur / hide ================= */
+function resetInputState(sendRelease) {
+  if (sendRelease) send({ t: 'releaseall' });
+  sentKeys = {}; heldButtons = {}; sticky = {}; updateSticky();
+  pendingMove = null; cancelTap(); clearTimeout(longTimer); g = null;
+  if (twoTap) { clearTimeout(twoTap.timer); twoTap = null; }
+  stopMomentum(); mouseIn = null;
+  wAcc.x = wAcc.y = 0;
+}
+window.addEventListener('blur', function () { if (hello) resetInputState(true); });
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden) { if (hello) resetInputState(true); return; }
+  if (pendingAck) { pendingAck = false; send({ t: 'ack' }); }
+  if (wantConnected && everHello && !ws) { clearTimeout(retryTimer); connect(); }
+  if (!viewer.hidden) { keepAwake(); fitViewport(); }
+});
+window.addEventListener('pagehide', function () { send({ t: 'releaseall' }); });
+
+/* ================= internet mode (page served by the Local View connection server) ================= */
+// Enter a computer's 9-digit ID and its internet password. The server introduces the two devices; video
+// and the data channel (the same JSON messages as on Wi-Fi) then go directly between them, encrypted.
+var CLOUD = false, cloudId = '', cloudPw = '', rtc = null, cloudRetry = 0;
+// Where the connection server is and its private key: from the private address (/k/<key>/) when the
+// page comes from the server, or from this computer's Local View when opened at http://127.0.0.1/remote.
+var CLOUD_BASE = location.origin, CLOUD_KEY = '';
+function cloudApi(path) { return CLOUD_BASE + path + '?k=' + encodeURIComponent(CLOUD_KEY); }
+var rv = $('#rv');
+function fmtId(v) { return String(v || '').replace(/\D/g, '').slice(0, 9).replace(/(\d{3})(?=\d)/g, '$1 '); }
+function recents() { var r = LS.get('recent', []); return Array.isArray(r) ? r : []; }
+function saveRecents(list) { LS.set('recent', list.slice(0, 12)); }
+function saveRecent(m) {
+  var remember = $('#cRemember').checked;
+  var list = recents().filter(function (x) { return x && x.id !== cloudId; });
+  list.unshift({ id: cloudId, name: m.name || '', os: m.os || '', pw: remember ? cloudPw : '', at: Date.now() });
+  saveRecents(list);
+}
+function forgetPassword(id) { saveRecents(recents().map(function (x) { if (x.id === id) x.pw = ''; return x; })); }
+var XS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';
+function renderRecents() {
+  var list = recents(), ul = $('#recentList');
+  $('#recentBlock').hidden = !list.length;
+  $('#recentNote').textContent = list.length ? list.length + (list.length === 1 ? ' computer' : ' computers') : '';
+  ul.textContent = '';
+  list.forEach(function (x) {
+    var li = document.createElement('li'); li.className = 'peer';
+    var a = document.createElement('a'); a.className = 'pl'; a.href = '#id=' + x.id;
+    a.innerHTML = OS_ICON[x.os] || OS_ICON.windows;
+    var n = document.createElement('span'); n.className = 'title'; n.textContent = x.name || ('Computer ' + fmtId(x.id)); a.appendChild(n);
+    var gr = document.createElement('span'); gr.className = 'grow'; a.appendChild(gr);
+    var idt = document.createElement('span'); idt.className = 'time'; idt.textContent = fmtId(x.id); a.appendChild(idt);
+    a.insertAdjacentHTML('beforeend', CHEV);
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      $('#cid').value = fmtId(x.id); $('#cpw').value = x.pw || '';
+      if (x.pw) startCloudConnect(x.id, x.pw); else $('#cpw').focus();
+    });
+    var f = document.createElement('button'); f.type = 'button'; f.className = 'forget'; f.title = 'Forget this computer';
+    f.setAttribute('aria-label', 'Forget ' + (x.name || fmtId(x.id))); f.innerHTML = XS;
+    f.addEventListener('click', function () { saveRecents(recents().filter(function (y) { return y.id !== x.id; })); renderRecents(); });
+    li.appendChild(a); li.appendChild(f); ul.appendChild(li);
+  });
+}
+function enterCloudMode() {
+  CLOUD = true; document.body.classList.add('cloud');
+  $('#cloudForm').hidden = false;
+  connectBtn.setAttribute('form', 'cloudForm');
+  var chip = $('#hero .chip');
+  if (chip) { chip.title = 'Video and control go directly between your devices, encrypted'; chip.lastChild.textContent = 'Encrypted'; }
+  $('#headline').textContent = 'Your computers, anywhere';
+  $('#summary').textContent = 'Enter the ID and password shown in Local View';
+  var foot = $('#connect .footer .foot'); if (foot) foot.textContent = 'Turn on Internet access in Local View on the computer you want to reach.';
+  $('#bDevices').hidden = true;
+  $('#aboutText').textContent = 'Sees and controls your computers from anywhere. This page only introduces your devices; the picture, control, clipboard, files and password go directly between them, encrypted.';
+  var q = $('#sQuality'); if (q && q.closest('.srow')) q.closest('.srow').hidden = true; // video bitrate adapts by itself
+  document.title = 'Local View';
+  setHero('armed', 'Ready', 'idle');
+  renderRecents();
+}
+// This browser's pairing key: the computer remembers it after the first connection is confirmed there.
+function deviceIdentity() {
+  var d = LS.get('device', null);
+  if (!d || !d.id || !d.token) {
+    var hex = function (n) { var b = new Uint8Array(n); crypto.getRandomValues(b); return Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); };
+    d = { id: hex(8), token: hex(24) };
+    LS.set('device', d);
+  }
+  return { id: d.id, token: d.token };
+}
+function showPairCode(code, msg) {
+  setHero('countdown', 'Confirm on the computer', 'connecting');
+  hero.classList.add('pairing');
+  $('#headline').textContent = String(code).replace(/(\d{3})(\d{3})/, '$1 $2');
+  $('#summary').textContent = msg || 'Type this code into Local View on the computer to trust this device.';
+  setCta('Waiting for the code to be typed…', true);
+  $('#cloudErr').textContent = '';
+  if (!overlay.hidden) ovText.textContent = 'Code ' + code + ' — type it into Local View on the computer';
+}
+function cloudError(msg) { $('#cloudErr').textContent = msg; setHero('error', 'Check the details', 'error'); }
+function startCloudConnect(id, pw) {
+  id = String(id || '').replace(/\D/g, ''); pw = String(pw || '').trim();
+  if (id.length !== 9) { cloudError('The computer ID has 9 digits'); $('#cid').focus(); return; }
+  if (!pw) { cloudError('Enter the password shown in Local View on that computer'); $('#cpw').focus(); return; }
+  cloudId = id; cloudPw = pw; cloudRetry = 0;
+  $('#cloudErr').textContent = '';
+  setCta('Connecting…', true);
+  setHero('countdown', 'Connecting', 'connecting');
+  everHello = false; retry = 0;
+  connect();
+}
+$('#cid').addEventListener('input', function () {
+  var el = this, digitsBefore = el.value.slice(0, el.selectionStart).replace(/\D/g, '').length;
+  el.value = fmtId(el.value);
+  var pos = 0, seen = 0; // keep the caret after the same digit
+  while (pos < el.value.length && seen < digitsBefore) { if (/\d/.test(el.value[pos])) seen++; pos++; }
+  try { el.setSelectionRange(pos, pos); } catch (e) {}
+  $('#cloudErr').textContent = '';
+  if (el.value.replace(/\D/g, '').length === 9 && document.activeElement === el && !$('#cpw').value) $('#cpw').focus();
+});
+$('#cpw').addEventListener('input', function () { $('#cloudErr').textContent = ''; });
+$('#cloudForm').addEventListener('submit', function (e) { e.preventDefault(); startCloudConnect($('#cid').value, $('#cpw').value); });
+
+function teardownRtc() {
+  var r = rtc; rtc = null;
+  if (!r) return;
+  try { if (r.sig) { r.sig.onclose = null; r.sig.onmessage = null; r.sig.close(); } } catch (e) {}
+  try { if (r.dc) { r.dc.onclose = null; r.dc.onmessage = null; r.dc.close(); } } catch (e) {}
+  try { if (r.pc) r.pc.close(); } catch (e) {}
+  if (ws && r.dc && ws === r.dc) ws = null;
+  try { rv.srcObject = null; } catch (e) {}
+  if (bmp === rv) bmp = null;
+}
+function waitIce(pc, ms) {
+  return new Promise(function (res) {
+    if (pc.iceGatheringState === 'complete') { res(); return; }
+    var t = setTimeout(res, ms);
+    pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } });
+  });
+}
+function connectCloud() {
+  clearTimeout(retryTimer); clearTimeout(connectTimer);
+  if (ws) { var old = ws; ws = null; try { old.onclose = null; old.close(); } catch (e) {} }
+  teardownRtc();
+  if (!window.RTCPeerConnection) { onServerError('This browser can’t make internet connections (WebRTC is missing)', false); return; }
+  wantConnected = true; authFailed = false;
+  var r = { pc: null, dc: null, sig: null, answered: false }; rtc = r;
+  var st = { gotHello: false, sock: null }, ended = false;
+  function end(msg) {
+    if (ended || rtc !== r) return;
+    ended = true; clearTimeout(connectTimer);
+    var had = st.gotHello;
+    teardownRtc();
+    // While reconnecting, "offline" / unreachable are temporary (the computer may be restarting or
+    // switching networks): keep retrying. Refusals (wrong password, lockout, declined…) still stop.
+    if (msg && !had && everHello && /offline|too many|reach|answer|directly/i.test(msg)) msg = null;
+    if (msg && !had) { onServerError(msg, false); return; }
+    if (msg) toast(msg, 3500, true);
+    onClosed(had);
+  }
+  connectTimer = setTimeout(function () {
+    if (!st.gotHello) end(everHello ? null : 'The computer didn’t answer. Check that it’s online, then try again.');
+  }, 30000);
+  fetch(cloudApi('/api/ice'), { cache: 'no-store' }).then(function (x) { return x.json(); }).catch(function () { return {}; }).then(function (ice) {
+    if (rtc !== r) return;
+    var servers = (ice && ice.iceServers && ice.iceServers.length) ? ice.iceServers : [{ urls: 'stun:stun.cloudflare.com:3478' }];
+    var sig;
+    try { sig = new WebSocket(CLOUD_BASE.replace(/^http/, 'ws') + '/ws/view?id=' + cloudId + '&k=' + encodeURIComponent(CLOUD_KEY)); }
+    catch (e) { end(everHello ? null : 'Can’t reach the connection server'); return; }
+    r.sig = sig;
+    sig.onmessage = function (ev) {
+      if (rtc !== r) return;
+      var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.t === 'ready') startPeer(servers);
+      else if (m.t === 'answer' && r.pc) {
+        r.answered = true;
+        r.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp }).catch(function () { end(null); });
+      } else if (m.t === 'error') end(String(m.msg || 'Error'));
+    };
+    sig.onclose = function () {
+      if (rtc === r && !r.answered) end(everHello ? null : 'Can’t reach that computer right now. Check the ID and try again in a minute.');
+    };
+  });
+  function startPeer(servers) {
+    var pc = new RTCPeerConnection({ iceServers: servers }); r.pc = pc;
+    pc.addTransceiver('video', { direction: 'recvonly' });
+    var dc = pc.createDataChannel('lv', { ordered: true }); r.dc = dc; st.sock = dc;
+    pc.ontrack = function (e) {
+      if (rtc !== r) return;
+      rv.srcObject = (e.streams && e.streams[0]) || new MediaStream([e.track]);
+      var p = rv.play(); if (p && p.catch) p.catch(function () {});
+    };
+    pc.onconnectionstatechange = function () {
+      if (rtc === r && pc.connectionState === 'failed' && !st.gotHello && !everHello && cloudRetry < 1) {
+        cloudRetry++; ended = true; clearTimeout(connectTimer); teardownRtc(); // one quiet retry first
+        setTimeout(function () { if (wantConnected) connectCloud(); }, 300);
+        return;
+      }
+      if (rtc === r && (pc.connectionState === 'failed' || pc.connectionState === 'closed')) {
+        end(st.gotHello || everHello ? null : 'Couldn’t reach that computer directly. Its network may block it — try another network, or set up the relay (see README).');
+      }
+    };
+    dc.onopen = function () {
+      if (rtc !== r) return;
+      ws = dc;
+      if (r.sig) { try { r.sig.onclose = null; r.sig.close(); } catch (e) {} } // no longer needed
+      dc.send(JSON.stringify({ t: 'auth', pin: cloudPw, device: deviceIdentity() }));
+    };
+    var parts = {};
+    dc.onmessage = function (ev) {
+      if (rtc !== r || typeof ev.data !== 'string') return;
+      var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.t === 'chunk') {
+        var arr = parts[m.id] || (parts[m.id] = []); arr[m.i] = m.s;
+        var full = arr.length === m.n && arr.every(function (x) { return typeof x === 'string'; });
+        if (!full) return;
+        delete parts[m.id];
+        try { m = JSON.parse(arr.join('')); } catch (e) { return; }
+      }
+      handleMsg(m, st);
+    };
+    dc.onclose = function () { end(null); };
+    pc.createOffer().then(function (o) { return pc.setLocalDescription(o); })
+      .then(function () { return waitIce(pc, 3000); })
+      .then(function () {
+        if (rtc !== r) return;
+        if (r.sig && r.sig.readyState === 1) r.sig.send(JSON.stringify({ t: 'offer', sdp: pc.localDescription.sdp }));
+        else end(everHello ? null : 'Can’t reach the connection server');
+      })
+      .catch(function () { end(null); });
+  }
+}
+// Video frames → the same canvas the Wi-Fi JPEG frames use (zoom, gestures and cursor work unchanged)
+function onVideoFrame() {
+  if (!rv.videoWidth || !rtc) return;
+  stats.frames++;
+  bmp = rv; imgW = rv.videoWidth; imgH = rv.videoHeight;
+  requestDraw();
+}
+if (window.HTMLVideoElement && 'requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+  var vfc = function () { onVideoFrame(); rv.requestVideoFrameCallback(vfc); };
+  rv.requestVideoFrameCallback(vfc);
+} else {
+  var lastVT = -1;
+  (function pollVideo() {
+    if (rv.srcObject && rv.currentTime !== lastVT) { lastVT = rv.currentTime; onVideoFrame(); }
+    requestAnimationFrame(pollVideo);
+  })();
+}
+// bytes received, for the toolbar tooltip
+var rtcBytes = 0;
+setInterval(function () {
+  var r = rtc; if (!r || !r.pc || !hello) return;
+  r.pc.getStats().then(function (rep) {
+    rep.forEach(function (x) {
+      if (x.type === 'inbound-rtp' && x.kind === 'video') { if (rtcBytes && x.bytesReceived > rtcBytes) stats.bytes += x.bytesReceived - rtcBytes; rtcBytes = x.bytesReceived; }
+    });
+  }).catch(function () {});
+}, 1000);
+
+/* ================= boot ================= */
+applyTheme(); renderPin(); setHero('preview', 'Looking…', 'idle');
+swap = swapOn(); updateSwapUI(); updateKeyLabels(); applyMode(); setZoom(1);
+if (!coarse) collapseToolbar();
+
+function hashPinConnect() {
+  var hp = (location.hash.match(/[#&]pin=([^&]+)/) || [])[1];
+  if (!hp) return false;
+  try { hp = decodeURIComponent(hp); } catch (e) {}
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  setPinValue(hp); LS.set('pin', hp);
+  if (!wantConnected) startConnect(hp);
+  return true;
+}
+// #id=123456789 (internet mode): fill in the ID; connect straight away if this device remembers its password
+function hashIdConnect() {
+  var hid = (location.hash.match(/[#&]id=(\d{9})/) || [])[1];
+  if (!hid) return false;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  var known = recents().filter(function (x) { return x.id === hid; })[0];
+  $('#cid').value = fmtId(hid); $('#cpw').value = (known && known.pw) || '';
+  if (known && known.pw && !wantConnected) startCloudConnect(hid, known.pw);
+  else if (!isTouch) setTimeout(function () { $('#cpw').focus(); }, 50);
+  return true;
+}
+function hashMode() { if (/[#&]mode=extend\b/.test(location.hash)) wantExtend = true; }
+function bootLan() {
+  renderPeers(); fetchPeers();
+  window.addEventListener('hashchange', hashPinConnect);
+  if (!hashPinConnect()) {
+    var saved = LS.get('pin', '');
+    if (saved) { pin = String(saved); setPinValue(pin); }
+    if (saved && isStandalone) startConnect(pin);            // Home Screen app: go straight in
+    else if (!isTouch) setTimeout(function () { pinInput.focus(); }, 50);
+  }
+}
+function bootCloud() {
+  window.addEventListener('hashchange', hashIdConnect);
+  if (hashIdConnect()) return;
+  var list = recents();
+  if (list.length === 1 && list[0].pw && isStandalone) { // Home Screen app with one computer: go straight in
+    $('#cid').value = fmtId(list[0].id); $('#cpw').value = list[0].pw; startCloudConnect(list[0].id, list[0].pw);
+  } else if (!isTouch) setTimeout(function () { $('#cid').focus(); }, 50);
+}
+hashMode();
+window.addEventListener('hashchange', hashMode);
+loadInfo().then(function () { if (CLOUD) bootCloud(); else bootLan(); });
+
+/* iOS Safari: suggest Add to Home Screen (full-screen app, no browser bars) */
+(function () {
+  var iosSafari = isIOS && /Safari\//.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|DuckDuckGo|YaBrowser|Brave/.test(ua);
+  if (!iosSafari || isStandalone || LS.get('a2hsTip', false)) return;
+  $('#a2hs').hidden = false;
+  $('#a2hsX').addEventListener('click', function () { LS.set('a2hsTip', true); $('#a2hs').hidden = true; });
+})();
+})();
+</script>
+</body>
+</html>

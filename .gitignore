@@ -1,0 +1,26 @@
+# Python
+.venv/
+.venv-*/
+__pycache__/
+*.py[cod]
+
+# Build output (packaging/build-mac.sh, packaging/build-windows.bat)
+build/
+dist/
+packaging/icon.iconset/
+packaging/icon.icns
+*.zip
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# Your own connection server address (see cloud/README.md); builds without it ask for one.
+static/cloud.json
+
+# Connection server build output (cloud/public/ is committed: one-click deploys need it)
+cloud/node_modules/
+cloud/.wrangler/
