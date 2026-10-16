@@ -1,4 +1,4 @@
-# Local View connection server
+# Hop connection server
 
 A tiny Cloudflare Worker that lets your devices find each other over the internet. You set it up once;
 it runs on Cloudflare's free plan.
@@ -10,13 +10,13 @@ is checked by your computer itself, so it never passes through the server.
 
 ## Set it up (about 3 minutes, no tools needed)
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Nikita-Shulga/LocalView/tree/main/cloud)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Nikita-Shulga/Hop/tree/main/cloud)
 
-1. Click the button above, or **Create** in Local View's Internet access card.
+1. Click the button above, or **Create** in Hop's Internet access card.
 2. Sign in to Cloudflare, or create a free account.
 3. Press **Deploy**. When it finishes, Cloudflare shows your server's address, such as
-   `https://localview.yourname.workers.dev`.
-4. Paste it into Local View. Your other computers on the same Wi-Fi offer to use it with one click.
+   `https://hop.yourname.workers.dev`.
+4. Paste it into Hop. Your other computers on the same Wi-Fi offer to use it with one click.
 
 ### Or with the command line
 
@@ -30,14 +30,14 @@ npm run deploy
 ```
 
 The last command prints your server's address, for example
-`https://localview.yourname.workers.dev`. Then:
+`https://hop.yourname.workers.dev`. Then:
 
-1. On each computer, open Local View, turn on **Internet access**, and paste that address when asked
+1. On each computer, open Hop, turn on **Internet access**, and paste that address when asked
    (it's saved; change it later in **Settings > Internet access**). If you build the apps yourself, you can
    preset it by creating `static/cloud.json` containing `{"url": "https://…"}`; that file is git-ignored,
    so your server never ends up in a public repository.
 2. On any device, anywhere, open that address, enter the computer's **ID** and **password** (shown in
-   Local View), and connect.
+   Hop), and connect.
 
 ## Cost
 

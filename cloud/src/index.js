@@ -1,4 +1,4 @@
-// Local View connection server.
+// Hop connection server.
 //
 // Computers ("hosts") keep one WebSocket open to /ws/host?id=<9 digits>&key=<secret>. Viewers open
 // /ws/view?id=<9 digits>, send a WebRTC offer, and get the host's answer back. After that the video and
@@ -10,13 +10,13 @@
 //
 // Private site: the page, the API and the sockets only answer with the server's private key — the page
 // lives at /k/<key>/ and everything else needs ?k=<key>. Without it, every path is a plain 404, so a
-// stranger who finds the address sees nothing. The first Local View computer to connect claims the key
+// stranger who finds the address sees nothing. The first Hop computer to connect claims the key
 // (it generates one); after that only that key works. Only /static/ (styles, fonts, icons) is public.
 import { DurableObject } from 'cloudflare:workers';
 
-const VERSION = '1.5.0';
+const VERSION = '2.0.0';
 const ID_RE = /^\d{9}$/;
-const MSG_OFFLINE = 'That computer is offline. Make sure Local View is running on it with Internet access turned on.';
+const MSG_OFFLINE = 'That computer is offline. Make sure Hop is running on it with Internet access turned on.';
 const MAX_SDP = 20000;
 const KEY_RE = /^[A-Za-z0-9_-]{16,64}$/;
 const SITE_ROOM = '__site__';
@@ -69,7 +69,7 @@ function notFound() {
   return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } });
 }
 
-// Is `key` this server's private key? `claim` lets a Local View computer set it on a fresh server.
+// Is `key` this server's private key? `claim` lets a Hop computer set it on a fresh server.
 async function checkKey(env, key, claim) {
   if (!key || !KEY_RE.test(key)) return false;
   const h = await sha256('site:' + key);
@@ -83,7 +83,7 @@ async function checkKey(env, key, claim) {
 }
 
 function withCors(resp) {
-  // Local View on a computer opens its own copy of the viewer (http://127.0.0.1) and calls these.
+  // Hop on a computer opens its own copy of the viewer (http://127.0.0.1) and calls these.
   resp.headers.set('access-control-allow-origin', '*');
   return resp;
 }
@@ -91,7 +91,7 @@ function withCors(resp) {
 function manifest(key) {
   const base = '/k/' + key + '/';
   return new Response(JSON.stringify({
-    name: 'Local View', short_name: 'Local View', id: base, start_url: base, scope: base,
+    name: 'Hop', short_name: 'Hop', id: base, start_url: base, scope: base,
     display: 'standalone', orientation: 'any', theme_color: '#0A0A0B', background_color: '#0A0A0B',
     icons: [
       { src: '/static/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
@@ -129,7 +129,7 @@ export default {
     if (request.method === 'OPTIONS') return withCors(new Response(null, { status: 204 }));
     if (path === '/api/info') {
       if (!(await checkKey(env, key, false))) return withCors(notFound());
-      return withCors(json({ cloud: true, app: 'localview', version: VERSION }));
+      return withCors(json({ cloud: true, app: 'hop', version: VERSION }));
     }
     if (path === '/api/ice') {
       if (!(await checkKey(env, key, false))) return withCors(notFound());

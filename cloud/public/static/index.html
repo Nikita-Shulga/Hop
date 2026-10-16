@@ -9,16 +9,16 @@
 <meta name="theme-color" content="#0A0A0B">
 <meta name="color-scheme" content="dark light">
 <meta name="format-detection" content="telephone=no">
-<meta name="apple-mobile-web-app-title" content="Local View">
-<meta name="application-name" content="Local View">
-<title>Local View</title>
+<meta name="apple-mobile-web-app-title" content="Hop">
+<meta name="application-name" content="Hop">
+<title>Hop</title>
 <link rel="manifest" id="manifestLink" href="/static/manifest.webmanifest">
 <script>
 // On a private address (/k/<key>/) the Home Screen app must reopen that same address.
 if (/^\/k\/[A-Za-z0-9_-]{16,64}\//.test(location.pathname)) document.getElementById('manifestLink').href = 'manifest.webmanifest';
 </script>
 <link rel="apple-touch-icon" href="/static/icon-180.png">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230A0A0B'/%3E%3Crect x='6' y='8' width='20' height='13' rx='2.5' fill='none' stroke='%23A0A0A8' stroke-width='1.6'/%3E%3Cpath d='M11 18a5 5 0 0 1 10 0z' fill='%23F5A13A'/%3E%3Cpath d='M9 18h14' stroke='%23F69C34' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M12.5 24.5h7' stroke='%23F69C34' stroke-opacity='.5' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="/static/icon-192.png">
 <script>
 /* apply the saved theme before first paint (System follows prefers-color-scheme) */
 (function () {
@@ -32,7 +32,7 @@ if (/^\/k\/[A-Za-z0-9_-]{16,64}\//.test(location.pathname)) document.getElementB
 </script>
 <link rel="stylesheet" href="/static/theme.css">
 <style>
-/* ——— LocalView viewer — layout on top of the shared Quiet AI theme ——— */
+/* ——— Hop viewer — layout on top of the shared Quiet AI theme ——— */
 :root{
   --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
   --sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);
@@ -305,7 +305,7 @@ a.fl:hover .dl{color:var(--text);background:var(--fill-2)}
 
 #kbd{position:fixed;top:calc(var(--sat) + 60px);left:50%;width:1px;height:1px;opacity:0;border:0;padding:0;margin:0;
   font-size:16px;color:transparent;background:transparent;caret-color:transparent;outline:none;pointer-events:none;z-index:-1}
-/* Internet mode (page served by the Local View connection server) */
+/* Internet mode (page served by the Hop connection server) */
 body.cloud #connectForm, body.cloud #lanDevices{display:none}
 .cfield{display:flex;flex-direction:column;margin-bottom:10px}
 .cfield .block-head{margin-bottom:6px}
@@ -320,6 +320,7 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
 #hero.pairing .headline{font-size:38px;line-height:44px;letter-spacing:.06em}
 #hero.pairing .summary{white-space:normal;overflow:visible}
 #rv{position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none}
+.mark.hop{width:27px;height:19px;color:var(--text)}
 </style>
 </head>
 <body>
@@ -329,8 +330,8 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
   <div class="col">
     <header class="titlebar">
       <div class="brand">
-        <svg class="mark" viewBox="0 0 48 28" aria-hidden="true"><defs><linearGradient id="lvSun" x1="0" y1="9.5" x2="0" y2="17.5" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFD07A"/><stop offset="1" stop-color="#F28422"/></linearGradient></defs><rect x="7" y="1.5" width="34" height="21" rx="4.5" stroke="currentColor" stroke-opacity=".5" stroke-width="2.4"/><path d="M16 17.5A8 8 0 0 1 32 17.5Z" fill="url(#lvSun)" stroke="none"/><path d="M12 17.5H36" stroke="#F69C34" stroke-opacity=".92" stroke-width="2.4"/><path d="M18 26.5H30" stroke="#F69C34" stroke-opacity=".45" stroke-width="2.4"/></svg>
-        <span class="brand-name">Local <span>View</span></span>
+        <svg class="mark hop" viewBox="0 0 34 24" aria-hidden="true"><defs><linearGradient id="hopArc" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F28422" stop-opacity=".55"/><stop offset="1" stop-color="#F69C34"/></linearGradient><linearGradient id="hopBall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE0A0"/><stop offset="1" stop-color="#F28C28"/></linearGradient></defs><path d="M9.5 13.2A7.5 7 0 0 1 24.5 13.2" fill="none" stroke="url(#hopArc)" stroke-width="2.2" stroke-linecap="round"/><circle cx="17" cy="6.3" r="3.1" fill="url(#hopBall)"/><rect x="2.6" y="13.6" width="13" height="8.6" rx="2" fill="none" stroke="currentColor" stroke-opacity=".75" stroke-width="1.7"/><rect x="18.4" y="13.6" width="13" height="8.6" rx="2" fill="none" stroke="currentColor" stroke-opacity=".75" stroke-width="1.7"/></svg>
+        <span class="brand-name">Hop</span>
       </div>
       <div class="tb-actions">
         <button class="tb" id="bTheme" type="button" aria-label="Switch light or dark" title="Light / dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg></button>
@@ -360,7 +361,7 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
 
       <form id="cloudForm" class="block" autocomplete="on" hidden>
         <div class="cfield">
-          <div class="block-head"><h2><label for="cid">Computer ID</label></h2><span class="note">Shown in Local View on that computer</span></div>
+          <div class="block-head"><h2><label for="cid">Computer ID</label></h2><span class="note">Shown in Hop on that computer</span></div>
           <input id="cid" name="username" class="input big" type="text" inputmode="numeric" autocomplete="username" placeholder="123 456 789" maxlength="11" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next">
         </div>
         <div class="cfield">
@@ -396,7 +397,7 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
         <div class="panel tip" role="note">
           <span class="tile"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2.6"/><path d="M8 5.4v5.2M5.4 8h5.2"/></svg></span>
           <div class="stext"><strong>Add to Home Screen</strong>
-            <small>Tap <svg viewBox="0 0 16 16" aria-label="Share"><path d="M8 2.2v7.6M5.4 4.6L8 2.2l2.6 2.4"/><path d="M5.6 6.6H4.4c-.6 0-1 .4-1 1v5.2c0 .6.4 1 1 1h7.2c.6 0 1-.4 1-1V7.6c0-.6-.4-1-1-1h-1.2"/></svg> Share, then “Add to Home Screen” — Local View opens full screen, like an app.</small></div>
+            <small>Tap <svg viewBox="0 0 16 16" aria-label="Share"><path d="M8 2.2v7.6M5.4 4.6L8 2.2l2.6 2.4"/><path d="M5.6 6.6H4.4c-.6 0-1 .4-1 1v5.2c0 .6.4 1 1 1h7.2c.6 0 1-.4 1-1V7.6c0-.6-.4-1-1-1h-1.2"/></svg> Share, then “Add to Home Screen” — Hop opens full screen, like an app.</small></div>
           <button class="tb" id="a2hsX" type="button" aria-label="Dismiss tip" title="Dismiss"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button>
         </div>
       </section>
@@ -409,7 +410,7 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
   <div id="stage"><canvas id="screen" tabindex="-1"></canvas></div>
   <div id="hot"></div>
   <div id="toolbar">
-    <button id="pill" type="button" aria-label="Show toolbar" title="Show toolbar"><i class="dot" id="pillDot"></i><span id="pillTxt">Local View</span></button>
+    <button id="pill" type="button" aria-label="Show toolbar" title="Show toolbar"><i class="dot" id="pillDot"></i><span id="pillTxt">Hop</span></button>
     <div id="bar" role="toolbar" aria-label="Viewer controls">
       <div id="stat" class="tbadge" title=""><i class="dot" id="statDot"></i><span id="statName">Host</span><span id="statTxt">–</span></div>
       <div id="viewOnly" class="tbadge vo" title="View only — control is turned off on the host" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 8s2.2-4.2 6.2-4.2S14.2 8 14.2 8 12 12.2 8 12.2 1.8 8 1.8 8z"/><circle cx="8" cy="8" r="1.9"/></svg><span>View only</span></div>
@@ -511,7 +512,7 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
         </div>
       </div>
 
-      <div class="block-head"><h2>About</h2><span class="note">Local View</span></div>
+      <div class="block-head"><h2>About</h2><span class="note">Hop</span></div>
       <div class="panel">
         <div class="srow prose"><p id="aboutText">Shows and controls this computer from any browser on the same network. On Wi-Fi nothing goes through the internet — no accounts, no cloud.</p></div>
       </div>
@@ -533,7 +534,7 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
           <button class="button" type="submit">Go</button>
         </form>
       </div>
-      <p class="foot">Computers running LocalView appear here automatically. Your PIN is carried over when you switch.</p>
+      <p class="foot">Computers running Hop appear here automatically. Your PIN is carried over when you switch.</p>
     </div>
   </div>
 </div>
@@ -571,7 +572,7 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
       <div class="panel">
         <div class="folder-row">
           <span class="tile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 4.6c0-.7.5-1.2 1.2-1.2h2.8l1.4 1.5h5c.7 0 1.2.5 1.2 1.2v5.8c0 .7-.5 1.2-1.2 1.2H3.4c-.7 0-1.2-.5-1.2-1.2z"/></svg></span>
-          <div class="stext"><strong>Local View</strong><small id="filesFolder">~/Downloads/Local View</small></div>
+          <div class="stext"><strong>Hop</strong><small id="filesFolder">~/Downloads/Hop</small></div>
           <button class="button" id="filesUpload" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V3.4M4.6 6.6L8 3.2l3.4 3.4M3 12.8h10"/></svg><span>Upload</span></button>
         </div>
         <div class="upl" id="upl" hidden>
@@ -960,18 +961,18 @@ document.addEventListener('selectionchange', function () { if (document.activeEl
 function loadInfo() {
   var km = location.pathname.match(/^\/k\/([A-Za-z0-9_-]{16,64})\/?/);
   if (km) { CLOUD_KEY = km[1]; enterCloudMode(); return Promise.resolve(); }
-  if (location.pathname === '/remote') { // computer to computer: this computer's own Local View serves the page
+  if (location.pathname === '/remote') { // computer to computer: this computer's own Hop serves the page
     return fetch('/api/remote-config', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !j.base || !j.key) throw new Error('no server');
       CLOUD_BASE = j.base; CLOUD_KEY = j.key; enterCloudMode();
-    }).catch(function () { enterCloudMode(); cloudError('Turn on Internet access in Local View on this computer first.'); });
+    }).catch(function () { enterCloudMode(); cloudError('Turn on Internet access in Hop on this computer first.'); });
   }
   return fetch('/api/info', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
     if (j && j.cloud) { enterCloudMode(); return; }
     hostInfo = j;
     $('#headline').textContent = j.name || location.hostname;
     renderSummary();
-    document.title = 'Local View · ' + (j.name || location.hostname);
+    document.title = 'Hop · ' + (j.name || location.hostname);
     if (hero.dataset.tone === 'preview') setHero('armed', 'Ready', 'idle');
     swap = swapOn(); updateSwapUI(); updateKeyLabels(); setHostNames();
   }).catch(function () {
@@ -1016,7 +1017,7 @@ function renderPeers() {
         var li0 = document.createElement('li'); li0.className = 'empty';
         var st = document.createElement('strong'); st.textContent = !peers ? 'Looking for devices…' : 'No devices found';
         li0.appendChild(st);
-        if (peers) { var sm = document.createElement('span'); sm.textContent = 'Computers running LocalView show up here.'; li0.appendChild(sm); }
+        if (peers) { var sm = document.createElement('span'); sm.textContent = 'Computers running Hop show up here.'; li0.appendChild(sm); }
         el.appendChild(li0);
       } else peers.forEach(function (d) {
         var li = document.createElement('li'); li.className = 'peer' + (d.self ? ' self' : '');
@@ -1089,9 +1090,9 @@ function showConnect(err) {
   hero.classList.remove('pairing');
   if (CLOUD) {
     $('#headline').textContent = 'Your computers, anywhere';
-    $('#summary').textContent = 'Enter the ID and password shown in Local View';
+    $('#summary').textContent = 'Enter the ID and password shown in Hop';
     $('#cloudErr').textContent = err || '';
-    document.title = 'Local View';
+    document.title = 'Hop';
     renderRecents();
     if (err && !isTouch) { var f = /password/i.test(err) ? $('#cpw') : $('#cid'); f.focus(); f.select(); }
   } else {
@@ -1099,7 +1100,7 @@ function showConnect(err) {
     pinWrap.classList.toggle('err', !!err);
     if (pin) setPinValue(pin);
     if (err && !isTouch) { pinInput.focus(); pinInput.select(); renderPin(); }
-    document.title = 'Local View · ' + ((hostInfo && hostInfo.name) || location.hostname);
+    document.title = 'Hop · ' + ((hostInfo && hostInfo.name) || location.hostname);
     fetchPeers();
   }
   releaseWake();
@@ -1188,7 +1189,7 @@ function onHello(m) {
   var cur = mons.filter(function (mo) { return mo.index === +settings.monitor; })[0];
   if (!bmp && cur) { imgW = cur.width; imgH = cur.height; }
   send({ t: 'settings', monitor: +settings.monitor, quality: +settings.quality, maxw: +settings.maxw, fps: +settings.fps });
-  document.title = (m.name || 'Host') + ' · Local View';
+  document.title = (m.name || 'Host') + ' · Hop';
   $('#statName').textContent = m.name || 'Host';
   setHero('armed', 'Connected', 'ok');
   hero.classList.remove('pairing');
@@ -1394,7 +1395,7 @@ function isFull() { return !!(document.fullscreenElement || document.webkitFulls
 function exitFullscreen() {
   try { if (document.fullscreenElement) document.exitFullscreen(); else if (document.webkitFullscreenElement) document.webkitExitFullscreen(); } catch (e) {}
 }
-// Inside a Local View app window, full screen is the window's own (window.pywebview.api).
+// Inside a Hop app window, full screen is the window's own (window.pywebview.api).
 var appFull = false;
 function appApi() { return window.pywebview && window.pywebview.api && window.pywebview.api.toggle_fullscreen ? window.pywebview.api : null; }
 function syncFullBtn() { $('#bFull').classList.toggle('on', appApi() ? appFull : isFull()); }
@@ -1911,7 +1912,7 @@ document.addEventListener('dragenter', function (e) {
     var ctl = canControl();
     drop.classList.toggle('off', !ctl);
     $('#dropTitle').textContent = ctl ? 'Drop to send to ' + hostName() : 'View only';
-    $('#dropSub').textContent = ctl ? 'Saved to ' + (filesState.folder || 'Downloads/Local View') : 'Uploading is turned off on the host';
+    $('#dropSub').textContent = ctl ? 'Saved to ' + (filesState.folder || 'Downloads/Hop') : 'Uploading is turned off on the host';
     drop.hidden = false;
   }
 });
@@ -1987,7 +1988,7 @@ function startExtend() {
   if (!hasFeature('extend')) { toast(hostName() + ' can’t add a display by itself — see Settings → Mode', 4500, true); openSheet(sheetSettings); updateExtendUI(); return; }
   var z = extendSize();
   wantExtend = true; extendState = 'starting'; updateExtendUI();
-  enterFull(); // works right away in Local View windows and after a click in browsers
+  enterFull(); // works right away in Hop windows and after a click in browsers
   send({ t: 'extend', w: z.w, h: z.h, hidpi: z.hidpi, side: 'right' });
   // a sharp, smooth stream of the whole new display (not saved: Control mode keeps your settings)
   send({ t: 'settings', maxw: Math.min(3840, Math.round(z.w * (z.hidpi ? 2 : 1))), fps: 30, quality: 70 });
@@ -2527,12 +2528,12 @@ document.addEventListener('visibilitychange', function () {
 });
 window.addEventListener('pagehide', function () { send({ t: 'releaseall' }); });
 
-/* ================= internet mode (page served by the Local View connection server) ================= */
+/* ================= internet mode (page served by the Hop connection server) ================= */
 // Enter a computer's 9-digit ID and its internet password. The server introduces the two devices; video
 // and the data channel (the same JSON messages as on Wi-Fi) then go directly between them, encrypted.
 var CLOUD = false, cloudId = '', cloudPw = '', rtc = null, cloudRetry = 0;
 // Where the connection server is and its private key: from the private address (/k/<key>/) when the
-// page comes from the server, or from this computer's Local View when opened at http://127.0.0.1/remote.
+// page comes from the server, or from this computer's Hop when opened at http://127.0.0.1/remote.
 var CLOUD_BASE = location.origin, CLOUD_KEY = '';
 function cloudApi(path) { return CLOUD_BASE + path + '?k=' + encodeURIComponent(CLOUD_KEY); }
 var rv = $('#rv');
@@ -2578,12 +2579,12 @@ function enterCloudMode() {
   var chip = $('#hero .chip');
   if (chip) { chip.title = 'Video and control go directly between your devices, encrypted'; chip.lastChild.textContent = 'Encrypted'; }
   $('#headline').textContent = 'Your computers, anywhere';
-  $('#summary').textContent = 'Enter the ID and password shown in Local View';
-  var foot = $('#connect .footer .foot'); if (foot) foot.textContent = 'Turn on Internet access in Local View on the computer you want to reach.';
+  $('#summary').textContent = 'Enter the ID and password shown in Hop';
+  var foot = $('#connect .footer .foot'); if (foot) foot.textContent = 'Turn on Internet access in Hop on the computer you want to reach.';
   $('#bDevices').hidden = true;
   $('#aboutText').textContent = 'Sees and controls your computers from anywhere. This page only introduces your devices; the picture, control, clipboard, files and password go directly between them, encrypted.';
   var q = $('#sQuality'); if (q && q.closest('.srow')) q.closest('.srow').hidden = true; // video bitrate adapts by itself
-  document.title = 'Local View';
+  document.title = 'Hop';
   setHero('armed', 'Ready', 'idle');
   renderRecents();
 }
@@ -2601,16 +2602,16 @@ function showPairCode(code, msg) {
   setHero('countdown', 'Confirm on the computer', 'connecting');
   hero.classList.add('pairing');
   $('#headline').textContent = String(code).replace(/(\d{3})(\d{3})/, '$1 $2');
-  $('#summary').textContent = msg || 'Type this code into Local View on the computer to trust this device.';
+  $('#summary').textContent = msg || 'Type this code into Hop on the computer to trust this device.';
   setCta('Waiting for the code to be typed…', true);
   $('#cloudErr').textContent = '';
-  if (!overlay.hidden) ovText.textContent = 'Code ' + code + ' — type it into Local View on the computer';
+  if (!overlay.hidden) ovText.textContent = 'Code ' + code + ' — type it into Hop on the computer';
 }
 function cloudError(msg) { $('#cloudErr').textContent = msg; setHero('error', 'Check the details', 'error'); }
 function startCloudConnect(id, pw) {
   id = String(id || '').replace(/\D/g, ''); pw = String(pw || '').trim();
   if (id.length !== 9) { cloudError('The computer ID has 9 digits'); $('#cid').focus(); return; }
-  if (!pw) { cloudError('Enter the password shown in Local View on that computer'); $('#cpw').focus(); return; }
+  if (!pw) { cloudError('Enter the password shown in Hop on that computer'); $('#cpw').focus(); return; }
   cloudId = id; cloudPw = pw; cloudRetry = 0;
   $('#cloudErr').textContent = '';
   setCta('Connecting…', true);

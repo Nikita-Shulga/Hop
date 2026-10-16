@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds "dist/Local View.app" and dist/LocalView-<version>-mac-<arch>.zip.
+# Builds "dist/Hop.app" and dist/Hop-<version>-mac-<arch>.zip.
 # Usage: packaging/build-mac.sh        (run on a Mac; builds for this Python's architecture)
 # Env:   VENV=path   virtual environment to use (default: .venv in the project)
 #        PYTHON=path Python 3.10+ used to create the venv if it doesn't exist yet
@@ -12,7 +12,7 @@ fail() { echo "error: $*" >&2; exit 1; }
 
 VERSION="$(tr -d '[:space:]' < packaging/VERSION)"
 VENV="${VENV:-$ROOT/.venv}"
-APP="dist/Local View.app"
+APP="dist/Hop.app"
 
 # 1. Virtual environment
 if [ ! -x "$VENV/bin/python" ]; then
@@ -47,7 +47,7 @@ case "$ARCH" in
   x86_64) ARCH=x64 ;;
   arm64|aarch64) ARCH=arm64 ;;
 esac
-ZIP="dist/LocalView-$VERSION-mac-$ARCH.zip"
+ZIP="dist/Hop-$VERSION-mac-$ARCH.zip"
 
 # 3. Icon
 echo "==> Generating icon.icns"
@@ -55,18 +55,38 @@ bash packaging/make-icns.sh
 
 # 4. PyInstaller
 echo "==> Building $APP ($ARCH, version $VERSION)"
-rm -rf "build/localview" "dist/Local View" "$APP" "$ZIP"
+rm -rf "build/hop" "dist/Hop" "$APP" "$ZIP"
 "$VPY" -m PyInstaller --noconfirm --clean --log-level WARN \
-  --distpath dist --workpath build/localview packaging/localview.spec \
+  --distpath dist --workpath build/hop packaging/hop.spec \
   || fail "PyInstaller failed"
 [ -d "$APP" ] || fail "$APP was not produced"
-rm -rf "dist/Local View"   # the intermediate onedir folder; the .app contains everything
+rm -rf "dist/Hop"   # the intermediate onedir folder; the .app contains everything
 
-# 5. Ad hoc signature (no Developer ID; lets the app run and keeps its identity stable per build)
-echo "==> Signing (ad hoc)"
+# 5. Signature. With MACOS_SIGN_P12 (base64 .p12) + MACOS_SIGN_PASSWORD set (GitHub Actions secrets), sign
+#    with that fixed self-signed certificate: macOS then sees every release as the same app, so updates keep
+#    their Screen Recording and Accessibility permissions. Without it (local builds), sign ad hoc.
 xattr -cr "$APP"
-codesign --force --deep -s - "$APP" || fail "codesign failed"
-codesign --verify --deep --strict "$APP" || fail "signature verification failed"
+if [ -n "${MACOS_SIGN_P12:-}" ] && [ -n "${MACOS_SIGN_PASSWORD:-}" ]; then
+  echo "==> Signing with the Hop certificate"
+  KC="$ROOT/build/hop-sign.keychain-db"; KPW="$(openssl rand -hex 16)"
+  mkdir -p build; rm -f "$KC"
+  security create-keychain -p "$KPW" "$KC" || fail "couldn't create the signing keychain"
+  security set-keychain-settings -lut 3600 "$KC"
+  security unlock-keychain -p "$KPW" "$KC"
+  printf '%s' "$MACOS_SIGN_P12" | base64 --decode > build/hop-sign.p12
+  security import build/hop-sign.p12 -k "$KC" -P "$MACOS_SIGN_PASSWORD" -T /usr/bin/codesign >/dev/null || fail "couldn't import the certificate"
+  rm -f build/hop-sign.p12
+  security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KPW" "$KC" >/dev/null
+  # codesign looks up identities through the search list
+  security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+  codesign --force --deep --keychain "$KC" -s "Hop Self-Signed" "$APP" || fail "codesign failed"
+  security delete-keychain "$KC" || true
+else
+  echo "==> Signing (ad hoc)"
+  codesign --force --deep -s - "$APP" || fail "codesign failed"
+fi
+codesign --verify --deep "$APP" || fail "signature verification failed"
+codesign -dv "$APP" 2>&1 | grep -E "^(Authority|Signature)=" || true
 
 # 6. Zip
 echo "==> Zipping"
@@ -76,6 +96,6 @@ echo
 echo "Built:  $ROOT/$APP"
 echo "Zip:    $ROOT/$ZIP"
 echo
-echo "First launch on another Mac: move Local View to Applications, then right-click it > Open"
+echo "First launch on another Mac: move Hop to Applications, then right-click it > Open"
 echo "(or System Settings > Privacy & Security > Open Anyway). The app is ad hoc signed, not notarized."
-echo "Then grant Screen Recording and Accessibility to \"Local View\" in Privacy & Security."
+echo "Then grant Screen Recording and Accessibility to \"Hop\" in Privacy & Security."

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en" data-pref="__LV_THEME__"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark">
-<title>Local View</title>
+<title>Hop</title>
 <link rel="icon" href="/static/icon.png">
 <link rel="stylesheet" href="/static/theme.css">
 <script>
@@ -18,7 +18,7 @@ body.shell-mac .titlebar{padding-left:84px;height:52px}
 body.shell-mac .sheet{top:52px}
 body:not(.shell-win)::after{display:none}
 .titlebar{-webkit-user-select:none;user-select:none}
-.mark.lv{width:25px;height:19px}
+.mark.hop{width:27px;height:19px;color:var(--text)}
 main{overflow-y:auto;overflow-x:hidden;padding-bottom:2px}
 main::-webkit-scrollbar{width:0}
 
@@ -125,6 +125,15 @@ main::-webkit-scrollbar{width:0}
 .step:not(.done) small .ok{display:none}
 #setup-block .panel{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 35%,transparent),0 1px 2px rgba(0,0,0,.2)}
 
+/* Update available banner */
+.upd-banner{display:flex;align-items:center;gap:10px;width:100%;margin-top:12px;height:40px;padding:0 6px 0 12px;border-radius:10px;background:color-mix(in srgb,var(--amber) 10%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 30%,transparent);color:var(--amber-text);font-weight:500}
+.upd-banner i{width:6px;height:6px;border-radius:50%;background:var(--amber)}
+.upd-banner #upd-banner-text{flex:1;text-align:left}
+.upd-cta{display:flex;align-items:center;gap:2px;height:28px;padding:0 6px 0 10px;border-radius:7px;background:color-mix(in srgb,var(--amber) 18%,transparent);font-size:12px}
+.upd-cta svg{width:14px;height:14px}
+.upd-banner:hover .upd-cta{background:color-mix(in srgb,var(--amber) 28%,transparent)}
+.upd-banner.busy .upd-cta{display:none}
+
 /* Your devices / Nearby (shared row style) */
 .devlist li.dev{height:auto;min-height:48px;padding:7px 8px 7px 10px;gap:10px}
 .devlist li.dev .stext{flex:1;min-width:0;gap:1px}
@@ -174,8 +183,8 @@ main::-webkit-scrollbar{width:0}
 <body>
   <header class="titlebar pywebview-drag-region">
     <div class="brand">
-      <svg class="mark lv" viewBox="0 0 32 24" aria-hidden="true"><defs><linearGradient id="lvsun" x1="0" y1="6" x2="0" y2="11.4" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFD07A"/><stop offset="1" stop-color="#F28422"/></linearGradient></defs><rect x="2" y="1.5" width="28" height="17" rx="4" stroke="currentColor" stroke-opacity=".88" stroke-width="2"/><path d="M10.6 11.4A5.4 5.4 0 0 1 21.4 11.4Z" fill="url(#lvsun)" stroke="none"/><path d="M7 14.2H25" stroke="#F69C34" stroke-opacity=".92" stroke-width="2"/><path d="M11.5 22.5H20.5" stroke="#F69C34" stroke-opacity=".45" stroke-width="2"/></svg>
-      <span class="brand-name">Local <span>View</span></span>
+      <svg class="mark hop" viewBox="0 0 34 24" aria-hidden="true"><defs><linearGradient id="hopArc" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F28422" stop-opacity=".55"/><stop offset="1" stop-color="#F69C34"/></linearGradient><linearGradient id="hopBall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE0A0"/><stop offset="1" stop-color="#F28C28"/></linearGradient></defs><path d="M9.5 13.2A7.5 7 0 0 1 24.5 13.2" fill="none" stroke="url(#hopArc)" stroke-width="2.2" stroke-linecap="round"/><circle cx="17" cy="6.3" r="3.1" fill="url(#hopBall)"/><rect x="2.6" y="13.6" width="13" height="8.6" rx="2" fill="none" stroke="currentColor" stroke-opacity=".75" stroke-width="1.7"/><rect x="18.4" y="13.6" width="13" height="8.6" rx="2" fill="none" stroke="currentColor" stroke-opacity=".75" stroke-width="1.7"/></svg>
+      <span class="brand-name">Hop</span>
     </div>
     <div class="tb-actions">
       <button id="open-settings" class="tb" aria-label="Settings" title="Settings"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6.5M12 5h1.5M2.5 11h1.5M7 11h6.5"/><circle cx="10.5" cy="5" r="1.5"/><circle cx="5.5" cy="11" r="1.5"/></svg></button>
@@ -196,19 +205,21 @@ main::-webkit-scrollbar{width:0}
       <canvas id="signal" class="signal" aria-hidden="true"></canvas>
     </section>
 
+    <button id="upd-banner" class="upd-banner hidden" type="button"><i></i><span id="upd-banner-text"></span><span class="upd-cta">Update now<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span></button>
+
     <section class="block hidden" id="setup-block">
       <div class="block-head"><h2>Finish setting up</h2><span class="note" id="setup-note"></span></div>
       <div class="panel setup">
-        <div class="srow step" id="step-screen"><span class="stepnum">1</span><div class="stext"><strong>Let your devices see this screen</strong><small><span class="todo" id="scr-todo">macOS asks once — turn on <b class="appname">Local View</b> under Screen Recording.</span><span class="ok">Screen Recording is on.</span></small></div><button class="button sm" data-req="screen">Allow</button></div>
-        <div class="srow step" id="step-ax"><span class="stepnum">2</span><div class="stext"><strong>Let them click and type</strong><small><span class="todo">Turn on <b class="appname">Local View</b> under Accessibility.</span><span class="ok">Accessibility is on.</span></small></div><button class="button sm" data-req="accessibility">Allow</button></div>
-        <div class="srow step hidden" id="step-restart"><span class="stepnum">3</span><div class="stext"><strong>Restart Local View</strong><small>macOS turns on screen access after a restart. It takes a second.</small></div><button class="button sm" id="restart-btn">Restart</button></div>
+        <div class="srow step" id="step-screen"><span class="stepnum">1</span><div class="stext"><strong>Let your devices see this screen</strong><small><span class="todo" id="scr-todo">macOS asks once — turn on <b class="appname">Hop</b> under Screen Recording.</span><span class="ok">Screen Recording is on.</span></small></div><button class="button sm" data-req="screen">Allow</button></div>
+        <div class="srow step" id="step-ax"><span class="stepnum">2</span><div class="stext"><strong>Let them click and type</strong><small><span class="todo">Turn on <b class="appname">Hop</b> under Accessibility.</span><span class="ok">Accessibility is on.</span></small></div><button class="button sm" data-req="accessibility">Allow</button></div>
+        <div class="srow step hidden" id="step-restart"><span class="stepnum">3</span><div class="stext"><strong>Restart Hop</strong><small>macOS turns on screen access after a restart. It takes a second.</small></div><button class="button sm" id="restart-btn">Restart</button></div>
       </div>
     </section>
 
     <section class="block">
       <div class="block-head"><h2>Your devices</h2><span class="clinks"><button id="net-connect-toggle" class="link hidden">Over the internet…</button><button id="addr-toggle" class="link">Connect to address…</button></span></div>
       <div class="panel peers-panel">
-        <ul id="peers" class="chat-list devlist" aria-label="Other computers running Local View"></ul>
+        <ul id="peers" class="chat-list devlist" aria-label="Other computers running Hop"></ul>
         <form id="net-connect-form" class="addr-form hidden" autocomplete="off"><input id="net-connect-input" class="input" placeholder="Computer ID, e.g. 123 456 789" inputmode="numeric" spellcheck="false" aria-label="ID of a computer to connect to over the internet"><button class="link" type="button" id="net-connect-extend" title="Use this computer as its second screen">Second screen</button><button class="button sm" type="submit">Connect</button></form>
         <form id="addr-form" class="addr-form hidden" autocomplete="off"><input id="addr-input" class="input" placeholder="studio.local or 192.168.1.20" spellcheck="false" autocapitalize="off" aria-label="Address of another computer"><button class="button sm" type="submit">Connect</button></form>
       </div>
@@ -243,8 +254,8 @@ main::-webkit-scrollbar{width:0}
           <div id="net-suggest"></div>
           <button id="net-other" class="link hidden" type="button">Use a different server…</button>
           <div class="nstep"><span class="stepnum">1</span><div class="stext"><strong>Create your free server</strong><small>One time, on Cloudflare: sign in or sign up (free), then press <b>Deploy</b>.</small></div><button class="button sm" id="net-deploy" type="button">Create</button></div>
-          <div class="nstep"><span class="stepnum">2</span><div class="stext"><strong>Paste its address</strong><small>Cloudflare shows it when it's done, like <b>localview.yourname.workers.dev</b></small></div></div>
-          <form id="net-url-form" class="url-form" autocomplete="off"><input id="net-url" class="input" placeholder="localview.yourname.workers.dev" spellcheck="false" autocapitalize="off" aria-label="Connection server address"><button class="button sm" type="submit">Connect</button></form>
+          <div class="nstep"><span class="stepnum">2</span><div class="stext"><strong>Paste its address</strong><small>Cloudflare shows it when it's done, like <b>hop.yourname.workers.dev</b></small></div></div>
+          <form id="net-url-form" class="url-form" autocomplete="off"><input id="net-url" class="input" placeholder="hop.yourname.workers.dev" spellcheck="false" autocapitalize="off" aria-label="Connection server address"><button class="button sm" type="submit">Connect</button></form>
           <small class="preview">Your other computers find it by themselves when they're on the same Wi-Fi.</small>
         </div>
         <div id="net-on" class="net-body hidden">
@@ -253,7 +264,7 @@ main::-webkit-scrollbar{width:0}
             <div class="net-cell"><div class="crow"><span class="clabel">Password</span><button id="net-pw-toggle" class="link">Show</button></div><button id="net-pw" class="net-val pw" title="Copy password"><span id="net-pw-text"></span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.2A1.3 1.3 0 0 0 9.2 2H3.8A1.3 1.3 0 0 0 2.5 3.3v5.4A1.3 1.3 0 0 0 3.8 10h.2"/></svg></button></div>
           </div>
           <form id="net-pw-edit" class="pin-edit hidden" autocomplete="off"><input id="net-pw-input" class="input" maxlength="64" placeholder="At least 8 characters, letters and digits" aria-label="New internet password" spellcheck="false" autocapitalize="off"><button class="button" type="submit">Save</button><button class="link" type="button" id="net-pw-cancel">Cancel</button></form>
-          <div class="crow"><div class="clinks"><button id="net-pw-new" class="link">New password</button><button id="net-pw-set" class="link">Set password…</button></div><div class="clinks"><button id="net-qr-toggle" class="link" title="Scan with your phone to connect from anywhere">Phone</button><button id="net-link" class="link" title="Copy a link that opens Local View with this ID filled in">Copy link</button></div></div>
+          <div class="crow"><div class="clinks"><button id="net-pw-new" class="link">New password</button><button id="net-pw-set" class="link">Set password…</button></div><div class="clinks"><button id="net-qr-toggle" class="link" title="Scan with your phone to connect from anywhere">Phone</button><button id="net-link" class="link" title="Copy a link that opens Hop with this ID filled in">Copy link</button></div></div>
           <div id="net-qr-row" class="net-qr-row hidden"><div id="net-qr" class="qr" title="Scan with your phone's camera"></div><div class="stext"><strong>Connect your phone from anywhere</strong><small>Scan with the camera, then enter the password. Add it to the Home Screen and it opens like an app, on any network.</small></div></div>
           <div id="net-err" class="net-err" role="alert"></div>
         </div>
@@ -323,14 +334,14 @@ main::-webkit-scrollbar{width:0}
           </div>
         </div>
       </div>
-      <p class="foot"><b>Window</b> and <b>Full screen</b> open inside Local View, like TeamViewer; <b>Browser</b> uses a tab in your web browser. <b>Second screen</b> always opens full screen.</p>
+      <p class="foot"><b>Window</b> and <b>Full screen</b> open inside Hop, like TeamViewer; <b>Browser</b> uses a tab in your web browser. <b>Second screen</b> always opens full screen.</p>
 
       <div id="net-settings">
         <div class="block-head"><h2>Internet access</h2></div>
         <div class="panel">
           <div class="srow field">
             <label for="net-url2">Connection server — your private address</label>
-            <form id="net-url-form2" class="url-form" autocomplete="off"><input id="net-url2" class="input" placeholder="https://localview.yourname.workers.dev" spellcheck="false" autocapitalize="off" aria-label="Connection server address"><button class="button sm" type="submit">Save</button></form>
+            <form id="net-url-form2" class="url-form" autocomplete="off"><input id="net-url2" class="input" placeholder="https://hop.yourname.workers.dev" spellcheck="false" autocapitalize="off" aria-label="Connection server address"><button class="button sm" type="submit">Save</button></form>
           </div>
         </div>
         <p class="foot">Your devices meet through this server (free on Cloudflare); the video, control and password then go directly between them, encrypted end to end. The server is <b>private</b>: it only answers at this address (with its key) — anyone else gets “Not found”. Your other computers pick it up with “Use it”; your phone gets it from the Phone QR code.</p>
@@ -350,7 +361,7 @@ main::-webkit-scrollbar{width:0}
       <div id="startup-block">
         <div class="block-head"><h2>Startup</h2></div>
         <div class="panel">
-          <div class="srow"><div class="stext"><strong>Start at login</strong><small id="startup-sub">Open Local View in the background when you log in, so this computer is always reachable.</small></div><label class="switch"><input id="start-login" type="checkbox" aria-label="Start at login"><span></span></label></div>
+          <div class="srow"><div class="stext"><strong>Start at login</strong><small id="startup-sub">Open Hop in the background when you log in, so this computer is always reachable.</small></div><label class="switch"><input id="start-login" type="checkbox" aria-label="Start at login"><span></span></label></div>
         </div>
       </div>
 
@@ -365,7 +376,8 @@ main::-webkit-scrollbar{width:0}
 
       <div class="block-head"><h2>About</h2><span id="version" class="note"></span></div>
       <div class="panel">
-        <div class="srow prose"><p>Local View lets your phone, tablet or another computer see and control this one. On the same Wi-Fi, open the address and enter the PIN. From anywhere, turn on Internet access and use the ID and password.</p><p class="muted">On Wi-Fi nothing leaves your network. Over the internet, devices connect directly and encrypted; the connection server only introduces them. Files your devices send land in the shared folder.</p></div>
+        <div class="srow" id="update-row"><div class="stext"><strong>Updates</strong><small id="upd-sub">Hop checks GitHub for new versions automatically.</small></div><button id="upd-check" class="link">Check now</button><button id="upd-install" class="button sm hidden">Update now</button></div>
+        <div class="srow prose"><p>Hop lets your phone, tablet or another computer see and control this one. On the same Wi-Fi, open the address and enter the PIN. From anywhere, turn on Internet access and use the ID and password.</p><p class="muted">On Wi-Fi nothing leaves your network. Over the internet, devices connect directly and encrypted; the connection server only introduces them. Files your devices send land in the shared folder.</p></div>
       </div>
       <p class="foot">Use the same PIN on all your computers to hop between them from the device list. Never forward this port on your router — use Internet access instead.</p>
     </div>
@@ -381,7 +393,7 @@ let state=null,busy=false,pinHidden=false,editingPin=false,lastOk=0;
 
 // ——— API ———
 async function api(path,body){
-  const opts={method:body===undefined?'GET':'POST',headers:{'X-LocalView-Token':TOKEN},cache:'no-store'};
+  const opts={method:body===undefined?'GET':'POST',headers:{'X-Hop-Token':TOKEN},cache:'no-store'};
   if(body!==undefined){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
   const r=await fetch('/api/host/'+path,opts);let j={};try{j=await r.json();}catch(e){}
   if(!r.ok)throw new Error(j.error||('Request failed ('+r.status+')'));
@@ -472,13 +484,14 @@ requestAnimationFrame(drawSignal);
 
 // ——— Render ———
 function offline(){
-  $('hero').dataset.tone='error';text('badge-text','Stopped');text('summary','Local View isn’t running on this computer anymore.');setSignal('quiet');
+  $('hero').dataset.tone='error';text('badge-text','Stopped');text('summary','Hop isn’t running on this computer anymore.');setSignal('quiet');
   $('cta').disabled=true;
 }
 function render(s){
   state=s;$('cta').disabled=false;
   renderNet(s);
   renderSetup(s);
+  renderUpdate(s);
   if(s.settings&&s.settings.openIn&&$('open-seg').dataset.value!==s.settings.openIn)renderOpenIn(s.settings.openIn);
   const viewers=s.viewers||[],pending=s.pending||[],n=viewers.length;
   const tone=s.paused?'preview':n?'countdown':'armed';
@@ -535,7 +548,7 @@ function render(s){
   for(const v of viewers){const li=list.querySelector('li[data-id="'+v.id+'"]');if(li){const tm=li.querySelector('.time');const val=ago(v.seconds)+(v.fps?' · '+Math.round(v.fps)+' fps':'');if(tm.textContent!==val)tm.textContent=val;}}
   list.querySelectorAll('.empty span').forEach(e=>{const val=s.paused?'Resume sharing to let devices connect':'Scan the code with your iPhone to start';if(e.textContent!==val)e.textContent=val;});
 
-  // Your devices (Local View computers + devices that connected before) and Nearby (other Apple devices)
+  // Your devices (Hop computers + devices that connected before) and Nearby (other Apple devices)
   const all=s.devices||[],mine=all.filter(d=>d.section!=='nearby'),near=all.filter(d=>d.section==='nearby');
   renderDevices($('peers'),mine,s,true);
   renderDevices($('nearby'),near,s,false);
@@ -624,7 +637,7 @@ function render(s){
   if(perm){
     const set=(id,v)=>{const e=$(id);e.className='fstate '+(v===true?'ok':v===false?'bad':'');const val=v===true?'Allowed':v===false?'Not allowed':'Unknown';if(e.textContent!==val)e.textContent=val;};
     set('perm-screen',perm.screen);set('perm-ax',perm.accessibility);
-    const app=perm.app||'the app that started Local View (e.g. Terminal)';
+    const app=perm.app||'the app that started Hop (e.g. Terminal)';
     const f='Screen Recording lets viewers see the screen; Accessibility lets them click and type. Allow both for '+app+' in Privacy & Security, then quit and reopen it.';
     text('perm-foot',f);
   }
@@ -684,13 +697,13 @@ function renderSetup(s){
   // So once Allow was clicked, offer Restart right away instead of waiting for a change that can't come.
   const needRestart=(scr&&start.screen===false)||(screenAsked&&!scr);
   const todo=$('scr-todo');
-  if(screenAsked&&!scr)todo.innerHTML='Turn on <b>'+(p.app||'Local View')+'</b> in the window macOS opened, then click <b>Restart</b> below.';
+  if(screenAsked&&!scr)todo.innerHTML='Turn on <b>'+(p.app||'Hop')+'</b> in the window macOS opened, then click <b>Restart</b> below.';
   $('step-screen').classList.toggle('done',scr);$('step-ax').classList.toggle('done',ax);
   $('step-restart').classList.toggle('hidden',!needRestart);
   const show=!scr||!ax||needRestart;
   $('setup-block').classList.toggle('hidden',!show);
   if(show){const left=(scr?0:1)+(ax?0:1)+(needRestart?1:0);text('setup-note',left===1?'1 step left':left+' steps left');}
-  document.querySelectorAll('.appname').forEach(e=>{const n=p.app||'Local View';if(e.textContent!==n)e.textContent=n;});
+  document.querySelectorAll('.appname').forEach(e=>{const n=p.app||'Hop';if(e.textContent!==n)e.textContent=n;});
 }
 document.querySelectorAll('[data-req]').forEach(b=>b.addEventListener('click',async()=>{
   if(b.dataset.req==='screen')screenAsked=true;
@@ -713,9 +726,9 @@ function renderDevices(ul,devs,s,isMine){
     const kind=d.kind==='phone'?'phone':d.kind==='tablet'?'tablet':(d.os==='mac'||/mac/i.test(d.name)?'laptop':'desktop');
     const t=document.createElement('div');t.className='stext';
     const st=document.createElement('strong');st.textContent=d.name;
-    const sm=document.createElement('small');sm.textContent=(d.localview?'Local View · ':'')+(d.detail||'');t.append(st,sm);
+    const sm=document.createElement('small');sm.textContent=(d.hasHop?'Hop · ':'')+(d.detail||'');t.append(st,sm);
     const acts=document.createElement('div');acts.className='acts';
-    if(d.localview){
+    if(d.hasHop){
       const x=document.createElement('button');x.className='link';x.textContent='Second screen';
       x.title='Use this computer as an extra display for '+d.name+(d.os==='mac'?'':' (needs a virtual display on '+d.name+')');
       x.addEventListener('click',()=>connectTo({peer:d.peer,mode:'extend'},d.name+' as a second screen',x));
@@ -744,11 +757,33 @@ function renderDevices(ul,devs,s,isMine){
   if(isMine&&!devs.length&&!addrOpen){
     const li=document.createElement('li');li.className='empty';
     const st=document.createElement('strong');st.textContent='No other computers yet';
-    const sm=document.createElement('span');sm.textContent='Open Local View on your other computers: they appear here';
+    const sm=document.createElement('span');sm.textContent='Open Hop on your other computers: they appear here';
     li.append(st,sm);ul.append(li);
   }
 }
 $('nearby-unhide').addEventListener('click',()=>act('device/hide',{all:true,show:true},'Hidden devices shown again'));
+
+// ——— Updates (GitHub Releases) ———
+function renderUpdate(s){
+  const u=s.update||{};let sub='Hop checks GitHub for new versions automatically.';
+  const busy=u.state==='downloading'||u.state==='installing';
+  if(u.problem)sub=u.problem;
+  else if(u.state==='checking')sub='Checking GitHub…';
+  else if(u.state==='downloading')sub='Downloading Hop '+u.latest+'… '+Math.round((u.progress||0)*100)+'%';
+  else if(u.state==='installing')sub='Installing Hop '+u.latest+' — Hop will reopen in a moment.';
+  else if(u.state==='error')sub=u.error||'The update didn’t work. Try again.';
+  else if(u.available)sub='Hop '+u.latest+' is available. You have '+(s.version||'')+'.';
+  else if(u.checked)sub='You have the latest version ('+(s.version||'')+').';
+  text('upd-sub',sub);
+  $('upd-install').classList.toggle('hidden',!u.available||!!u.problem||busy);
+  $('upd-check').classList.toggle('hidden',busy);
+  const b=$('upd-banner');b.classList.toggle('hidden',!(u.available||busy)||!!u.problem);b.classList.toggle('busy',busy);
+  text('upd-banner-text',busy?sub:'Hop '+u.latest+' is available');
+}
+$('upd-check').addEventListener('click',()=>act('update/check',{}));
+async function startUpdate(){if(state&&state.update&&state.update.available)await act('update/install',{},'Downloading the update…');}
+$('upd-install').addEventListener('click',startUpdate);
+$('upd-banner').addEventListener('click',()=>{if(!$('upd-banner').classList.contains('busy'))startUpdate();});
 
 // ——— Internet access ———
 let netPwShown=false,netEditing=false,netConnectOpen=false,netBusy=false;
@@ -811,7 +846,7 @@ $('net-toggle').addEventListener('change',async e=>{
 });
 async function saveServer(input,enable){
   let v=input.value.trim();
-  if(v&&!/^[a-z]+:\/\//i.test(v))v=(/^(localhost|127\.0\.0\.1)(:|\/|$)/i.test(v)?'http://':'https://')+v;   // "localview.you.workers.dev" is fine
+  if(v&&!/^[a-z]+:\/\//i.test(v))v=(/^(localhost|127\.0\.0\.1)(:|\/|$)/i.test(v)?'http://':'https://')+v;   // "hop.you.workers.dev" is fine
   const m=v.match(/^(https?:\/\/[^\/?#]+)(\/k\/[A-Za-z0-9_-]{16,64})?/i);   // keep a private key if pasted
   if(m)v=m[1]+(m[2]||'');
   const body={cloudUrl:v};if(enable&&v)body.cloudEnabled=true;
@@ -913,7 +948,7 @@ $('notify').addEventListener('change',e=>act('settings',{notify:e.target.checked
 $('keep-awake').addEventListener('change',e=>act('settings',{keepAwake:e.target.checked}));
 $('start-login').addEventListener('change',async e=>{
   const on=e.target.checked;startupBusy=true;
-  const ok=await act('settings',{startAtLogin:on},on?'Local View will start when you log in':'Won’t start at login');
+  const ok=await act('settings',{startAtLogin:on},on?'Hop will start when you log in':'Won’t start at login');
   startupBusy=false;if(!ok&&state)$('start-login').checked=!!state.settings.startAtLogin;
 });
 $('alt-url').addEventListener('click',()=>{if(state&&state.urls[1])copyText(state.urls[1]);});

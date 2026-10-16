@@ -1,6 +1,6 @@
-# LocalView protocol (shared contract between host.py and static/index.html)
+# Hop protocol (shared contract between host.py and static/index.html)
 
-LocalView = LAN-only remote desktop. `host.py` runs on a Mac or Windows PC, serves the
+Hop = LAN-only remote desktop. `host.py` runs on a Mac or Windows PC, serves the
 web viewer at `http://<ip>:8765/` and a WebSocket at `/ws`. Any browser (iPhone Safari,
 Chrome, etc.) is the viewer/controller. Must run on Python 3.9+ (no `match`, no `X | Y` types).
 
@@ -27,16 +27,16 @@ Chrome, etc.) is the viewer/controller. Must run on Python 3.9+ (no `match`, no 
 
 ## Discovery (host only)
 Every 2 s each host broadcasts UDP to `255.255.255.255:8766` the JSON
-`{"app":"localview","name","os","port","id"}` and listens on UDP 8766, recording sender IP.
+`{"app":"hop","name","os","port","id"}` and listens on UDP 8766, recording sender IP.
 Failures (no permission, no network) are logged once and ignored.
 
 ## Auth
-Each host has a PIN (6 digits), stored in `~/.localview.json`, generated on first run, overridable
+Each host has a PIN (6 digits), stored in `~/.hop.json`, generated on first run, overridable
 with `--pin 123456` (which also saves it) or from the host window (New PIN / Set PIN…). Users are told
 to set the same PIN on all their machines so jumping between devices is seamless.
 Brute force protection: per client IP, after 5 failures lock out for 60 s; each failure delays 1 s.
 
-`~/.localview.json`: `{"pin": "...", "id": "...", "allowControl": true, "askBeforeConnect": false,
+`~/.hop.json`: `{"pin": "...", "id": "...", "allowControl": true, "askBeforeConnect": false,
 "theme": "system"|"light"|"dark", "notify": true}` (the last four are host-window settings; defaults shown).
 
 ## WebSocket `/ws`
@@ -99,7 +99,7 @@ Server prints connect/disconnect lines with client IP.
 and the saved theme for `__LV_THEME__`. `/host`, `/static/host.html` and every `/api/host/*` route return
 **403** unless the TCP peer is loopback (`127.0.0.1`/`::1`) **and** the `Host` header is
 `127.0.0.1`/`localhost`/`[::1]` (blocks LAN access and DNS rebinding — these routes expose the PIN).
-`/api/host/*` also requires header `X-LocalView-Token: <token>`; POSTs with an `Origin` header must come
+`/api/host/*` also requires header `X-Hop-Token: <token>`; POSTs with an `Origin` header must come
 from `http://127.0.0.1|localhost|[::1]:<port>`. The page polls status once a second.
 
 - `GET /api/host/status` →
@@ -139,7 +139,7 @@ All POSTs return the new status object (or `{"error": "..."}` with 4xx).
   `<short>-2`, `-3`, … (effective name is reported as `short`). Settable from the host window
   (`POST /api/host/settings {"shortName":"studio"}`) and `--short` CLI flag.
 - mDNS (python-zeroconf): advertise an A record `<short>.local` → this host's LAN IPv4 plus service
-  `_http._tcp.local.` named `"Local View on <name>"` (port = easy port if bound, else main port, TXT
+  `_http._tcp.local.` named `"Hop on <name>"` (port = easy port if bound, else main port, TXT
   `path=/`, `id=<id>`). Failure is logged once and ignored.
 - Ports: always listen on the main port (default 8765). Additionally try to bind port **80** (the "easy
   port") on 0.0.0.0, serving the same app; if it fails (in use / not permitted) log once and continue.
@@ -165,7 +165,7 @@ below require it in header `X-LV-Session` (or query `s=` for plain download link
 - Host side: pyperclip (pbcopy/pbpaste on macOS, win32 on Windows).
 
 ## Files
-Shared folder on the host: `~/Downloads/Local View/` (created on demand). Viewers can upload into it and
+Shared folder on the host: `~/Downloads/Hop/` (created on demand). Viewers can upload into it and
 download anything in it; the host user drops files there (or uses "Send a file…" in the host window,
 which copies the picked file in) to offer them to viewers.
 - `GET /api/files` (X-LV-Session) → `{"files":[{"name","size","mtime"}], "folder":"<display path>"}`
@@ -186,14 +186,14 @@ which copies the picked file in) to offer them to viewers.
   browser instead. Returns status.
 - `POST /api/host/files/open` → reveal shared folder in Finder/Explorer. `POST /api/host/files/send` → native
   file picker (pywebview), copy picked files into the shared folder.
-- Settings: `startAtLogin` (macOS: LaunchAgent `~/Library/LaunchAgents/com.localview.host.plist`;
-  Windows: HKCU `Software\Microsoft\Windows\CurrentVersion\Run` value `LocalView`), launched with
+- Settings: `startAtLogin` (macOS: LaunchAgent `~/Library/LaunchAgents/com.hop.host.plist`;
+  Windows: HKCU `Software\Microsoft\Windows\CurrentVersion\Run` value `Hop`), launched with
   `--background` (window starts minimized); `keepAwake` (default true: prevent system sleep while ≥1
   viewer is connected — macOS `caffeinate -di -w <pid>` child, Windows `SetThreadExecutionState`).
-- Frozen (PyInstaller) support: resources from `sys._MEIPASS` when frozen; config still `~/.localview.json`.
+- Frozen (PyInstaller) support: resources from `sys._MEIPASS` when frozen; config still `~/.hop.json`.
 
 ## Viewer additions
-- PWA: `/static/manifest.webmanifest` (name "Local View", display standalone, theme/background #0A0A0B,
+- PWA: `/static/manifest.webmanifest` (name "Hop", display standalone, theme/background #0A0A0B,
   icons /static/icon-192.png, /static/icon-512.png), `apple-touch-icon` /static/icon-180.png,
   `apple-mobile-web-app-capable`. Tip in the connect screen on iOS Safari (not standalone): "Add to Home Screen".
 - Toolbar gains: Clipboard (sheet: "Send text to <host>" textarea + Send; "Host clipboard" with Copy button;
@@ -227,16 +227,16 @@ which copies the picked file in) to offer them to viewers.
   `frozen` is top-level. `files/send` response adds `"sent": [names]`. `POST /api/host/files/open`
   accepts optional `{"name": "<file>"}` to select that file in Finder/Explorer.
 - `POST /api/host/connect {"url"}` accepts `host`, `host:port`, or a URL. Without a port it probes
-  `/api/info` on port 80 then 8765 (2.5 s each, in parallel); 404 if no Local View answers, 400 if it is this
+  `/api/info` on port 80 then 8765 (2.5 s each, in parallel); 404 if no Hop answers, 400 if it is this
   host. Window URL uses the address as typed. In headless mode the system browser opens instead
-  (env `LOCALVIEW_DRY_OPEN=1` only logs — for tests).
+  (env `HOP_DRY_OPEN=1` only logs — for tests).
 - `POST /api/host/activate` (loopback, main port, **no Origin header**, no token): brings the window forward.
   A second launch that can't bind the port calls it and exits 0 (single-instance behaviour).
 - Settings `keepAwake` (default true) is stored in config; `startAtLogin` is not stored — it reflects whether
   the LaunchAgent plist / Run value exists. A frozen app re-points an existing login item at startup if it moved.
-  macOS login item for an App-Translocated (unmoved, quarantined) app is refused: "Move Local View to Applications".
+  macOS login item for an App-Translocated (unmoved, quarantined) app is refused: "Move Hop to Applications".
 - `--background` starts the window minimized; `--short NAME`, `--no-easy-port` as specified.
-- Logging: when stdout/stderr are None (windowed PyInstaller, pythonw) both go to `~/.localview.log`
+- Logging: when stdout/stderr are None (windowed PyInstaller, pythonw) both go to `~/.hop.log`
   (rotated at 2 MB); a frozen app with a console also logs there. Startup port failure in a console-less app
   shows a native alert.
 
@@ -254,7 +254,7 @@ which copies the picked file in) to offer them to viewers.
   computers (localStorage `lv.recent`: id, name, os, optional password), `#id=<9 digits>` prefills the ID.
 
 ## Server API
-- `GET /api/info` → `{"cloud": true, "app": "localview", "version"}`
+- `GET /api/info` → `{"cloud": true, "app": "hop", "version"}`
 - `GET /api/ice` → `{"iceServers": [...]}` — STUN (Cloudflare, Google); plus Cloudflare TURN when the Worker has
   the secrets `TURN_KEY_ID` + `TURN_KEY_API_TOKEN`.
 - `WS /ws/host?id&key` (host), `WS /ws/view?id` (viewer; 20 joins/minute per ID).
@@ -316,7 +316,7 @@ which copies the picked file in) to offer them to viewers.
 - Setting `openIn`: `"window"` (default) | `"fullscreen"` | `"browser"`. `POST /api/host/connect` accepts
   `"mode": "extend"` (adds `mode=extend`; "window" is upgraded to "fullscreen") and an optional `"openIn"`.
 - Viewer windows expose `window.pywebview.api.toggle_fullscreen()` / `is_fullscreen()`; the viewer's ⛶ button
-  uses them inside Local View windows and the browser Fullscreen API elsewhere.
+  uses them inside Hop windows and the browser Fullscreen API elsewhere.
 - No connection server is built in: `cloudUrl` comes from Settings (or a git-ignored `static/cloud.json`).
 
 ---------------------------------------------------------------------------------------------------
@@ -343,7 +343,7 @@ which copies the picked file in) to offer them to viewers.
 - Internet passwords: ≥ 8 characters, not all digits, ≥ 4 different characters (weak stored ones are replaced when
   internet access starts). > 20 wrong internet passwords from any addresses within 10 min pauses internet sign-ins for
   5 min ("Too many wrong passwords…"), notifies the user; status `netPausedFor` (seconds).
-- Local View app windows keep web storage (pywebview `private_mode=False`, `~/.localview-web`) so pairings and recent
+- Hop app windows keep web storage (pywebview `private_mode=False`, `~/.hop-web`) so pairings and recent
   computers survive restarts.
 
 ---------------------------------------------------------------------------------------------------

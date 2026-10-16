@@ -1,7 +1,7 @@
-"""Smoke test for a built Local View app (used by CI on macOS and Windows).
+"""Smoke test for a built Hop app (used by CI on macOS and Windows).
 
 Starts nothing itself: run the app first, e.g.
-    LocalView.exe --headless --no-easy-port --port 8799 --pin 123456
+    Hop.exe --headless --no-easy-port --port 8799 --pin 123456
 then:  python packaging/smoke_test.py 8799 123456
 Checks the viewer page, the info API, PIN sign-in over the WebSocket and (when the machine can capture its
 screen) one video frame. Exit code 0 = OK.
@@ -29,7 +29,7 @@ async def main(port, pin):
         print("info:", info)
         async with s.get(base + "/") as r:
             page = await r.text()
-        assert r.status == 200 and "Local View" in page, "viewer page missing"
+        assert r.status == 200 and "Hop" in page, "viewer page missing"
         print("viewer page: ok")
         ws = await s.ws_connect(base + "/ws")
         await ws.send_str(json.dumps({"t": "auth", "pin": "000000"}))

@@ -1,13 +1,13 @@
-"""Internet access for Local View.
+"""Internet access for Hop.
 
-The host keeps one WebSocket open to the Local View connection server (cloud/, a Cloudflare Worker)
+The host keeps one WebSocket open to the Hop connection server (cloud/, a Cloudflare Worker)
 under a 9-digit ID. A viewer anywhere opens the server's web page, enters the ID and password, and
 sends a WebRTC offer through the server; the host answers. From then on video (VP8/H.264) and a
 data channel carrying the same JSON messages as the LAN WebSocket go directly between the devices
 (or through the optional TURN relay), encrypted end to end (DTLS-SRTP). The password is checked by
 the host over that data channel, so it never passes through the server.
 
-host.py wires this in: CloudLink hands each incoming viewer to LocalViewServer.serve_viewer() with a
+host.py wires this in: CloudLink hands each incoming viewer to HopServer.serve_viewer() with a
 ChannelSocket (an aiohttp-WebSocket look-alike over the data channel) and a ScreenTrack that the
 session feeds. See PROTOCOL.md, "Internet access".
 """
@@ -29,7 +29,7 @@ from aiortc.rtcrtpsender import RTCRtpSender
 from av import VideoFrame
 from PIL import Image
 
-log = logging.getLogger("localview.remote")
+log = logging.getLogger("hop.remote")
 
 # aiortc's defaults are tuned for webcams (VP8 at most 1.5 Mbit/s). Screen text needs more; the
 # congestion controller still lowers the rate on slow connections.
@@ -237,7 +237,7 @@ class CloudLink(object):
     """Keeps this computer registered with the connection server and answers viewers' offers."""
 
     def __init__(self, server, base_url, host_id, key, on_change=None, site_key=""):
-        self.server = server            # LocalViewServer (serve_viewer, host name, etc.)
+        self.server = server            # HopServer (serve_viewer, host name, etc.)
         self.base = base_url.rstrip("/")
         self.host_id = host_id
         self.key = key
@@ -314,7 +314,7 @@ class CloudLink(object):
                             pinger.cancel()
                             self._ws = None
                         if ws.close_code == 4000:
-                            log.warning("Another copy of Local View took over ID %s",
+                            log.warning("Another copy of Hop took over ID %s",
                                         format_id(self.host_id))
             except asyncio.CancelledError:
                 raise

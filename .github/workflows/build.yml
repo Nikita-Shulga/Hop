@@ -1,4 +1,4 @@
-name: Local View apps
+name: Hop apps
 on:
   push:
     tags: ['v*']
@@ -28,6 +28,9 @@ jobs:
         env:
           PYTHON: python3
           VENV: ${{ runner.temp }}/venv
+          # One fixed signing certificate, so updates keep their Screen Recording / Accessibility permissions
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
         run: bash packaging/build-mac.sh
       - name: Build (Windows)
         if: runner.os == 'Windows'
@@ -38,22 +41,58 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          "dist/Local View.app/Contents/MacOS/Local View" --headless --no-easy-port --port 8799 --pin 123456 --debug > app.log 2>&1 &
-          "$RUNNER_TEMP/venv/bin/python" packaging/smoke_test.py 8799 123456 || { cat app.log; cat ~/.localview.log 2>/dev/null; exit 1; }
+          "dist/Hop.app/Contents/MacOS/Hop" --headless --no-easy-port --port 8799 --pin 123456 --debug > app.log 2>&1 &
+          "$RUNNER_TEMP/venv/bin/python" packaging/smoke_test.py 8799 123456 || { cat app.log; cat ~/.hop.log 2>/dev/null; exit 1; }
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Start-Process -FilePath "dist\LocalView\LocalView.exe" -ArgumentList "--headless","--no-easy-port","--port","8799","--pin","123456"
+          Start-Process -FilePath "dist\Hop\Hop.exe" -ArgumentList "--headless","--no-easy-port","--port","8799","--pin","123456"
           .\.venv\Scripts\python.exe packaging\smoke_test.py 8799 123456
-          if ($LASTEXITCODE -ne 0) { Get-Content "$env:USERPROFILE\.localview.log" -ErrorAction SilentlyContinue; exit 1 }
+          if ($LASTEXITCODE -ne 0) { Get-Content "$env:USERPROFILE\.hop.log" -ErrorAction SilentlyContinue; exit 1 }
+      # Rehearse a one-click update: a copy of the app replaces itself with the new ZIP and reopens.
+      - name: Update rehearsal (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          T="$RUNNER_TEMP/rehearsal"; rm -rf "$T"; mkdir -p "$T"
+          ditto "dist/Hop.app" "$T/Hop.app"
+          touch "$T/Hop.app/Contents/Resources/old-version-marker"
+          ZIP="$(ls dist/Hop-*-${{ matrix.target }}.zip)"
+          "$T/Hop.app/Contents/MacOS/Hop" --update-from "$ZIP"
+          ok=0
+          for i in $(seq 1 60); do
+            if [ -d "$T/Hop.app" ] && [ ! -e "$T/Hop.app/Contents/Resources/old-version-marker" ] && pgrep -f "$T/Hop.app/Contents/MacOS/Hop" >/dev/null; then ok=1; break; fi
+            sleep 2
+          done
+          tail -n 15 ~/.hop.log 2>/dev/null || true
+          pkill -f "$T/Hop.app/Contents/MacOS/Hop" || true
+          [ $ok = 1 ] && echo "UPDATE REHEARSAL PASSED" || { echo "::error::The app didn't replace and reopen itself"; exit 1; }
+      - name: Update rehearsal (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $T = Join-Path $env:RUNNER_TEMP 'rehearsal'; New-Item -ItemType Directory -Force $T | Out-Null
+          Copy-Item -Recurse -Force dist\Hop (Join-Path $T 'Hop')
+          $marker = Join-Path $T 'Hop\_internal\old-version-marker'; New-Item -ItemType File -Force $marker | Out-Null
+          $zip = (Get-ChildItem dist\Hop-*-win-x64.zip).FullName
+          Start-Process -FilePath (Join-Path $T 'Hop\Hop.exe') -ArgumentList '--update-from', "`"$zip`"" -Wait
+          $ok = $false
+          for ($i = 0; $i -lt 60; $i++) {
+            $running = Get-Process -Name Hop -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$T*" }
+            if (-not (Test-Path $marker) -and (Test-Path (Join-Path $T 'Hop\Hop.exe')) -and $running) { $ok = $true; break }
+            Start-Sleep -Seconds 2
+          }
+          Get-Content "$env:USERPROFILE\.hop.log" -Tail 15 -ErrorAction SilentlyContinue
+          Get-Process -Name Hop -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($ok) { 'UPDATE REHEARSAL PASSED' } else { Write-Error "The app didn't replace and reopen itself"; exit 1 }
       - name: Check the zip
         shell: bash
-        run: ls -l dist/LocalView-*-${{ matrix.target }}.zip
+        run: ls -l dist/Hop-*-${{ matrix.target }}.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: LocalView-${{ matrix.target }}
-          path: dist/LocalView-*.zip
+          name: Hop-${{ matrix.target }}
+          path: dist/Hop-*.zip
           if-no-files-found: error
 
   # A tag such as v1.1.0 publishes a GitHub Release with the three zips and SHA256SUMS.txt.
@@ -73,7 +112,7 @@ jobs:
           fi
       - uses: actions/download-artifact@v4
         with:
-          pattern: LocalView-*
+          pattern: Hop-*
           path: dist
           merge-multiple: true
       - name: Checksums
@@ -81,7 +120,7 @@ jobs:
         run: sha256sum *.zip > SHA256SUMS.txt && cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
-          name: Local View ${{ github.ref_name }}
+          name: Hop ${{ github.ref_name }}
           files: |
             dist/*.zip
             dist/SHA256SUMS.txt

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""LocalView host: LAN-only remote desktop server.
+"""Hop host: LAN-only remote desktop server.
 
 Serves the web viewer (static/index.html) and a WebSocket at /ws that streams
 JPEG frames of the selected monitor and injects mouse/keyboard input.
@@ -13,8 +13,8 @@ import sys
 
 # --------------------------------------------------------------------------- early process setup
 # Windowed builds (PyInstaller --windowed, pythonw.exe) start with sys.stdout / sys.stderr = None:
-# any print(), flush() or logging StreamHandler would then crash. Send both to ~/.localview.log.
-LOG_PATH = os.path.join(os.path.expanduser("~"), ".localview.log")
+# any print(), flush() or logging StreamHandler would then crash. Send both to ~/.hop.log.
+LOG_PATH = os.path.join(os.path.expanduser("~"), ".hop.log")
 FROZEN = bool(getattr(sys, "frozen", False))
 
 
@@ -96,6 +96,8 @@ from PIL import Image  # noqa: E402
 from pynput.keyboard import Controller as KeyboardController, Key  # noqa: E402
 from pynput.mouse import Button, Controller as MouseController  # noqa: E402
 
+import updater  # noqa: E402  (one-click updates from GitHub Releases)
+
 try:  # Internet access (WebRTC via aiortc). Optional: without it the LAN features all still work.
     import remote  # noqa: E402
     REMOTE_ERROR = ""
@@ -103,8 +105,8 @@ except Exception as _remote_exc:  # pragma: no cover
     remote = None
     REMOTE_ERROR = str(_remote_exc)
 
-APP = "localview"
-VERSION = "1.5"
+APP = "hop"
+VERSION = os.environ.get("HOP_TEST_VERSION") or "2.0.0"  # HOP_TEST_VERSION: pretend to be older, to test updates
 DEFAULT_PORT = 8765
 EASY_PORT = 80
 DISCOVERY_PORT = 8766
@@ -118,13 +120,13 @@ APPROVAL_TIMEOUT = 30.0  # "Ask before someone connects": deny after this long
 KICK_BLOCK_SECS = 60     # after "Disconnect", refuse that IP's next (auto-)reconnect once
 CLIP_MAX = 1 << 20       # clipboard text limit (bytes, UTF-8)
 UPLOAD_MAX = 4 << 30     # per uploaded file
-CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".localview.json")
+CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".hop.json")
 RES_DIR = getattr(sys, "_MEIPASS", None) if FROZEN else None
 RES_DIR = RES_DIR or os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(RES_DIR, "static")
-LAUNCH_AGENT_LABEL = "com.localview.host"
+LAUNCH_AGENT_LABEL = "com.hop.host"
 WIN_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-WIN_RUN_VALUE = "LocalView"
+WIN_RUN_VALUE = "Hop"
 
 # Host-window endpoints (/host, /api/host/*) expose the PIN: loopback only.
 LOOPBACK_IPS = frozenset(["127.0.0.1", "::1", "::ffff:127.0.0.1"])
@@ -138,7 +140,7 @@ MSG_DECLINED = "Connection declined on the host"
 MSG_KICKED = "Disconnected by the host"
 MSG_INTERNET_OFF = "Internet access is turned off on that computer"
 # Where the project lives; "Create my free server" opens Cloudflare's one-click deploy for its cloud/ folder.
-PROJECT_REPO = "https://github.com/Nikita-Shulga/LocalView"
+PROJECT_REPO = "https://github.com/Nikita-Shulga/Hop"
 DEPLOY_URL = "https://deploy.workers.cloudflare.com/?url=" + PROJECT_REPO + "/tree/main/cloud"
 GUIDE_URL = PROJECT_REPO + "/blob/main/cloud/README.md"
 CLOUD_PASSWORD_MIN = 8
@@ -232,7 +234,7 @@ SITE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 
 
 def parse_server_address(v):
-    """'localview.you.workers.dev/k/KEY…' → ('https://localview.you.workers.dev', 'KEY' or None).
+    """'hop.you.workers.dev/k/KEY…' → ('https://hop.you.workers.dev', 'KEY' or None).
 
     Returns (None, None) for something that isn't a server address.
     """
@@ -390,7 +392,7 @@ def _perm_call(path, fn):
 def responsible_app():
     """The app macOS checks permissions for: the bundled app itself, or the launching terminal."""
     if FROZEN:
-        return "Local View"
+        return "Hop"
     tp = os.environ.get("TERM_PROGRAM", "")
     names = {"Apple_Terminal": "Terminal", "iTerm.app": "iTerm", "vscode": "Visual Studio Code",
              "WarpTerminal": "Warp", "ghostty": "Ghostty", "WezTerm": "WezTerm"}
@@ -437,9 +439,9 @@ def request_mac_permission(which):
     granted = (mac_permissions() or {}).get(which)
     if FROZEN and not granted:
         # An unsigned app is identified by its exact build, so a switch turned on for an earlier
-        # Local View stays "on" in System Settings but doesn't apply to this one. Clearing Local View's
+        # Hop stays "on" in System Settings but doesn't apply to this one. Clearing Hop's
         # own entries (and nothing else) makes macOS ask again for the copy that's running.
-        bundle_id = "com.nikitashulga.localview"
+        bundle_id = "com.nikitashulga.hop"
         try:
             subprocess.run(["/usr/bin/tccutil", "reset", service, bundle_id], timeout=5,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -492,7 +494,7 @@ def system_notify(text):
         return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
     try:
         subprocess.Popen(["osascript", "-e", "display notification %s with title %s"
-                          % (q(text[:200]), q("Local View"))],
+                          % (q(text[:200]), q("Hop"))],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
         log.debug("Notification failed: %s", e)
@@ -503,10 +505,10 @@ def fatal_dialog(text):
     try:
         if OS_NAME == "windows":
             import ctypes
-            ctypes.windll.user32.MessageBoxW(None, text, "Local View", 0x10)
+            ctypes.windll.user32.MessageBoxW(None, text, "Hop", 0x10)
         elif OS_NAME == "mac":
             esc = text.replace("\\", "\\\\").replace('"', '\\"')
-            subprocess.run(["osascript", "-e", 'display alert "Local View" message "%s" as critical'
+            subprocess.run(["osascript", "-e", 'display alert "Hop" message "%s" as critical'
                             % esc], timeout=120, stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL)
     except Exception:
@@ -539,7 +541,7 @@ def downloads_dir():
     return os.path.join(os.path.expanduser("~"), "Downloads")
 
 
-SHARED_DIR = os.path.join(downloads_dir(), "Local View")
+SHARED_DIR = os.path.join(downloads_dir(), "Hop")
 WIN_RESERVED = frozenset(["CON", "PRN", "AUX", "NUL"] + ["COM%d" % i for i in range(1, 10)] +
                          ["LPT%d" % i for i in range(1, 10)])
 
@@ -677,7 +679,7 @@ def mac_app_bundle():
 
 
 def login_argv():
-    """Command line that starts Local View in the background at login."""
+    """Command line that starts Hop in the background at login."""
     if FROZEN:
         if OS_NAME == "mac":
             app = mac_app_bundle()
@@ -723,6 +725,51 @@ def startup_command():
     return None
 
 
+def migrate_from_local_view():
+    """Hop was called Local View: carry over its settings, pairings, shared folder and login item."""
+    home = os.path.expanduser("~")
+    moved = []
+    try:
+        old = os.path.join(home, ".localview.json")
+        if not os.path.exists(CONFIG_PATH) and os.path.isfile(old):
+            shutil.copy2(old, CONFIG_PATH)
+            moved.append("settings")
+        old_web, new_web = os.path.join(home, ".localview-web"), os.path.join(home, ".hop-web")
+        if not os.path.exists(new_web) and os.path.isdir(old_web):
+            os.rename(old_web, new_web)  # remembered computers and this device's pairing key
+            moved.append("window storage")
+        old_dir = os.path.join(downloads_dir(), "Local View")
+        if not os.path.exists(SHARED_DIR) and os.path.isdir(old_dir):
+            os.rename(old_dir, SHARED_DIR)
+            moved.append("shared folder")
+    except OSError as e:
+        log.warning("Couldn't carry over Local View's files: %s", e)
+    # The old login item would start the old app (or nothing): replace it with Hop's.
+    try:
+        if OS_NAME == "mac":
+            old_agent = os.path.join(home, "Library", "LaunchAgents", "com.localview.host.plist")
+            if os.path.isfile(old_agent):
+                subprocess.run(["launchctl", "unload", old_agent], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                os.remove(old_agent)
+                set_startup(True)
+                moved.append("start at login")
+        elif OS_NAME == "windows":
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, WIN_RUN_KEY, 0, winreg.KEY_ALL_ACCESS) as k:
+                try:
+                    winreg.QueryValueEx(k, "LocalView")
+                except OSError:
+                    pass
+                else:
+                    winreg.DeleteValue(k, "LocalView")
+                    set_startup(True)
+                    moved.append("start at login")
+    except Exception as e:
+        log.debug("Login item migration skipped: %s", e)
+    if moved:
+        log.info("Carried over from Local View: %s", ", ".join(moved))
+
+
 def startup_enabled():
     return startup_command() is not None
 
@@ -739,7 +786,7 @@ def set_startup(on):
             return
         argv = login_argv()
         if FROZEN and "/AppTranslocation/" in " ".join(argv):
-            raise RuntimeError("Move Local View to the Applications folder first, then try again.")
+            raise RuntimeError("Move Hop to the Applications folder first, then try again.")
         import plistlib
         plist = {"Label": LAUNCH_AGENT_LABEL, "ProgramArguments": argv, "RunAtLoad": True,
                  "ProcessType": "Interactive", "LimitLoadToSessionType": "Aqua"}
@@ -815,7 +862,7 @@ class VirtualDisplays(object):
                 self._classes = tuple(objc.lookUpClass(n) for n in (
                     "CGVirtualDisplayDescriptor", "CGVirtualDisplay",
                     "CGVirtualDisplaySettings", "CGVirtualDisplayMode"))
-                self._queue = dispatch_queue_create(b"localview.virtual-display", DISPATCH_QUEUE_SERIAL)
+                self._queue = dispatch_queue_create(b"hop.virtual-display", DISPATCH_QUEUE_SERIAL)
             except Exception as e:
                 self.error = str(e)
                 self._classes = None
@@ -836,7 +883,7 @@ class VirtualDisplays(object):
             serial = 1 + len(self.items) + (int(time.time()) % 1000) * 8
         d = D.alloc().init()
         d.setQueue_(self._queue)
-        d.setName_("Local View")
+        d.setName_("Hop")
         d.setMaxPixelsWide_(width * scale)
         d.setMaxPixelsHigh_(height * scale)
         d.setSizeInMillimeters_((width * 25.4 / 110.0, height * 25.4 / 110.0))  # ~110 points per inch
@@ -1245,7 +1292,7 @@ class Mdns(object):
     def register(self, short, ip, port, name, host_id):
         from zeroconf import ServiceInfo
         self.unregister()
-        inst = ("Local View on %s" % name).replace(".", " ")
+        inst = ("Hop on %s" % name).replace(".", " ")
         while len(inst.encode("utf-8")) > 63:
             inst = inst[:-1]
         info = ServiceInfo("_http._tcp.local.", "%s._http._tcp.local." % inst,
@@ -1529,7 +1576,7 @@ class DiscoveryProtocol(asyncio.DatagramProtocol):
 
 # --------------------------------------------------------------------------- server
 
-class LocalViewServer(object):
+class HopServer(object):
     def __init__(self, name, port, pin, host_id, cfg=None, easy_port=True):
         self.name = name
         self.port = port
@@ -1580,6 +1627,10 @@ class LocalViewServer(object):
         self.cloud = None
         self.perms_at_start = mac_permissions()
         self.nearby = NearbyDevices()
+        self.update = {"state": "idle", "latest": "", "available": False, "progress": 0.0, "error": "",
+                       "page": "https://github.com/%s/releases/latest" % updater.REPO, "checked": 0,
+                       "problem": updater.installation().get("problem", "")}
+        self._update_info = None
         self.net_fails = collections.deque()  # times of wrong internet passwords (any address)
         self.net_paused_until = 0.0
 
@@ -1649,6 +1700,66 @@ class LocalViewServer(object):
         d["seen"] = int(time.time())
         self.save()
 
+    # ---- updates (GitHub Releases)
+    async def _update_loop(self):
+        await asyncio.sleep(8)
+        while True:
+            await self.check_update(quiet=True)
+            await asyncio.sleep(6 * 3600)
+
+    async def check_update(self, quiet=False):
+        u = self.update
+        if u["state"] in ("downloading", "installing"):
+            return
+        u.update(state="checking", error="")
+        try:
+            info = await asyncio.get_event_loop().run_in_executor(self.io_ex, updater.check, VERSION)
+            self._update_info = info
+            u.update(state="idle", latest=info["latest"], available=info["available"], page=info["page"],
+                     checked=time.time())
+            if info["available"]:
+                log.info("Hop %s is available (this is %s)", info["latest"], VERSION)
+        except Exception as e:
+            u.update(state="idle" if quiet else "error", error="" if quiet else "Couldn't reach GitHub: %s" % e,
+                     checked=time.time())
+            log.info("Update check failed: %s", e)
+
+    async def install_update(self):
+        u = self.update
+        place = updater.installation()
+        if place.get("problem"):
+            u.update(state="error", error=place["problem"])
+            return
+        info = self._update_info
+        if not info or not info.get("available"):
+            u.update(state="error", error="There's no newer version to install.")
+            return
+        loop = asyncio.get_event_loop()
+        u.update(state="downloading", progress=0.0, error="")
+
+        def progress(f):
+            u["progress"] = round(f, 3)
+        try:
+            prepared = await loop.run_in_executor(self.io_ex, updater.prepare, info, place, progress)
+            u.update(state="installing", progress=1.0)
+            await loop.run_in_executor(self.io_ex, updater.apply, prepared, place, LOG_PATH)
+        except Exception as e:
+            u.update(state="error", error=str(e))
+            log.warning("Update failed: %s", e)
+            return
+        log.info("Installing Hop %s: quitting so it can be replaced", info["latest"])
+        loop.call_later(0.8, os.kill, os.getpid(), signal.SIGTERM)
+
+    async def api_update_check(self, request):
+        await self.check_update()
+        return web.json_response(self.status())
+
+    async def api_update_install(self, request):
+        if self.update["state"] not in ("downloading", "installing"):
+            asyncio.ensure_future(self.install_update())
+        await asyncio.sleep(0.2)
+        return web.json_response(self.status())
+
     def remember_device(self, device, remote, ip):
         """Devices that viewed this computer, so 'Your devices' can show them even while they sleep."""
         name = device.replace(" · Internet", "")
@@ -1664,12 +1775,12 @@ class LocalViewServer(object):
         for p in self.live_peers():
             out.append({"key": "peer:" + p["id"], "section": "mine", "kind": "computer", "os": p["os"], "name": p["name"],
                         "detail": (p["short"] + ".local") if p.get("short") else p["ip"],
-                        "online": True, "localview": True, "peer": p["id"]})
+                        "online": True, "hasHop": True, "peer": p["id"]})
             names.add(p["name"].lower())
         me = self.name.lower()
         my_ips = local_ipv4_set() | {"127.0.0.1", get_lan_ip()}
         try:
-            real_name = default_name().lower()  # this computer's own name, even if Local View shows another
+            real_name = default_name().lower()  # this computer's own name, even if Hop shows another
         except Exception:
             real_name = me
         can_mirror = OS_NAME == "mac" and os.path.isdir("/System/Applications/iPhone Mirroring.app")
@@ -1685,12 +1796,12 @@ class LocalViewServer(object):
                 continue
             # Any Apple device on this Wi-Fi announces itself (AirDrop/Handoff), not only yours: "Nearby".
             item = {"key": "near:" + d["name"], "section": "nearby", "kind": d["kind"], "name": d["name"],
-                    "online": True, "localview": False, "detail": "On this Wi-Fi", "hideable": True}
+                    "online": True, "hasHop": False, "detail": "On this Wi-Fi", "hideable": True}
             if d["kind"] in ("phone", "tablet"):
                 item["send"] = True                          # AirDrop the connect link
                 item["mirror"] = can_mirror and d["kind"] == "phone"
             else:
-                item["detail"] = "Install Local View on it to connect"
+                item["detail"] = "Install Hop on it to connect"
             out.append(item)
         near_kinds = {d["kind"] for d in nearby}
         for k in (self.cfg.get("knownDevices") or [])[:6]:
@@ -1700,7 +1811,7 @@ class LocalViewServer(object):
                 continue  # the same device is already listed as nearby
             names.add(k.get("name", "").lower())
             out.append({"key": "known:" + k.get("name", ""), "section": "mine", "kind": kind, "name": k.get("name", "Device"),
-                        "online": False, "localview": False, "send": kind in ("phone", "tablet"),
+                        "online": False, "hasHop": False, "send": kind in ("phone", "tablet"),
                         "mirror": can_mirror and kind == "phone" and "iPhone" in k.get("name", ""),
                         "detail": "Connected %s · %s" % ("over the internet" if k.get("via") == "internet" else "on Wi-Fi",
                                                          time.strftime("%d %b", time.localtime(k.get("last", 0))))})
@@ -1719,7 +1830,7 @@ class LocalViewServer(object):
             self.net_fails.clear()
             log.warning("Many wrong internet passwords from different addresses: internet sign-ins paused "
                         "for %d minutes", NET_PAUSE_SECS // 60)
-            system_notify("Someone is guessing your internet password. Local View paused internet "
+            system_notify("Someone is guessing your internet password. Hop paused internet "
                           "sign-ins for %d minutes. If this continues, click New password." % (NET_PAUSE_SECS // 60))
             self.attention()
 
@@ -1780,7 +1891,7 @@ class LocalViewServer(object):
         st["suggest"] = sug[:3]
         return st
 
-    # ---- settings (persisted in ~/.localview.json next to pin/id)
+    # ---- settings (persisted in ~/.hop.json next to pin/id)
     def setting(self, key):
         v = self.cfg.get(key, DEFAULT_SETTINGS[key])
         if key == "theme":
@@ -1937,7 +2048,7 @@ class LocalViewServer(object):
                         not request.headers.get("Origin"):
                     return await handler(request)  # second instance asking us to show the window
                 if p.startswith("/api/host/"):
-                    tok = request.headers.get("X-LocalView-Token", "")
+                    tok = request.headers.get("X-Hop-Token", "")
                     if not hmac.compare_digest(tok.encode("utf-8"), self.token.encode("utf-8")):
                         return web.json_response({"error": "forbidden"}, status=403)
                     if request.method != "GET" and not self.origin_ok(request.headers.get("Origin")):
@@ -1985,6 +2096,7 @@ class LocalViewServer(object):
                         for d in self.trusted_devices()],
             "netPausedFor": self.net_paused_for(),
             "devices": self.devices(),
+            "update": dict(self.update),
             "hiddenNearby": getattr(self, "hidden_nearby_count", 0),
             "canAirDrop": OS_NAME == "mac" and self.gui is not None,
             "totals": {"fps": round(sum(v["fps"] for v in viewers), 1),
@@ -2120,7 +2232,7 @@ class LocalViewServer(object):
             raw = str(d.get("cloudUrl") or "").strip()
             v, key = parse_server_address(raw) if raw else ("", None)
             if v is None:
-                return self._err("That isn't a server address, like localview.yourname.workers.dev")
+                return self._err("That isn't a server address, like hop.yourname.workers.dev")
             if v != str(self.cfg.get("cloudUrl") or ""):
                 self.cfg["cloudUrl"] = v
                 if not key:  # a different server without a key: create a new one for it
@@ -2199,7 +2311,7 @@ class LocalViewServer(object):
     async def api_device_send(self, request):
         """AirDrop this computer's connect link (with the PIN) — the phone opens it already signed in."""
         if OS_NAME != "mac" or self.gui is None:
-            return self._err("Sending links needs the Local View window on a Mac")
+            return self._err("Sending links needs the Hop window on a Mac")
         url = "http://%s:%d/#pin=%s" % (get_lan_ip(), self.port, self.pin)
         try:
             self.gui.airdrop(url)
@@ -2235,7 +2347,7 @@ class LocalViewServer(object):
         if OS_NAME != "mac":
             return self._err("Restarting is only needed on macOS")
         cmd = relaunch_command()
-        log.info("Restarting Local View")
+        log.info("Restarting Hop")
         try:
             # the new copy waits until this one has let go of the port
             subprocess.Popen(["/bin/sh", "-c", 'sleep 1.5; exec "$@"', "sh"] + cmd,
@@ -2291,8 +2403,8 @@ class LocalViewServer(object):
             infos = await asyncio.gather(*[self._probe_info(host, pt) for pt in ports])
             found = [(pt, i) for pt, i in zip(ports, infos) if i]
             if not found:
-                return self._err("No Local View found at %s. Check the address and that "
-                                 "Local View is running there." % raw, 404)
+                return self._err("No Hop found at %s. Check the address and that "
+                                 "Hop is running there." % raw, 404)
             pt, info = found[0]
             if info.get("id") == self.id:
                 return self._err("That's this computer")
@@ -2307,9 +2419,9 @@ class LocalViewServer(object):
                 return self._err("The computer ID has 9 digits")
             if cid and cid == str(self.cfg.get("cloudId") or ""):
                 return self._err("That's this computer")
-            # The interface comes from this computer's own Local View; the server only introduces.
+            # The interface comes from this computer's own Hop; the server only introduces.
             url = "http://127.0.0.1:%d/remote%s" % (self.port, ("#id=" + cid) if cid else "")
-            title = ("Computer " + remote.format_id(cid)) if (cid and remote) else "Local View"
+            title = ("Computer " + remote.format_id(cid)) if (cid and remote) else "Hop"
         else:
             return self._err("Nothing to connect to")
         extend = d.get("mode") == "extend"
@@ -2324,7 +2436,7 @@ class LocalViewServer(object):
         return web.json_response(self.status())
 
     def open_viewer(self, url, title, how="window"):
-        if os.environ.get("LOCALVIEW_DRY_OPEN"):
+        if os.environ.get("HOP_DRY_OPEN"):
             log.info("(dry run) would open %s in %s", url.split("#")[0], how)
             self.last_open = (url, how)
             return
@@ -2358,7 +2470,7 @@ class LocalViewServer(object):
     async def api_files_send(self, request):
         gui = self.gui
         if gui is None:
-            return self._err("Open the Local View app window to pick files", 400)
+            return self._err("Open the Hop app window to pick files", 400)
         loop = asyncio.get_event_loop()
         try:
             picked = await loop.run_in_executor(None, gui.pick_files)
@@ -2705,6 +2817,7 @@ class LocalViewServer(object):
         self.loop = asyncio.get_event_loop()
         await self.start_discovery()
         self._tasks.append(asyncio.ensure_future(self._watch_loop()))
+        self._tasks.append(asyncio.ensure_future(self._update_loop()))
         self._tasks.append(asyncio.ensure_future(self._address_loop()))
         asyncio.get_event_loop().run_in_executor(self.io_ex, self.nearby.start)
         if self.cloud_enabled():
@@ -2952,7 +3065,7 @@ class LocalViewServer(object):
         self.pending[rid] = {"ip": ip, "device": device, "ua": ua, "at": time.time(),
                              "future": fut, "code": code, "tries": 0, "timeout": timeout}
         log.info("Waiting for %s: %s (%s)", "pairing" if code else "approval", ip, device)
-        self.notify(("New device %s (%s) wants access: type the code it shows into Local View" if code
+        self.notify(("New device %s (%s) wants access: type the code it shows into Hop" if code
                      else "%s (%s) wants to connect") % (device, ip))
         self.attention()
         recv = None
@@ -2961,7 +3074,7 @@ class LocalViewServer(object):
                 msg = {"t": "pending", "msg": "Waiting for approval on the host…"}
                 if code:
                     msg = {"t": "pending", "code": code, "timeout": int(timeout),
-                           "msg": "Type this code into Local View on %s to trust this device" % self.name}
+                           "msg": "Type this code into Hop on %s to trust this device" % self.name}
                 await ws.send_str(json.dumps(msg))
             except Exception:
                 return None
@@ -3065,7 +3178,7 @@ class Session(object):
 
     async def kick(self, text):
         """Tell the viewer why and close (used for pause / host-side disconnect)."""
-        await LocalViewServer._send_error_close(self.ws, text)
+        await HopServer._send_error_close(self.ws, text)
 
     def release_input(self):
         if not self.closed:
@@ -3154,7 +3267,7 @@ class Session(object):
             }))
         except Exception as e:
             log.error("Session setup failed for %s: %s", self.ip, e)
-            await LocalViewServer._send_error_close(self.ws, "Screen capture failed: %s" % e)
+            await HopServer._send_error_close(self.ws, "Screen capture failed: %s" % e)
             self._shutdown_executors()
             return
 
@@ -3533,7 +3646,7 @@ class RemoteSession(Session):
             self._up = None
             try:
                 await self.loop.run_in_executor(io_ex, u["f"].close)
-                final = await self.loop.run_in_executor(io_ex, LocalViewServer._finish_upload,
+                final = await self.loop.run_in_executor(io_ex, HopServer._finish_upload,
                                                         u["tmp"], u["folder"], u["name"])
             except OSError as e:
                 try:
@@ -3597,7 +3710,7 @@ def print_banner(server, windowed=False):
     urls = server.urls()
     print("")
     print("=" * 60)
-    print(" LocalView host '%s' (%s) is running" % (server.name, OS_NAME))
+    print(" Hop host '%s' (%s) is running" % (server.name, OS_NAME))
     print("=" * 60)
     print("  Open in a browser on your LAN:  %s" % urls[0])
     for u in urls[1:]:
@@ -3617,7 +3730,7 @@ def print_banner(server, windowed=False):
               "System Settings > Privacy & Security, then restart it."
               % (responsible_app() or "this terminal app"))
     if windowed:
-        print("  Close the Local View window (or press Ctrl+C here) to stop.")
+        print("  Close the Hop window (or press Ctrl+C here) to stop.")
     else:
         print("  Press Ctrl+C to stop.")
     print("")
@@ -3661,6 +3774,8 @@ def build_app(server):
     app.router.add_post("/api/host/device/send", server.api_device_send)
     app.router.add_post("/api/host/device/mirror", server.api_device_mirror)
     app.router.add_post("/api/host/device/hide", server.api_device_hide)
+    app.router.add_post("/api/host/update/check", server.api_update_check)
+    app.router.add_post("/api/host/update/install", server.api_update_install)
     app.router.add_post("/api/host/restart", server.api_restart)
     app.router.add_post("/api/host/cloud/password/new", server.api_cloud_new_password)
     app.router.add_post("/api/host/cloud/password", server.api_cloud_set_password)
@@ -3865,7 +3980,7 @@ def _mac_window_chrome(win):
         ns.setStyleMask_(ns.styleMask() | AppKit.NSWindowStyleMaskFullSizeContentView)
         # An empty unified toolbar makes the title bar 52 px tall, so the traffic lights
         # sit centred on the page's title bar (host.html uses 52 px with ?shell=mac).
-        tb = AppKit.NSToolbar.alloc().initWithIdentifier_("localview")
+        tb = AppKit.NSToolbar.alloc().initWithIdentifier_("hop")
         tb.setShowsBaselineSeparator_(False)
         ns.setToolbar_(tb)
         if hasattr(ns, "setToolbarStyle_"):
@@ -3936,7 +4051,7 @@ def run_window(server, background=False, on_quit=None):
         height = int(min(height, sz[1] - 40))
         min_h = int(min(min_h, height))
     win = webview.create_window(
-        "Local View", url, js_api=api, width=width, height=height,
+        "Hop", url, js_api=api, width=width, height=height,
         min_size=(420, min_h), minimized=background,
         background_color="#F3F3F5" if light else "#0A0A0B",
         frameless=(OS_NAME == "windows"), easy_drag=False, text_select=True)
@@ -3954,7 +4069,7 @@ def run_window(server, background=False, on_quit=None):
     win.events.closed += on_closed
 
     if OS_NAME == "mac":
-        _mac_app_name("Local View")
+        _mac_app_name("Hop")
         if on_quit is not None:
             _mac_quit_hooks(on_quit)
         try:
@@ -3990,11 +4105,11 @@ def run_window(server, background=False, on_quit=None):
     icon = os.path.join(STATIC_DIR, icon_name)
     # Not private: viewer windows must remember recent computers, this device's pairing key and the theme
     # between launches (the host page itself keeps nothing secret in web storage).
-    storage = os.path.join(os.path.expanduser("~"), ".localview-web")
+    storage = os.path.join(os.path.expanduser("~"), ".hop-web")
     kwargs = {"private_mode": False, "storage_path": storage}
     if os.path.isfile(icon):
         kwargs["icon"] = icon
-    log.info("Opening the Local View window%s", " (minimized)" if background else "")
+    log.info("Opening the Hop window%s", " (minimized)" if background else "")
     try:
         webview.start(**kwargs)
     except TypeError:  # older pywebview without icon= / storage_path=
@@ -4007,7 +4122,7 @@ def run_window(server, background=False, on_quit=None):
 
 
 def _ask_running_instance(port, host_id):
-    """If our own Local View already runs on `port`, bring its window forward. True if so."""
+    """If our own Hop already runs on `port`, bring its window forward. True if so."""
     import urllib.request
     try:
         with urllib.request.urlopen("http://127.0.0.1:%d/api/info" % port, timeout=2) as r:
@@ -4038,9 +4153,9 @@ def setup_logging(debug):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="LocalView host (LAN remote desktop)")
+    parser = argparse.ArgumentParser(description="Hop host (LAN remote desktop)")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
-    parser.add_argument("--pin", help="6-digit PIN (saved to ~/.localview.json)")
+    parser.add_argument("--pin", help="6-digit PIN (saved to ~/.hop.json)")
     parser.add_argument("--name", help="display name (default: computer name)")
     parser.add_argument("--short", help="easy address name, e.g. 'studio' for http://studio.local "
                                         "(saved)")
@@ -4051,12 +4166,25 @@ def main():
     parser.add_argument("--background", action="store_true",
                         help="start with the window minimized (used by start at login)")
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--update-from", metavar="ZIP", help=argparse.SUPPRESS)  # CI: rehearse an update
     # macOS passes -psn_0_12345 to apps opened from Finder on old systems: ignore unknowns.
     args, _unknown = parser.parse_known_args()
 
     setup_logging(args.debug)
-    log.info("Local View %s starting (%s%s)", VERSION, OS_NAME, ", app bundle" if FROZEN else "")
+    log.info("Hop %s starting (%s%s)", VERSION, OS_NAME, ", app bundle" if FROZEN else "")
 
+    if args.update_from:  # replace this app with the Hop inside ZIP, then reopen (used by CI)
+        place = updater.installation()
+        if place.get("problem"):
+            log.error("Can't update: %s", place["problem"])
+            sys.exit(2)
+        work = updater._work_dir(place)
+        prepared = updater.unpack(os.path.abspath(args.update_from), work, place)
+        updater.apply(prepared, place, LOG_PATH)
+        log.info("Update handed over; quitting")
+        sys.exit(0)
+
+    migrate_from_local_view()
     cfg = load_config()
     dirty = False
     if args.pin is not None:
@@ -4096,7 +4224,7 @@ def main():
 
     refresh_startup_entry()
 
-    server = LocalViewServer(name, args.port, cfg["pin"], cfg["id"], cfg,
+    server = HopServer(name, args.port, cfg["pin"], cfg["id"], cfg,
                              easy_port=not args.no_easy_port)
     app = build_app(server)
 
@@ -4113,9 +4241,9 @@ def main():
     thread.ready.wait(30)
     if thread.error is not None:
         if _ask_running_instance(args.port, server.id):
-            log.info("Local View is already running; showed its window.")
+            log.info("Hop is already running; showed its window.")
             return
-        msg = "Could not start Local View on port %d: %s" % (args.port, thread.error)
+        msg = "Could not start Hop on port %d: %s" % (args.port, thread.error)
         log.error(msg)
         if NO_CONSOLE or FROZEN:
             fatal_dialog(msg + "\n\nIs another program using this port?")
@@ -4127,7 +4255,7 @@ def main():
         if not stopped.is_set():
             stopped.set()
             thread.stop()
-            log.info("LocalView host stopped.")
+            log.info("Hop host stopped.")
             try:
                 sys.stdout.flush()
                 sys.stderr.flush()

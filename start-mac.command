@@ -1,8 +1,8 @@
 #!/bin/bash
-# Runs Local View from source on macOS (the packaged app is "Local View.app"; see README.md).
+# Runs Hop from source on macOS (the packaged app is "Hop.app"; see README.md).
 # Usage: ./start-mac.command [--pin 123456] [--port 8765] [--name NAME] [--short NAME] [--headless] ...
-# Opens the Local View window; keep this Terminal window open (it shows the log).
-# Grant Screen Recording + Accessibility to Terminal (not Local View) when running from source.
+# Opens the Hop window; keep this Terminal window open (it shows the log).
+# Grant Screen Recording + Accessibility to Terminal (not Hop) when running from source.
 cd "$(dirname "$0")" || exit 1
 
 # Python 3.10+ is needed (the internet video stack, aiortc/PyAV, has no wheels for 3.9 — the version
@@ -50,7 +50,7 @@ if [ ! -f .venv/.installed ] || [ requirements.txt -nt .venv/.installed ]; then
     echo "Retrying without the optional packages (app window, internet access) ..."
     if grep -viE '^(pywebview|aiortc)' requirements.txt > .venv/requirements-core.txt &&
        .venv/bin/python -m pip install -q -r .venv/requirements-core.txt; then
-      echo "Installed without the app window and internet access; LocalView will run in this Terminal."
+      echo "Installed without the app window and internet access; Hop will run in this Terminal."
       touch .venv/.installed
     else
       echo "Dependency installation failed. Check your internet connection and retry."

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="Hop — your computers, from any screen">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0A0A0B"/><stop offset="1" stop-color="#17120D"/></linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#F69C34" stop-opacity=".26"/><stop offset="1" stop-color="#F69C34" stop-opacity="0"/></radialGradient>
+    <linearGradient id="arc" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F28422" stop-opacity=".45"/><stop offset="1" stop-color="#F69C34"/></linearGradient>
+    <linearGradient id="ball" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE0A0"/><stop offset="1" stop-color="#F28C28"/></linearGradient>
+  </defs>
+  <rect width="1280" height="320" rx="24" fill="url(#bg)"/>
+  <ellipse cx="300" cy="150" rx="260" ry="200" fill="url(#glow)"/>
+  <g transform="translate(150 70)">
+    <path d="M58 118A92 84 0 0 1 242 118" fill="none" stroke="url(#arc)" stroke-width="14" stroke-linecap="round"/>
+    <circle cx="150" cy="40" r="26" fill="url(#ball)"/>
+    <rect x="6" y="126" width="104" height="70" rx="14" fill="none" stroke="#E1E1E6" stroke-width="10"/>
+    <rect x="190" y="126" width="104" height="70" rx="14" fill="none" stroke="#E1E1E6" stroke-width="10"/>
+    <rect x="38" y="210" width="40" height="9" rx="4.5" fill="#E1E1E6" opacity=".6"/>
+    <rect x="222" y="210" width="40" height="9" rx="4.5" fill="#E1E1E6" opacity=".6"/>
+  </g>
+  <text x="560" y="165" fill="#F5F5F7" font-family="Inter, 'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="96" font-weight="600" letter-spacing="-3">Hop</text>
+  <text x="564" y="222" fill="#A0A0A8" font-family="Inter, 'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="34" font-weight="400" letter-spacing="-0.5">Your computers, from any screen.</text>
+</svg>

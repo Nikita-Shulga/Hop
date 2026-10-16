@@ -1,10 +1,10 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title LocalView
-rem Runs Local View from source on Windows (the packaged app is LocalView.exe; see README.md).
+title Hop
+rem Runs Hop from source on Windows (the packaged app is Hop.exe; see README.md).
 rem Usage: start-windows.bat [--pin 123456] [--port 8765] [--name NAME] [--short NAME] [--headless] ...
-rem Opens the Local View window; this console shows the log.
+rem Opens the Hop window; this console shows the log.
 
 set "PY="
 py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1 && set "PY=py -3"
@@ -54,7 +54,7 @@ if defined NEEDS_INSTALL (
       pause
       exit /b 1
     )
-    echo Installed without the app window and internet access; LocalView will run in this console.
+    echo Installed without the app window and internet access; Hop will run in this console.
   )
   copy /y requirements.txt ".venv\.installed" >nul
 )

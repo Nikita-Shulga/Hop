@@ -1,7 +1,7 @@
 {
-  "name": "localview-cloud",
+  "name": "hop-cloud",
   "private": true,
-  "description": "Local View connection server: introduces viewers to computers by ID and serves the viewer page.",
+  "description": "Hop connection server: introduces viewers to computers by ID and serves the viewer page.",
   "scripts": {
     "build": "node build.mjs",
     "dev": "node build.mjs && wrangler dev --port 8787",

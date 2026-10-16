@@ -1,4 +1,4 @@
-/* LocalView theme — design system adapted from Quiet AI (desktop/style.css, same author, MIT).
+/* Hop theme — design system adapted from Quiet AI (desktop/style.css, same author, MIT).
    Dark default; light via :root[data-mode="light"]. Shared by index.html (viewer) and host.html (host app). */
 @font-face{font-family:"Inter";src:url(fonts/Inter-Regular.woff) format("woff");font-weight:400;font-display:block}
 @font-face{font-family:"Inter";src:url(fonts/Inter-Medium.woff) format("woff");font-weight:500;font-display:block}

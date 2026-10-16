@@ -1,10 +1,10 @@
 @echo off
-rem Builds dist\LocalView\LocalView.exe and dist\LocalView-<version>-win-<arch>.zip.
+rem Builds dist\Hop\Hop.exe and dist\Hop-<version>-win-<arch>.zip.
 rem Usage: double-click, or run  packaging\build-windows.bat  from a Command Prompt.
 rem Needs Python 3.10+ from python.org (tick "Add python.exe to PATH") and an internet connection.
 setlocal EnableExtensions
 cd /d "%~dp0.."
-title Building LocalView
+title Building Hop
 
 set "VENV=.venv"
 set "VERSION="
@@ -62,36 +62,36 @@ if not exist build mkdir build
 "%VPY%" -c "import platform; m=platform.machine().lower(); print('arm64' if m in ('arm64','aarch64') else 'x64')" > build\arch.txt 2>nul
 set /p ARCH=<build\arch.txt
 if not defined ARCH set "ARCH=x64"
-set "ZIP=dist\LocalView-%VERSION%-win-%ARCH%.zip"
+set "ZIP=dist\Hop-%VERSION%-win-%ARCH%.zip"
 
 rem 4. PyInstaller
-echo =^> Building dist\LocalView\LocalView.exe (%ARCH%, version %VERSION%)
-if exist "build\localview" rmdir /s /q "build\localview"
-if exist "dist\LocalView" rmdir /s /q "dist\LocalView"
+echo =^> Building dist\Hop\Hop.exe (%ARCH%, version %VERSION%)
+if exist "build\hop" rmdir /s /q "build\hop"
+if exist "dist\Hop" rmdir /s /q "dist\Hop"
 if exist "%ZIP%" del /q "%ZIP%"
-"%VPY%" -m PyInstaller --noconfirm --clean --log-level WARN --distpath dist --workpath build\localview packaging\localview.spec
+"%VPY%" -m PyInstaller --noconfirm --clean --log-level WARN --distpath dist --workpath build\hop packaging\hop.spec
 if errorlevel 1 (
   echo ERROR: PyInstaller failed. See the messages above.
   goto :fail
 )
-if not exist "dist\LocalView\LocalView.exe" (
-  echo ERROR: dist\LocalView\LocalView.exe was not produced.
+if not exist "dist\Hop\Hop.exe" (
+  echo ERROR: dist\Hop\Hop.exe was not produced.
   goto :fail
 )
 
-rem 5. Zip (the LocalView folder itself goes in the zip)
+rem 5. Zip (the Hop folder itself goes in the zip)
 echo =^> Zipping
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\LocalView' -DestinationPath '%ZIP%' -Force"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\Hop' -DestinationPath '%ZIP%' -Force"
 if errorlevel 1 (
   echo ERROR: could not create %ZIP%
   goto :fail
 )
 
 echo.
-echo Built:  %CD%\dist\LocalView\LocalView.exe
+echo Built:  %CD%\dist\Hop\Hop.exe
 echo Zip:    %CD%\%ZIP%
 echo.
-echo Keep LocalView.exe inside its folder (it needs the files next to it).
+echo Keep Hop.exe inside its folder (it needs the files next to it).
 echo First run: allow Windows Firewall on Private networks. The exe isn't code-signed, so
 echo SmartScreen may say "Windows protected your PC": click More info, then Run anyway.
 if not defined CI pause

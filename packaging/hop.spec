@@ -1,4 +1,4 @@
-# PyInstaller spec for Local View (macOS .app and Windows .exe, onedir).
+# PyInstaller spec for Hop (macOS .app and Windows .exe, onedir).
 # Build with packaging/build-mac.sh or packaging/build-windows.bat, not directly.
 # Builds for the architecture of the Python running PyInstaller.
 import os
@@ -14,8 +14,8 @@ IS_WIN = sys.platform == "win32"
 with open(os.path.join(PKG, "VERSION"), encoding="utf-8") as f:
     VERSION = f.read().strip()
 
-APP_NAME = "Local View" if IS_MAC else "LocalView"
-BUNDLE_ID = "com.nikitashulga.localview"
+APP_NAME = "Hop" if IS_MAC else "Hop"
+BUNDLE_ID = "com.nikitashulga.hop"
 
 
 def _webview_platform(name):
@@ -35,7 +35,7 @@ hiddenimports += collect_submodules("webview", filter=_webview_platform)
 hiddenimports += collect_submodules("zeroconf")
 hiddenimports += collect_submodules("aiohttp")
 # Internet access (remote.py): WebRTC stack. av (FFmpeg) ships its own hook in pyinstaller-hooks-contrib.
-hiddenimports += ["remote"] + collect_submodules("aiortc") + collect_submodules("aioice")
+hiddenimports += ["remote", "updater"] + collect_submodules("aiortc") + collect_submodules("aioice")
 hiddenimports += ["pylibsrtp", "google_crc32c", "pyee", "OpenSSL", "av.video.frame", "av.codec"]
 hiddenimports += ["pyperclip", "ifaddr", "qrcode", "qrcode.image.svg", "PIL.Image", "PIL.JpegImagePlugin",
                   "mss"]
@@ -77,12 +77,12 @@ if IS_WIN:
         kids=[
             StringFileInfo([StringTable("040904B0", [
                 StringStruct("CompanyName", "Nikita Shulga"),
-                StringStruct("FileDescription", "Local View"),
+                StringStruct("FileDescription", "Hop"),
                 StringStruct("FileVersion", VERSION),
-                StringStruct("InternalName", "LocalView"),
+                StringStruct("InternalName", "Hop"),
                 StringStruct("LegalCopyright", "Copyright (c) 2026 Nikita Shulga. MIT License."),
-                StringStruct("OriginalFilename", "LocalView.exe"),
-                StringStruct("ProductName", "Local View"),
+                StringStruct("OriginalFilename", "Hop.exe"),
+                StringStruct("ProductName", "Hop"),
                 StringStruct("ProductVersion", VERSION),
             ])]),
             VarFileInfo([VarStruct("Translation", [1033, 1200])]),
@@ -125,8 +125,8 @@ if IS_MAC:
         bundle_identifier=BUNDLE_ID,
         version=VERSION,
         info_plist={
-            "CFBundleName": "Local View",
-            "CFBundleDisplayName": "Local View",
+            "CFBundleName": "Hop",
+            "CFBundleDisplayName": "Hop",
             "CFBundleShortVersionString": VERSION,
             "CFBundleVersion": VERSION,
             "CFBundleDevelopmentRegion": "en",
@@ -136,9 +136,9 @@ if IS_MAC:
             "NSRequiresAquaSystemAppearance": False,
             "NSHumanReadableCopyright": "Copyright (c) 2026 Nikita Shulga. MIT License.",
             "NSLocalNetworkUsageDescription":
-                "Local View finds your other computers and lets your devices connect over your Wi-Fi.",
+                "Hop finds your other computers and lets your devices connect over your Wi-Fi.",
             "NSBonjourServices": ["_http._tcp"],
             "NSAppleEventsUsageDescription":
-                "Local View shows a notification when a device connects or asks to connect.",
+                "Hop shows a notification when a device connects or asks to connect.",
         },
     )

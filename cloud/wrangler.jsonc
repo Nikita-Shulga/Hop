@@ -1,8 +1,8 @@
-// Local View connection server (Cloudflare Workers free plan).
+// Hop connection server (Cloudflare Workers free plan).
 // Deploy: see cloud/README.md. `public/` is generated from ../static by `npm run build`.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "localview",
+  "name": "hop",
   "main": "src/index.js",
   "compatibility_date": "2026-09-01",
   "assets": {

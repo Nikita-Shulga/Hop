@@ -1,6 +1,6 @@
 {
-  "name": "Local View",
-  "short_name": "Local View",
+  "name": "Hop",
+  "short_name": "Hop",
   "description": "See and control your computers from any browser on the same network.",
   "id": "/",
   "start_url": "/",
