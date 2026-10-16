@@ -18,6 +18,7 @@ jobs:
           - os: windows-latest
             target: win-x64
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -76,7 +77,9 @@ jobs:
           Copy-Item -Recurse -Force dist\Hop (Join-Path $T 'Hop')
           $marker = Join-Path $T 'Hop\_internal\old-version-marker'; New-Item -ItemType File -Force $marker | Out-Null
           $zip = (Get-ChildItem dist\Hop-*-win-x64.zip).FullName
-          Start-Process -FilePath (Join-Path $T 'Hop\Hop.exe') -ArgumentList '--update-from', "`"$zip`"" -Wait
+          # Wait only for this process (Start-Process -Wait would also wait for the reopened Hop, forever)
+          $p = Start-Process -FilePath (Join-Path $T 'Hop\Hop.exe') -ArgumentList '--update-from', "`"$zip`"" -PassThru
+          if (-not $p.WaitForExit(120000)) { Write-Error 'Hop --update-from did not exit'; exit 1 }
           $ok = $false
           for ($i = 0; $i -lt 60; $i++) {
             $running = Get-Process -Name Hop -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$T*" }
@@ -115,9 +118,12 @@ jobs:
           pattern: Hop-*
           path: dist
           merge-multiple: true
-      - name: Checksums
+      - name: Checksums (and version-less copies for "latest" download links)
         working-directory: dist
-        run: sha256sum *.zip > SHA256SUMS.txt && cat SHA256SUMS.txt
+        run: |
+          sha256sum *.zip > SHA256SUMS.txt && cat SHA256SUMS.txt
+          for f in Hop-*-*.zip; do t="${f#Hop-*-}"; cp "$f" "Hop-$t"; done
+          ls -l
       - uses: softprops/action-gh-release@v2
         with:
           name: Hop ${{ github.ref_name }}

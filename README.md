@@ -47,6 +47,12 @@
 
 ## Download
 
+<p align="center">
+  <a href="https://github.com/Nikita-Shulga/Hop/releases/latest/download/Hop-win-x64.zip"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows-F28422?style=for-the-badge&logo=windows&logoColor=white"></a>
+  <a href="https://github.com/Nikita-Shulga/Hop/releases/latest/download/Hop-mac-arm64.zip"><img alt="Download for Mac (Apple silicon)" src="https://img.shields.io/badge/Download-Mac%20·%20Apple%20silicon-F28422?style=for-the-badge&logo=apple&logoColor=white"></a>
+  <a href="https://github.com/Nikita-Shulga/Hop/releases/latest/download/Hop-mac-x64.zip"><img alt="Download for Mac (Intel)" src="https://img.shields.io/badge/Download-Mac%20·%20Intel-555555?style=for-the-badge&logo=apple&logoColor=white"></a>
+</p>
+
 | System | Package |
 | --- | --- |
 | **Windows 10 / 11** | `Hop-<version>-win-x64.zip` |
@@ -68,14 +74,12 @@ Your other computers appear under **Your devices** — **Connect** or **Second s
 
 ## How it works
 
-```mermaid
-flowchart LR
-    P[📱 Phone / 💻 other computer] -- "Wi-Fi: PIN" --> H[🖥️ Hop on your computer]
-    P -. "Internet: ID + password" .-> S[(Your free server<br/>on Cloudflare)]
-    H -. keeps a line open .-> S
-    S -. introduces them .-> P
-    P == "video, control, files<br/>encrypted, direct" ==> H
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/how-it-works-dark.svg">
+    <img src="docs/images/how-it-works-light.svg" alt="On Wi-Fi your phone connects to the computer directly with a PIN. Over the internet your own free server only introduces them; the screen, control and files then go directly between them, encrypted." width="100%">
+  </picture>
+</p>
 
 - **On Wi-Fi**, your phone talks straight to the computer. Nothing leaves your network.
 - **Over the internet**, your own server only introduces the two devices. Video, control, files and the password go **directly between them**, encrypted. The server is private: without its secret key it shows *Not found*.

@@ -4,3 +4,5 @@
 *.icns binary
 *.ico binary
 *.png binary
+cloud/public/** linguist-generated=true
+docs/** linguist-documentation=true
