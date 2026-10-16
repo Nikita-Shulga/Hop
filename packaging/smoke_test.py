@@ -16,7 +16,7 @@ import aiohttp
 async def main(port, pin):
     base = "http://127.0.0.1:%d" % port
     async with aiohttp.ClientSession() as s:
-        for attempt in range(30):  # the app may still be starting
+        for attempt in range(150):  # the app may still be starting (first launch can be slow)
             try:
                 async with s.get(base + "/api/info") as r:
                     info = await r.json()

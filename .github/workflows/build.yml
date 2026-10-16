@@ -38,7 +38,7 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          "dist/Local View.app/Contents/MacOS/Local View" --headless --no-easy-port --port 8799 --pin 123456 > app.log 2>&1 &
+          "dist/Local View.app/Contents/MacOS/Local View" --headless --no-easy-port --port 8799 --pin 123456 --debug > app.log 2>&1 &
           "$RUNNER_TEMP/venv/bin/python" packaging/smoke_test.py 8799 123456 || { cat app.log; cat ~/.localview.log 2>/dev/null; exit 1; }
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
