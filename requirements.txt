@@ -1,0 +1,10 @@
+aiohttp>=3.8
+mss>=9
+Pillow>=9
+pynput>=1.7
+qrcode>=7
+pywebview>=5.3
+zeroconf>=0.100
+pyperclip>=1.8
+aiortc>=1.9
+pyobjc-framework-libdispatch; sys_platform == "darwin"

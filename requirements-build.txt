@@ -1,0 +1,3 @@
+# Build-time only (packaging/build-mac.sh, packaging/build-windows.bat). Runtime deps: requirements.txt
+pyinstaller>=6.10
+pyinstaller-hooks-contrib>=2024.8

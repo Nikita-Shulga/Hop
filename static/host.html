@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="en" data-pref="__LV_THEME__"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark">
+<title>Local View</title>
+<link rel="icon" href="/static/icon.png">
+<link rel="stylesheet" href="/static/theme.css">
+<script>
+/* Apply the saved theme before first paint (no flash). */
+(function(){var p=document.documentElement.dataset.pref;if(['system','light','dark'].indexOf(p)<0)p='system';
+var light=p==='light'||(p==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);
+document.documentElement.dataset.mode=light?'light':'dark';})();
+</script>
+<style>
+/* Host-window additions on top of the shared Quiet AI theme (theme.css). */
+html,body{background:var(--bg)}
+body:not(.shell-win) .win{display:none}
+body.shell-mac .titlebar{padding-left:84px;height:52px}
+body.shell-mac .sheet{top:52px}
+body:not(.shell-win)::after{display:none}
+.titlebar{-webkit-user-select:none;user-select:none}
+.mark.lv{width:25px;height:19px}
+main{overflow-y:auto;overflow-x:hidden;padding-bottom:2px}
+main::-webkit-scrollbar{width:0}
+
+/* Hero tones (sharing = green ping, in use = amber, paused = neutral) reuse theme.css tones */
+.hero-top .provider{padding:0 9px;font-size:12px;font-weight:500;color:var(--text-2);font-variant-numeric:tabular-nums}
+.hero-top .provider svg{width:13px;height:13px;color:var(--text-3)}
+.hero[data-tone="countdown"] .badge i::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--amber);animation:ping 2s var(--ease) infinite}
+.summary .url{color:var(--text);font-weight:500}
+
+/* Connect panel */
+.connect-panel{display:grid;grid-template-columns:118px 1fr;gap:16px;padding:12px}
+.qr{position:relative;width:118px;height:118px;border-radius:10px;padding:9px;background:#FFFFFF;color:#0B0B0C;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.25)}
+.qr svg{width:100%;height:100%;display:block;fill:currentColor;stroke:none}
+.qr.off svg{opacity:.12}
+.qr .qr-off{position:absolute;inset:0;display:grid;place-items:center;font-size:11.5px;font-weight:500;color:#5E5E68;text-align:center;padding:12px}
+.cside{min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+.crow{display:flex;align-items:center;justify-content:space-between;gap:8px;height:16px}
+.clabel{font-size:12px;color:var(--text-2)}
+.url-btn{display:flex;align-items:center;gap:8px;width:100%;height:30px;padding:0 8px 0 10px;border-radius:7px;background:var(--input);box-shadow:inset 0 0 0 1px var(--line-2);font:500 12.5px/1 ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace;color:var(--text);transition:box-shadow .15s,background-color .15s}
+.url-btn:hover{box-shadow:inset 0 0 0 1px var(--line-hover)}
+.url-btn span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.url-btn svg{width:14px;height:14px;color:var(--text-3);flex-shrink:0}
+.pin{display:flex;gap:5px}
+.pin b{flex:1;min-width:0;max-width:36px;height:36px;display:grid;place-items:center;border-radius:7px;background:var(--fill);box-shadow:inset 0 0 0 1px var(--line-2);font:600 19px/1 var(--display);letter-spacing:0;color:var(--text);font-variant-numeric:tabular-nums}
+.pin.hide b{color:var(--text-3);font-size:15px}
+.pin-edit{display:flex;gap:8px;align-items:center}
+.pin-edit .input:focus-visible{outline:none}
+.pin-edit .input{flex:1;min-width:0;height:36px;font-size:16px;letter-spacing:.3em;text-align:center}
+.clinks{display:flex;gap:14px}
+
+/* Lists */
+.chat-list .picon.dev{color:var(--text-2)}
+.chat-list .picon.dev svg{width:16px;height:16px}
+.chat-list .title .dim{color:var(--text-3);margin-left:6px;font-variant-numeric:tabular-nums}
+.chat-list .link{flex-shrink:0}
+.chat-list li .live.amber{background:var(--amber);box-shadow:0 0 0 3px color-mix(in srgb,var(--amber) 16%,transparent)}
+.chat-list a.link{text-decoration:none}
+#viewers{min-height:84px}
+.peers-panel{overflow:hidden}
+
+/* Approval request card */
+.ask{position:fixed;left:16px;right:16px;bottom:74px;z-index:60;display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:12px 12px 12px 12px;border-radius:12px;background:var(--elevated);box-shadow:var(--elevated-shadow),0 0 0 1px color-mix(in srgb,var(--amber) 32%,transparent),0 0 40px color-mix(in srgb,var(--amber) 12%,transparent);animation:rise .3s var(--ease)}
+.ask .ask-top{display:flex;align-items:center;gap:10px}
+.ask .ask-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:color-mix(in srgb,var(--amber) 14%,transparent);color:var(--amber-text)}
+.ask .ask-ic svg{width:16px;height:16px}
+.ask .stext strong{font-size:13px}
+.ask .ask-actions{display:flex;justify-content:flex-end;align-items:center;gap:16px}
+.ask .ask-actions .button{height:28px}
+
+/* Small buttons in rows */
+.button.sm{height:26px;padding:0 10px;font-size:12px;border-radius:6px;flex-shrink:0}
+.alt-url{font:400 11.5px/1 ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:62%;transition:color .15s}
+.alt-url:hover{color:var(--text-2)}
+
+/* Other computers: inline "Connect to address…" */
+.block-head .link{font-size:12px}
+.addr-form{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 10px}
+#peers:not(:empty)+.addr-form{border-top:1px solid var(--line)}
+.addr-form .input{flex:1;min-width:0;height:30px;font-size:12.5px}
+#peers:empty{display:none}
+#peers li.empty{height:auto;min-height:0;flex:none;flex-direction:column;gap:2px;padding:12px 10px}
+#peers li.empty span{font-size:12px}
+
+/* Shared folder */
+.files-panel{overflow:hidden}
+.frow{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px}
+.ficon{width:28px;height:28px;flex-shrink:0;display:grid;place-items:center;border-radius:7px;background:color-mix(in srgb,var(--amber) 13%,transparent);color:var(--amber-text)}
+.ficon svg{width:16px;height:16px}
+.frow .stext small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:400 11.5px/16px ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace;color:var(--text-3)}
+.frow .links{gap:14px;flex-shrink:0}
+#received{padding:0 4px 4px;flex:none}
+#received:empty{display:none}
+#received li:first-child::before{content:"";position:absolute;top:0;left:36px;right:10px;height:1px;background:var(--line)}
+#received .picon svg{width:15px;height:15px}
+
+/* Notice action ("Show") */
+.notice .notice-act{width:auto;height:24px;padding:0 8px;font-size:12.5px;font-weight:500;color:var(--link)}
+.notice .notice-act:hover{background:var(--fill-2);color:var(--link-hover)}
+
+/* Settings: address field */
+.short-form{display:flex;align-items:center;gap:8px}
+.short-wrap{flex:1;min-width:0;display:flex;align-items:center;height:32px;padding:0 10px;border-radius:7px;background:var(--input);box-shadow:inset 0 0 0 1px var(--line-2);font:400 12.5px/1 ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace;color:var(--text-3);transition:box-shadow .15s}
+.short-wrap:focus-within{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 70%,transparent)}
+.short-wrap input{flex:1;min-width:0;height:100%;padding:0 1px;border:0;background:none;font:inherit;color:var(--text);outline:none}
+.short-wrap.bad{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--red) 60%,transparent)}
+.preview{font-size:12px;line-height:16px;color:var(--text-2)}
+.preview b{font-weight:500;color:var(--text);font-family:ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace;font-size:11.5px}
+.preview.warn{color:var(--amber-text)}
+
+/* Settings sheet extras */
+.fstate.bad::before{background:var(--red)}
+.perm .link{flex-shrink:0}
+.sheet-body .foot b{font-weight:500;color:var(--text-2)}
+.cta.secondary{background:var(--panel)}
+
+/* First-run checklist (macOS permissions) */
+.setup .srow{align-items:center}
+.stepnum{width:22px;height:22px;flex-shrink:0;display:grid;place-items:center;border-radius:50%;background:var(--fill-2);box-shadow:inset 0 0 0 1px var(--line-2);font:600 11.5px/1 var(--sans);color:var(--text-2)}
+.step.done .stepnum{background:color-mix(in srgb,var(--green) 16%,transparent);box-shadow:none;color:var(--green);font-size:0}
+.step.done .stepnum::after{content:"";width:9px;height:5px;border-left:1.8px solid currentColor;border-bottom:1.8px solid currentColor;transform:translateY(-1px) rotate(-45deg)}
+.step.done .stext strong{color:var(--text-2)}
+.step.done .button{display:none}
+.step.done small .todo{display:none}
+.step:not(.done) small .ok{display:none}
+#setup-block .panel{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 35%,transparent),0 1px 2px rgba(0,0,0,.2)}
+
+/* Your devices / Nearby (shared row style) */
+.devlist li.dev{height:auto;min-height:48px;padding:7px 8px 7px 10px;gap:10px}
+.devlist li.dev .stext{flex:1;min-width:0;gap:1px}
+.devlist li.dev .stext strong{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.devlist li.dev .stext small{font-size:11.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.devlist li.dev .picon.dev{width:28px;height:28px;border-radius:8px;background:var(--fill-2);box-shadow:inset 0 0 0 1px var(--line)}
+.devlist li.dev .acts{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.devlist li.dev .hide-btn{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:var(--text-3)}
+.devlist li.dev .hide-btn:hover{background:var(--fill-2);color:var(--text)}
+.devlist li.dev .hide-btn svg{width:12px;height:12px}
+#nearby li.dev{min-height:42px}
+#nearby li.dev .picon.dev{width:24px;height:24px}
+.devlist li.dev.on .picon.dev{background:color-mix(in srgb,var(--green) 12%,transparent);color:var(--green);box-shadow:none}
+.devlist li.dev.off{opacity:.78}
+.devlist li.dev+li.dev::before{left:48px}
+
+/* Internet access */
+.net-state{display:inline-flex;align-items:center;gap:6px}
+.net-state::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--text-3)}
+.net-state.off::before{display:none}
+.net-state.online::before{background:var(--green);box-shadow:0 0 0 3px var(--green-ring)}
+.net-state.connecting::before{background:var(--amber)}
+.net-state.error::before{background:var(--red)}
+.net-body{padding:2px 12px 12px;display:flex;flex-direction:column;gap:10px}
+.net-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.net-cell{display:flex;flex-direction:column;gap:5px;min-width:0}
+.net-val{display:flex;align-items:center;justify-content:space-between;gap:6px;height:40px;padding:0 10px 0 12px;border-radius:8px;background:var(--fill);box-shadow:inset 0 0 0 1px var(--line-2);font:600 17px/1 var(--display);letter-spacing:.02em;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;transition:box-shadow .15s}
+.net-val:hover{box-shadow:inset 0 0 0 1px var(--line-hover)}
+.net-val span{overflow:hidden;text-overflow:ellipsis}
+.net-val svg{width:14px;height:14px;color:var(--text-3);flex-shrink:0}
+.net-val.pw span{font-family:ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace;font-weight:500;font-size:15px;letter-spacing:.06em}
+.net-body .crow{height:auto}
+.net-err{font-size:12px;line-height:16px;color:var(--red-text)}
+.net-err:empty{display:none}
+.url-form{display:flex;gap:8px;align-items:center}
+.url-form .input{flex:1;min-width:0;height:30px;font-size:12px}
+.nstep{display:flex;align-items:center;gap:12px}
+.nstep .stext small b{font-weight:500;color:var(--text)}
+.suggest{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--green) 9%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--green) 25%,transparent);margin-bottom:2px}
+.suggest .stext small{font-family:ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace;font-size:11.5px}
+.net-qr-row{display:flex;align-items:center;gap:14px}
+#net-setup.suggesting .nstep,#net-setup.suggesting #net-url-form,#net-setup.suggesting .preview{display:none}
+#net-other{align-self:flex-start;font-size:12px}
+.net-qr-row .qr{width:104px;height:104px;flex-shrink:0;padding:8px}
+</style>
+</head>
+<body>
+  <header class="titlebar pywebview-drag-region">
+    <div class="brand">
+      <svg class="mark lv" viewBox="0 0 32 24" aria-hidden="true"><defs><linearGradient id="lvsun" x1="0" y1="6" x2="0" y2="11.4" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFD07A"/><stop offset="1" stop-color="#F28422"/></linearGradient></defs><rect x="2" y="1.5" width="28" height="17" rx="4" stroke="currentColor" stroke-opacity=".88" stroke-width="2"/><path d="M10.6 11.4A5.4 5.4 0 0 1 21.4 11.4Z" fill="url(#lvsun)" stroke="none"/><path d="M7 14.2H25" stroke="#F69C34" stroke-opacity=".92" stroke-width="2"/><path d="M11.5 22.5H20.5" stroke="#F69C34" stroke-opacity=".45" stroke-width="2"/></svg>
+      <span class="brand-name">Local <span>View</span></span>
+    </div>
+    <div class="tb-actions">
+      <button id="open-settings" class="tb" aria-label="Settings" title="Settings"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6.5M12 5h1.5M2.5 11h1.5M7 11h6.5"/><circle cx="10.5" cy="5" r="1.5"/><circle cx="5.5" cy="11" r="1.5"/></svg></button>
+      <span class="tb-sep win"></span>
+      <button id="minimize" class="tb win" aria-label="Minimize"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8h7"/></svg></button>
+      <button id="close" class="tb win close" aria-label="Close"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6"/></svg></button>
+    </div>
+  </header>
+
+  <main>
+    <section id="hero" class="hero" data-tone="preview" aria-live="polite">
+      <div class="hero-top">
+        <span class="badge"><i></i><span id="badge-text">Starting</span></span>
+        <span id="rate" class="provider hidden" title="Streaming rate"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 9.5l2.5-3 2.5 2 3-4.5 4 5"/></svg><span id="rate-text"></span></span>
+      </div>
+      <h1 id="headline" class="headline">&nbsp;</h1>
+      <p id="summary" class="summary">&nbsp;</p>
+      <canvas id="signal" class="signal" aria-hidden="true"></canvas>
+    </section>
+
+    <section class="block hidden" id="setup-block">
+      <div class="block-head"><h2>Finish setting up</h2><span class="note" id="setup-note"></span></div>
+      <div class="panel setup">
+        <div class="srow step" id="step-screen"><span class="stepnum">1</span><div class="stext"><strong>Let your devices see this screen</strong><small><span class="todo" id="scr-todo">macOS asks once — turn on <b class="appname">Local View</b> under Screen Recording.</span><span class="ok">Screen Recording is on.</span></small></div><button class="button sm" data-req="screen">Allow</button></div>
+        <div class="srow step" id="step-ax"><span class="stepnum">2</span><div class="stext"><strong>Let them click and type</strong><small><span class="todo">Turn on <b class="appname">Local View</b> under Accessibility.</span><span class="ok">Accessibility is on.</span></small></div><button class="button sm" data-req="accessibility">Allow</button></div>
+        <div class="srow step hidden" id="step-restart"><span class="stepnum">3</span><div class="stext"><strong>Restart Local View</strong><small>macOS turns on screen access after a restart. It takes a second.</small></div><button class="button sm" id="restart-btn">Restart</button></div>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>Your devices</h2><span class="clinks"><button id="net-connect-toggle" class="link hidden">Over the internet…</button><button id="addr-toggle" class="link">Connect to address…</button></span></div>
+      <div class="panel peers-panel">
+        <ul id="peers" class="chat-list devlist" aria-label="Other computers running Local View"></ul>
+        <form id="net-connect-form" class="addr-form hidden" autocomplete="off"><input id="net-connect-input" class="input" placeholder="Computer ID, e.g. 123 456 789" inputmode="numeric" spellcheck="false" aria-label="ID of a computer to connect to over the internet"><button class="link" type="button" id="net-connect-extend" title="Use this computer as its second screen">Second screen</button><button class="button sm" type="submit">Connect</button></form>
+        <form id="addr-form" class="addr-form hidden" autocomplete="off"><input id="addr-input" class="input" placeholder="studio.local or 192.168.1.20" spellcheck="false" autocapitalize="off" aria-label="Address of another computer"><button class="button sm" type="submit">Connect</button></form>
+      </div>
+    </section>
+
+    <section class="block hidden" id="nearby-block">
+      <div class="block-head"><h2>Nearby</h2><button id="nearby-unhide" class="link hidden"></button></div>
+      <div class="panel list-panel"><ul id="nearby" class="chat-list devlist" aria-label="Other Apple devices on this Wi-Fi"></ul></div>
+      <p class="foot">Apple devices on this Wi-Fi announce themselves (that's how AirDrop finds them), so some may not be yours. Nobody can connect through this list. <b>Hide</b> the ones you don't need.</p>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>Connect a device</h2><span class="note">Same Wi-Fi</span></div>
+      <div class="panel connect-panel">
+        <div id="qr" class="qr" title="Scan with your phone's camera"></div>
+        <div class="cside">
+          <div class="crow"><span class="clabel">Address</span><button id="alt-url" class="alt-url hidden" title="Copy the IP address (works when the name doesn't)"></button></div>
+          <button id="url" class="url-btn" title="Copy address"><span id="url-text">&nbsp;</span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.2A1.3 1.3 0 0 0 9.2 2H3.8A1.3 1.3 0 0 0 2.5 3.3v5.4A1.3 1.3 0 0 0 3.8 10H4"/></svg></button>
+          <div class="crow"><span class="clabel">PIN</span><button id="pin-toggle" class="link">Hide</button></div>
+          <div id="pin" class="pin" aria-label="PIN"><b></b><b></b><b></b><b></b><b></b><b></b></div>
+          <form id="pin-edit" class="pin-edit hidden" autocomplete="off"><input id="pin-input" class="input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" aria-label="New 6-digit PIN"><button class="button" type="submit">Save</button><button id="pin-cancel" class="link" type="button">Cancel</button></form>
+          <div id="pin-links" class="clinks"><button id="new-pin" class="link">New PIN</button><button id="set-pin" class="link">Set PIN…</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="net-block">
+      <div class="block-head"><h2>Internet access</h2><span id="net-note" class="note net-state"></span></div>
+      <div class="panel">
+        <div class="srow"><div class="stext"><strong>Reach this computer from anywhere</strong><small id="net-sub">Off — only devices on this Wi-Fi can connect.</small></div><label class="switch"><input id="net-toggle" type="checkbox" aria-label="Internet access"><span></span></label></div>
+        <div id="net-setup" class="net-body hidden">
+          <div id="net-suggest"></div>
+          <button id="net-other" class="link hidden" type="button">Use a different server…</button>
+          <div class="nstep"><span class="stepnum">1</span><div class="stext"><strong>Create your free server</strong><small>One time, on Cloudflare: sign in or sign up (free), then press <b>Deploy</b>.</small></div><button class="button sm" id="net-deploy" type="button">Create</button></div>
+          <div class="nstep"><span class="stepnum">2</span><div class="stext"><strong>Paste its address</strong><small>Cloudflare shows it when it's done, like <b>localview.yourname.workers.dev</b></small></div></div>
+          <form id="net-url-form" class="url-form" autocomplete="off"><input id="net-url" class="input" placeholder="localview.yourname.workers.dev" spellcheck="false" autocapitalize="off" aria-label="Connection server address"><button class="button sm" type="submit">Connect</button></form>
+          <small class="preview">Your other computers find it by themselves when they're on the same Wi-Fi.</small>
+        </div>
+        <div id="net-on" class="net-body hidden">
+          <div class="net-grid">
+            <div class="net-cell"><span class="clabel">ID</span><button id="net-id" class="net-val" title="Copy ID"><span id="net-id-text"></span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.2A1.3 1.3 0 0 0 9.2 2H3.8A1.3 1.3 0 0 0 2.5 3.3v5.4A1.3 1.3 0 0 0 3.8 10h.2"/></svg></button></div>
+            <div class="net-cell"><div class="crow"><span class="clabel">Password</span><button id="net-pw-toggle" class="link">Show</button></div><button id="net-pw" class="net-val pw" title="Copy password"><span id="net-pw-text"></span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.2A1.3 1.3 0 0 0 9.2 2H3.8A1.3 1.3 0 0 0 2.5 3.3v5.4A1.3 1.3 0 0 0 3.8 10h.2"/></svg></button></div>
+          </div>
+          <form id="net-pw-edit" class="pin-edit hidden" autocomplete="off"><input id="net-pw-input" class="input" maxlength="64" placeholder="At least 8 characters, letters and digits" aria-label="New internet password" spellcheck="false" autocapitalize="off"><button class="button" type="submit">Save</button><button class="link" type="button" id="net-pw-cancel">Cancel</button></form>
+          <div class="crow"><div class="clinks"><button id="net-pw-new" class="link">New password</button><button id="net-pw-set" class="link">Set password…</button></div><div class="clinks"><button id="net-qr-toggle" class="link" title="Scan with your phone to connect from anywhere">Phone</button><button id="net-link" class="link" title="Copy a link that opens Local View with this ID filled in">Copy link</button></div></div>
+          <div id="net-qr-row" class="net-qr-row hidden"><div id="net-qr" class="qr" title="Scan with your phone's camera"></div><div class="stext"><strong>Connect your phone from anywhere</strong><small>Scan with the camera, then enter the password. Add it to the Home Screen and it opens like an app, on any network.</small></div></div>
+          <div id="net-err" class="net-err" role="alert"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>Connected</h2><span id="viewers-note" class="note"></span></div>
+      <div class="panel list-panel"><ul id="viewers" class="chat-list" aria-label="Connected devices"></ul></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>Shared folder</h2><span id="files-note" class="note"></span></div>
+      <div class="panel files-panel">
+        <div class="frow">
+          <span class="ficon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.6c0-.8.6-1.4 1.4-1.4h2.7l1.5 1.6h4.9c.8 0 1.4.6 1.4 1.4v5.6c0 .8-.6 1.4-1.4 1.4H3.4c-.8 0-1.4-.6-1.4-1.4Z"/><path d="M8 7v3.6M6.4 9 8 10.6 9.6 9"/></svg></span>
+          <div class="stext"><strong>Files to and from your devices</strong><small id="folder-path" title="Shared folder">&nbsp;</small></div>
+          <div class="links"><button id="files-open" class="link">Open</button><button id="files-send" class="link">Send a file…</button></div>
+        </div>
+        <ul id="received" class="chat-list" aria-label="Recently received files"></ul>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer"><button id="cta" class="cta"><span id="cta-text">Pause sharing</span><kbd>↵</kbd></button></footer>
+
+  <div id="ask" class="ask hidden" role="alertdialog" aria-live="assertive">
+    <div class="ask-top"><span class="ask-ic" id="ask-ic"></span><div class="stext"><strong id="ask-title"></strong><small id="ask-detail"></small></div></div>
+    <form id="ask-code-form" class="pin-edit hidden" autocomplete="off"><input id="ask-code" class="input" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" placeholder="000 000" aria-label="Code shown on the new device"></form>
+    <div class="ask-actions"><button id="ask-deny" class="link danger">Deny</button><button id="ask-allow" class="button">Allow</button></div>
+  </div>
+  <div id="notice" class="notice hidden" role="status"><span id="notice-text"></span><button id="notice-act" class="notice-act hidden"></button><button id="dismiss-notice" aria-label="Dismiss"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6"/></svg></button></div>
+
+  <aside id="settings" class="sheet" aria-label="Settings" aria-hidden="true">
+    <div class="sheet-bar"><button id="close-settings" class="back"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>Back</button><h2>Settings</h2><span></span></div>
+    <div class="sheet-body">
+      <div class="block-head"><h2>Appearance</h2></div>
+      <div class="panel">
+        <div class="srow appearance">
+          <div id="theme-seg" class="seg" role="group" aria-label="Theme" data-value="system"><span class="seg-thumb" aria-hidden="true"></span>
+            <button data-theme="system"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.2" width="11" height="7.6" rx="1.4"/><path d="M6 13h4"/></svg>System</button>
+            <button data-theme="light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/></svg>Light</button>
+            <button data-theme="dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg>Dark</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="block-head"><h2>Address</h2></div>
+      <div class="panel">
+        <div class="srow field">
+          <label for="short-input">Name on this network</label>
+          <form id="short-form" class="short-form" autocomplete="off"><div id="short-wrap" class="short-wrap"><span>http://</span><input id="short-input" maxlength="30" spellcheck="false" autocapitalize="off" aria-label="Name on this network"><span id="short-suffix">.local</span></div><button id="short-save" class="button" type="submit" disabled>Save</button></form>
+          <small id="short-preview" class="preview">&nbsp;</small>
+        </div>
+      </div>
+      <p class="foot">Letters, digits and hyphens. Devices on this Wi-Fi open this address; if another computer already uses the name, this one adds “-2”.</p>
+
+      <div class="block-head"><h2>Other computers</h2></div>
+      <div class="panel">
+        <div class="srow field">
+          <label>Open their screens</label>
+          <div id="open-seg" class="seg" role="group" aria-label="Open other computers in" data-value=""><span class="seg-thumb" aria-hidden="true"></span>
+            <button data-open="window"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.6"/><path d="M2 5.8h12"/></svg>Window</button>
+            <button data-open="fullscreen"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V3.5a1 1 0 0 1 1-1H6M10 2.5h2.5a1 1 0 0 1 1 1V6M13.5 10v2.5a1 1 0 0 1-1 1H10M6 13.5H3.5a1 1 0 0 1-1-1V10"/></svg>Full screen</button>
+            <button data-open="browser"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><path d="M2.4 8h11.2M8 2.4c1.6 1.6 2.3 3.5 2.3 5.6S9.6 12 8 13.6M8 2.4C6.4 4 5.7 5.9 5.7 8S6.4 12 8 13.6"/></svg>Browser</button>
+          </div>
+        </div>
+      </div>
+      <p class="foot"><b>Window</b> and <b>Full screen</b> open inside Local View, like TeamViewer; <b>Browser</b> uses a tab in your web browser. <b>Second screen</b> always opens full screen.</p>
+
+      <div id="net-settings">
+        <div class="block-head"><h2>Internet access</h2></div>
+        <div class="panel">
+          <div class="srow field">
+            <label for="net-url2">Connection server — your private address</label>
+            <form id="net-url-form2" class="url-form" autocomplete="off"><input id="net-url2" class="input" placeholder="https://localview.yourname.workers.dev" spellcheck="false" autocapitalize="off" aria-label="Connection server address"><button class="button sm" type="submit">Save</button></form>
+          </div>
+        </div>
+        <p class="foot">Your devices meet through this server (free on Cloudflare); the video, control and password then go directly between them, encrypted end to end. The server is <b>private</b>: it only answers at this address (with its key) — anyone else gets “Not found”. Your other computers pick it up with “Use it”; your phone gets it from the Phone QR code.</p>
+        <div class="block-head"><h2>Trusted devices</h2><span id="trusted-note" class="note"></span></div>
+        <div class="panel list-panel"><ul id="trusted" class="chat-list" aria-label="Devices trusted for internet access"></ul></div>
+        <p class="foot">A device connecting over the internet for the first time shows a code that you type here; after that it only needs the ID and password. <b>Forget</b> a device to make it confirm again.</p>
+      </div>
+
+      <div class="block-head"><h2>Sharing</h2></div>
+      <div class="panel">
+        <div class="srow"><div class="stext"><strong>Allow control</strong><small>Viewers can use the mouse and keyboard. Off makes every connection view-only.</small></div><label class="switch"><input id="allow-control" type="checkbox" aria-label="Allow control"><span></span></label></div>
+        <div class="srow"><div class="stext"><strong>Ask before someone connects</strong><small>After the right PIN, a device waits until you allow it here. Unanswered requests are declined after 30 seconds.</small></div><label class="switch"><input id="ask-before" type="checkbox" aria-label="Ask before someone connects"><span></span></label></div>
+        <div class="srow"><div class="stext"><strong>Keep this computer awake</strong><small>While someone is connected, the computer and its display don’t go to sleep.</small></div><label class="switch"><input id="keep-awake" type="checkbox" aria-label="Keep this computer awake"><span></span></label></div>
+        <div class="srow" id="notify-row"><div class="stext"><strong>Show notifications</strong><small>Tell me when a device connects or asks to.</small></div><label class="switch"><input id="notify" type="checkbox" aria-label="Show notifications"><span></span></label></div>
+      </div>
+
+      <div id="startup-block">
+        <div class="block-head"><h2>Startup</h2></div>
+        <div class="panel">
+          <div class="srow"><div class="stext"><strong>Start at login</strong><small id="startup-sub">Open Local View in the background when you log in, so this computer is always reachable.</small></div><label class="switch"><input id="start-login" type="checkbox" aria-label="Start at login"><span></span></label></div>
+        </div>
+      </div>
+
+      <div id="perm-block">
+        <div class="block-head"><h2>Permissions</h2></div>
+        <div class="panel">
+          <div class="srow perm"><div class="stext"><strong>Screen Recording</strong><small id="perm-screen" class="fstate"></small></div><button class="link" data-pane="screen">Open Settings</button></div>
+          <div class="srow perm"><div class="stext"><strong>Accessibility</strong><small id="perm-ax" class="fstate"></small></div><button class="link" data-pane="accessibility">Open Settings</button></div>
+        </div>
+        <p class="foot" id="perm-foot"></p>
+      </div>
+
+      <div class="block-head"><h2>About</h2><span id="version" class="note"></span></div>
+      <div class="panel">
+        <div class="srow prose"><p>Local View lets your phone, tablet or another computer see and control this one. On the same Wi-Fi, open the address and enter the PIN. From anywhere, turn on Internet access and use the ID and password.</p><p class="muted">On Wi-Fi nothing leaves your network. Over the internet, devices connect directly and encrypted; the connection server only introduces them. Files your devices send land in the shared folder.</p></div>
+      </div>
+      <p class="foot">Use the same PIN on all your computers to hop between them from the device list. Never forward this port on your router — use Internet access instead.</p>
+    </div>
+  </aside>
+
+<script>
+'use strict';
+const TOKEN='__LV_TOKEN__';
+const $=id=>document.getElementById(id);
+const shell=new URLSearchParams(location.search).get('shell')||'';
+if(shell==='mac'||shell==='win')document.body.classList.add('shell-'+shell);
+let state=null,busy=false,pinHidden=false,editingPin=false,lastOk=0;
+
+// ——— API ———
+async function api(path,body){
+  const opts={method:body===undefined?'GET':'POST',headers:{'X-LocalView-Token':TOKEN},cache:'no-store'};
+  if(body!==undefined){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
+  const r=await fetch('/api/host/'+path,opts);let j={};try{j=await r.json();}catch(e){}
+  if(!r.ok)throw new Error(j.error||('Request failed ('+r.status+')'));
+  return j;
+}
+async function act(path,body,msg){
+  try{const s=await api(path,body===undefined?{}:body);render(s);if(msg)showNotice(msg);return true;}
+  catch(e){showNotice(e.message,true);return false;}
+}
+async function poll(){
+  try{render(await api('status'));lastOk=Date.now();}
+  catch(e){if(Date.now()-lastOk>4000)offline();}
+  setTimeout(poll,1000);
+}
+
+// ——— Helpers ———
+function text(id,v){const n=$(id);if(n.textContent!==v)n.textContent=v;}
+function plural(n,one,many){return n+' '+(n===1?one:many);}
+function ago(sec){sec=Math.max(0,sec|0);if(sec<60)return 'just now';const m=Math.floor(sec/60);if(m<60)return m+' min';return Math.floor(m/60)+' hr '+(m%60)+' min';}
+function rate(kbps){return kbps>=1000?(kbps/1000).toFixed(1)+' Mb/s':kbps+' kb/s';}
+const DEV={
+  phone:'<rect x="4.8" y="1.8" width="6.4" height="12.4" rx="1.6"/><path d="M7.2 12h1.6"/>',
+  tablet:'<rect x="3.2" y="1.8" width="9.6" height="12.4" rx="1.6"/><path d="M7.2 12h1.6"/>',
+  laptop:'<rect x="3.2" y="3.5" width="9.6" height="6.8" rx="1.2"/><path d="M1.8 12.6h12.4"/>',
+  desktop:'<rect x="2.5" y="3" width="11" height="7.6" rx="1.4"/><path d="M6 13h4"/>'
+};
+function devKind(d){d=String(d||'');if(/iPhone|^Android$/.test(d))return 'phone';if(/iPad|tablet/i.test(d))return 'tablet';if(/Mac|Chromebook/.test(d))return 'laptop';return 'desktop';}
+function devIcon(kind){const s=document.createElement('span');s.className='picon dev';s.innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true">'+DEV[kind]+'</svg>';return s;}
+let noticeTimer=null,noticeFn=null;
+function showNotice(v,isError,action){
+  const n=$('notice');n.classList.remove('hidden');n.classList.toggle('error',!!isError);text('notice-text',v);
+  noticeFn=action?action.fn:null;$('notice-act').classList.toggle('hidden',!action);if(action)text('notice-act',action.label);
+  clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>n.classList.add('hidden'),isError?7000:action?8000:2200);
+}
+$('notice-act').addEventListener('click',()=>{const f=noticeFn;$('notice').classList.add('hidden');if(f)f();});
+$('dismiss-notice').addEventListener('click',()=>$('notice').classList.add('hidden'));
+
+// ——— Theme ———
+let pref=document.documentElement.dataset.pref;if(!['system','light','dark'].includes(pref))pref='system';
+const mq=window.matchMedia?matchMedia('(prefers-color-scheme: light)'):null;
+function applyTheme(){
+  const light=pref==='light'||(pref==='system'&&mq&&mq.matches),mode=light?'light':'dark';
+  if(document.documentElement.dataset.mode!==mode){document.documentElement.dataset.mode=mode;palette=null;}
+  $('theme-seg').dataset.value=pref;
+  for(const b of document.querySelectorAll('#theme-seg [data-theme]'))b.setAttribute('aria-pressed',String(b.dataset.theme===pref));
+  placeThumb();
+}
+if(mq){const f=()=>applyTheme();mq.addEventListener?mq.addEventListener('change',f):mq.addListener(f);}
+function placeThumb(){const seg=$('theme-seg'),b=seg.querySelector('[aria-pressed="true"]'),t=seg.querySelector('.seg-thumb');if(!b||!b.offsetWidth)return;t.style.width=b.offsetWidth+'px';t.style.transform='translateX('+b.offsetLeft+'px)';}
+window.addEventListener('resize',placeThumb);
+document.querySelectorAll('#theme-seg [data-theme]').forEach(b=>b.addEventListener('click',()=>{
+  if(pref===b.dataset.theme)return;pref=b.dataset.theme;applyTheme();act('settings',{theme:pref});
+}));
+
+// ——— Signal strip (ported from Quiet AI renderer.js) ———
+const signal={mode:'quiet',amp:0,heights:[],canvas:$('signal')};
+let palette=null;
+function readPalette(){const s=getComputedStyle(document.documentElement),v=n=>s.getPropertyValue(n).trim();palette={ink:v('--sig-ink'),rest:v('--sig-rest'),green:v('--sig-green'),amber:v('--sig-amber')};}
+function setSignal(mode,amp){signal.mode=mode;signal.amp=amp||0;}
+function drawSignal(now){
+  const c=signal.canvas,dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+  if(w&&h){
+    if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);}
+    if(!palette)readPalette();
+    const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);
+    const bar=2,step=4,n=Math.floor((w+step-bar)/step),off=Math.round((w-(n*step-(step-bar)))/2),t=now/1000;
+    const speed=signal.mode==='active'?1.25:0.55;
+    for(let i=0;i<n;i++){
+      const edge=Math.min(1,Math.min(i+1,n-i)/10);
+      const env=Math.pow(Math.sin(Math.PI*(i+.5)/n),.5);
+      let target=2,color=palette.rest;
+      if(signal.mode==='idle'||signal.mode==='active'){
+        const ts=t*speed;
+        const wave=.5+.5*(Math.sin(i*.27+ts*1.5)*.5+Math.sin(i*.11-ts*.95)*.3+Math.sin(i*.73+ts*2.6)*.2);
+        target=2+(h-2)*signal.amp*env*wave;
+        const lit=.28+.62*wave*env;
+        color=signal.mode==='active'?`rgba(${palette.amber},${(.35+.6*wave*env).toFixed(3)})`:`rgba(${palette.ink},${(lit*.55).toFixed(3)})`;
+      }
+      const prev=signal.heights[i]??2,cur=prev+(target-prev)*.08;signal.heights[i]=cur;
+      x.globalAlpha=edge;x.fillStyle=color;const bh=Math.max(2,cur);
+      x.beginPath();if(x.roundRect)x.roundRect(off+i*step,Math.round((h-bh)/2*2)/2,bar,bh,1);else x.rect(off+i*step,Math.round((h-bh)/2*2)/2,bar,bh);x.fill();
+    }
+    x.globalAlpha=1;
+  }
+  requestAnimationFrame(drawSignal);
+}
+requestAnimationFrame(drawSignal);
+
+// ——— Render ———
+function offline(){
+  $('hero').dataset.tone='error';text('badge-text','Stopped');text('summary','Local View isn’t running on this computer anymore.');setSignal('quiet');
+  $('cta').disabled=true;
+}
+function render(s){
+  state=s;$('cta').disabled=false;
+  renderNet(s);
+  renderSetup(s);
+  if(s.settings&&s.settings.openIn&&$('open-seg').dataset.value!==s.settings.openIn)renderOpenIn(s.settings.openIn);
+  const viewers=s.viewers||[],pending=s.pending||[],n=viewers.length;
+  const tone=s.paused?'preview':n?'countdown':'armed';
+  $('hero').dataset.tone=tone;
+  text('badge-text',s.paused?'Paused':n?'In use':'Sharing');
+  text('headline',s.name||'This computer');
+  const sum=$('summary'),key=JSON.stringify([s.paused,n,s.url,viewers.map(v=>v.device)]);
+  if(sum.dataset.key!==key){
+    sum.dataset.key=key;sum.replaceChildren();
+    if(s.paused)sum.append('Paused — no one can connect until you resume.');
+    else if(n){const names=[...new Set(viewers.map(v=>v.device))];sum.append((n===1?names[0]+' is':plural(n,'device','devices')+' are')+' viewing this screen'+(s.settings.allowControl?'':' · view only')+'.');}
+    else{const u=document.createElement('span');u.className='url';u.textContent=s.url;sum.append('Open ',u,' on any device on this Wi-Fi');}
+  }
+  sum.title=s.paused?'':s.url;
+  const fps=(s.totals&&s.totals.fps)||0,kbps=(s.totals&&s.totals.kbps)||0;
+  if(s.paused)setSignal('quiet');
+  else if(n)setSignal('active',Math.min(1,.35+.65*Math.min(1,fps/20)));
+  else setSignal('idle',.32);
+  $('rate').classList.toggle('hidden',!n||s.paused);text('rate-text',fps>=1?Math.round(fps)+' fps · '+rate(kbps):'Screen idle');
+
+  // Connect panel
+  const qr=$('qr');
+  if(qr.dataset.key!==s.url){qr.dataset.key=s.url;qr.innerHTML=s.qr||'';const off=document.createElement('div');off.className='qr-off hidden';off.textContent='Paused';qr.append(off);}
+  qr.classList.toggle('off',!!s.paused);qr.querySelector('.qr-off').classList.toggle('hidden',!s.paused);
+  text('url-text',s.url);$('url').title='Copy '+s.url;
+  const alt=(s.urls||[])[1]||'';$('alt-url').classList.toggle('hidden',!alt);text('alt-url',alt?'or '+alt.replace(/^https?:\/\//,''):'');
+  const digits=String(s.pin||'').split('');
+  $('pin').classList.toggle('hide',pinHidden);
+  [...$('pin').children].forEach((b,i)=>{const v=pinHidden?'•':(digits[i]||'');if(b.textContent!==v)b.textContent=v;});
+  text('pin-toggle',pinHidden?'Show':'Hide');
+
+  // Connected
+  text('viewers-note',n?plural(n,'device','devices'):'');
+  const list=$('viewers'),vkey=JSON.stringify(viewers.map(v=>[v.id,v.device,v.ip]));
+  if(list.dataset.key!==vkey){
+    list.dataset.key=vkey;list.replaceChildren();
+    for(const v of viewers){
+      const li=document.createElement('li');li.dataset.id=v.id;
+      const t=document.createElement('span');t.className='title';t.append(v.device);
+      const ip=document.createElement('span');ip.className='dim';ip.textContent=v.ip;t.append(ip);t.title=v.ua||'';
+      const tm=document.createElement('span');tm.className='time';
+      const live=document.createElement('i');live.className='live amber';
+      const d=document.createElement('button');d.className='link danger';d.textContent='Disconnect';
+      d.addEventListener('click',()=>act('viewers/'+encodeURIComponent(v.id)+'/disconnect',{},v.device+' disconnected'));
+      li.append(devIcon(devKind(v.device)),t,tm,live,d);list.append(li);
+    }
+    if(!n){
+      const li=document.createElement('li');li.className='empty';
+      const st=document.createElement('strong');st.textContent='No one is viewing';
+      const sm=document.createElement('span');sm.textContent='Scan the code with your iPhone to start';
+      li.append(st,sm);list.append(li);
+    }
+  }
+  for(const v of viewers){const li=list.querySelector('li[data-id="'+v.id+'"]');if(li){const tm=li.querySelector('.time');const val=ago(v.seconds)+(v.fps?' · '+Math.round(v.fps)+' fps':'');if(tm.textContent!==val)tm.textContent=val;}}
+  list.querySelectorAll('.empty span').forEach(e=>{const val=s.paused?'Resume sharing to let devices connect':'Scan the code with your iPhone to start';if(e.textContent!==val)e.textContent=val;});
+
+  // Your devices (Local View computers + devices that connected before) and Nearby (other Apple devices)
+  const all=s.devices||[],mine=all.filter(d=>d.section!=='nearby'),near=all.filter(d=>d.section==='nearby');
+  renderDevices($('peers'),mine,s,true);
+  renderDevices($('nearby'),near,s,false);
+  const hid=s.hiddenNearby||0;
+  $('nearby-block').classList.toggle('hidden',!near.length&&!hid);
+  $('nearby-unhide').classList.toggle('hidden',!hid);text('nearby-unhide',hid?'Show '+hid+' hidden':'');
+
+  // Shared folder
+  text('folder-path',s.folder||'');$('folder-path').title=s.folder||'';
+  $('files-send').classList.toggle('hidden',!s.windowed);
+  const rec=(s.received||[]).slice(0,3),rlist=$('received'),rkey=JSON.stringify(rec.map(r=>[r.name,r.at]));
+  text('files-note',rec.length?'Received':'');
+  if(rlist.dataset.key!==rkey){
+    rlist.dataset.key=rkey;rlist.replaceChildren();
+    for(const r of rec){
+      const li=document.createElement('li');li.dataset.at=r.at;
+      const ic=document.createElement('span');ic.className='picon dev';ic.innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.2h5l3 3v8.6H4z"/><path d="M9 2.2v3h3"/></svg>';
+      const t=document.createElement('span');t.className='title';t.append(r.name);t.title=r.name;
+      const fr=document.createElement('span');fr.className='dim';fr.textContent=r.from;t.append(fr);
+      const tm=document.createElement('span');tm.className='time';
+      const a=document.createElement('button');a.className='link';a.textContent='Show';
+      a.addEventListener('click',()=>act2('files/open',{name:r.name}));
+      li.append(ic,t,tm,a);rlist.append(li);
+    }
+  }
+  const nowS=Date.now()/1000;
+  rlist.querySelectorAll('li').forEach(li=>{const v=ago(nowS-Number(li.dataset.at));const tm=li.querySelector('.time');if(tm.textContent!==v)tm.textContent=v;});
+  const newest=(s.received||[])[0];
+  if(seenReceived===null)seenReceived=newest?newest.at:0;
+  else if(newest&&newest.at>seenReceived){
+    const fresh=(s.received||[]).filter(r=>r.at>seenReceived);seenReceived=newest.at;
+    const msg=fresh.length===1?'Received '+fresh[0].name+' from '+fresh[0].from:'Received '+fresh.length+' files from '+fresh[0].from;
+    showNotice(msg,false,{label:'Show',fn:()=>act2('files/open',fresh.length===1?{name:fresh[0].name}:{})});
+  }
+
+  // Approval request
+  const ask=$('ask'),p0=pending[0];
+  ask.classList.toggle('hidden',!p0);
+  if(p0){
+    const isNew=ask.dataset.id!==p0.id;
+    ask.dataset.id=p0.id;
+    $('ask-code-form').classList.toggle('hidden',!p0.pair);
+    text('ask-allow',p0.pair?'Trust':'Allow');
+    if(p0.pair){
+      text('ask-title','New device: '+p0.device.replace(/ · Internet$/,''));
+      text('ask-detail','Type the code it shows to trust it for internet access · '+p0.expiresIn+' s');
+      if(isNew){$('ask-code').value='';setTimeout(()=>$('ask-code').focus(),50);}
+    }else{
+      text('ask-title',p0.device+' wants to connect');
+      text('ask-detail',p0.ip+' · declined in '+p0.expiresIn+' s'+(pending.length>1?' · '+(pending.length-1)+' more waiting':''));
+    }
+    const k=devKind(p0.device);if($('ask-ic').dataset.k!==k){$('ask-ic').dataset.k=k;$('ask-ic').innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true">'+DEV[k]+'</svg>';}
+  }
+
+  // Trusted devices (internet pairing)
+  const tl=$('trusted'),tr=s.trusted||[],tkey=JSON.stringify(tr.map(d=>[d.id,d.name]));
+  if(tl.dataset.key!==tkey){
+    tl.dataset.key=tkey;tl.replaceChildren();
+    for(const d of tr){
+      const li=document.createElement('li');
+      const t=document.createElement('span');t.className='title';t.textContent=d.name||'Device';
+      const f=document.createElement('button');f.className='link danger';f.textContent='Forget';
+      f.addEventListener('click',()=>act('trusted/'+encodeURIComponent(d.id)+'/forget',{},'Device forgotten — it will need a code next time'));
+      li.append(devIcon(devKind(d.name)),t,f);tl.append(li);
+    }
+    if(!tr.length){const li=document.createElement('li');li.className='empty';const st=document.createElement('span');st.textContent='None yet';li.append(st);tl.append(li);}
+  }
+  text('trusted-note',tr.length?plural(tr.length,'device','devices'):'');
+  // Internet sign-ins paused after many wrong passwords
+  if(s.netPausedFor&&s.cloud&&s.cloud.enabled)text('net-err','Someone tried many wrong passwords. Internet sign-ins are paused for '+Math.ceil(s.netPausedFor/60)+' min. If it keeps happening, click New password.');
+
+  // CTA
+  $('cta').className='cta'+(s.paused?'':' secondary');
+  text('cta-text',s.paused?'Resume sharing':'Pause sharing');
+
+  // Settings
+  const st=s.settings||{};
+  if(pref!==st.theme&&!themePending()){pref=st.theme||'system';applyTheme();}
+  $('allow-control').checked=!!st.allowControl;$('ask-before').checked=!!st.askBeforeConnect;$('notify').checked=!!st.notify;
+  $('keep-awake').checked=!!st.keepAwake;if(!startupBusy)$('start-login').checked=!!st.startAtLogin;
+  $('startup-block').classList.toggle('hidden',s.os!=='mac'&&s.os!=='windows');
+  const si=$('short-input');if(document.activeElement!==si&&!shortDirty){if(si.value!==st.shortName)si.value=st.shortName||'';}
+  shortPreview();
+  $('notify-row').classList.toggle('hidden',s.os!=='mac');
+  const perm=s.permissions;$('perm-block').classList.toggle('hidden',!perm);
+  if(perm){
+    const set=(id,v)=>{const e=$(id);e.className='fstate '+(v===true?'ok':v===false?'bad':'');const val=v===true?'Allowed':v===false?'Not allowed':'Unknown';if(e.textContent!==val)e.textContent=val;};
+    set('perm-screen',perm.screen);set('perm-ax',perm.accessibility);
+    const app=perm.app||'the app that started Local View (e.g. Terminal)';
+    const f='Screen Recording lets viewers see the screen; Accessibility lets them click and type. Allow both for '+app+' in Privacy & Security, then quit and reopen it.';
+    text('perm-foot',f);
+  }
+  text('version','Version '+(s.version||''));
+}
+let themeSetAt=0;function themePending(){return Date.now()-themeSetAt<1500;}
+let addrOpen=false,seenReceived=null,shortDirty=false,startupBusy=false;
+
+// Easy address (Settings > Address)
+const SHORT_RE=/^[a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?$/;
+function shortPreview(){
+  if(!state)return;const st=state.settings||{},v=$('short-input').value.trim().toLowerCase();
+  const ok=SHORT_RE.test(v),port=state.easyPort?'':':'+state.port,pv=$('short-preview');
+  $('short-wrap').classList.toggle('bad',!!v&&!ok);text('short-suffix','.local'+port);
+  $('short-save').disabled=!ok||v===st.shortName;
+  pv.classList.remove('warn');pv.replaceChildren();
+  const b=document.createElement('b');
+  if(v&&!ok){pv.classList.add('warn');pv.append('Use letters, digits and hyphens (not at the start or end).');return;}
+  if(v&&v!==st.shortName){b.textContent='http://'+v+'.local'+port;pv.append('Devices will open ',b);return;}
+  if(state.mdns===false){pv.classList.add('warn');pv.append('This network doesn’t allow names right now — devices use the IP address.');return;}
+  b.textContent='http://'+state.short+'.local'+port;
+  if(state.short!==st.shortName){pv.classList.add('warn');pv.append(st.shortName+'.local is taken here, so this computer is ',b);return;}
+  pv.append('Devices open ',b);
+}
+$('short-input').addEventListener('input',e=>{const c=e.target.value.toLowerCase().replace(/[\s_.]+/g,'-').replace(/[^a-z0-9-]/g,'');if(c!==e.target.value)e.target.value=c;shortDirty=true;shortPreview();});
+$('short-form').addEventListener('submit',async e=>{
+  e.preventDefault();const v=$('short-input').value.trim().toLowerCase();
+  if(await act('settings',{shortName:v},'Address saved')){shortDirty=false;$('short-input').blur();}
+});
+$('short-input').addEventListener('keydown',e=>{if(e.key==='Escape'&&shortDirty){e.stopPropagation();shortDirty=false;$('short-input').value=(state&&state.settings.shortName)||'';shortPreview();}});
+
+// Connect to another computer
+async function connectTo(body,label,btn){
+  if(btn)btn.disabled=true;
+  try{render(await api('connect',body));showNotice('Opening '+label+'…');return true;}
+  catch(e){showNotice(e.message,true);return false;}
+  finally{if(btn)btn.disabled=false;}
+}
+function addrForm(open){
+  addrOpen=open;$('addr-form').classList.toggle('hidden',!open);if(open&&netConnectOpen)netConnectForm(false);text('addr-toggle',open?'Cancel':'Connect to address…');
+  if(state)render(state);if(open){$('addr-input').value='';$('addr-input').focus();}
+}
+$('addr-toggle').addEventListener('click',()=>addrForm(!addrOpen));
+$('addr-form').addEventListener('submit',async e=>{
+  e.preventDefault();const v=$('addr-input').value.trim();if(!v){$('addr-input').focus();return;}
+  const b=$('addr-form').querySelector('.button');
+  if(await connectTo({url:v},v,b))addrForm(false);
+});
+
+// ——— First-run checklist (macOS permissions) ———
+let setupRestarting=false,screenAsked=false;
+function renderSetup(s){
+  const p=s.permissions,start=s.permissionsAtStart||{};
+  if(!p){$('setup-block').classList.add('hidden');return;}
+  const scr=p.screen===true,ax=p.accessibility===true;
+  // Screen Recording takes effect only after a restart: macOS keeps reporting "off" to the running app.
+  // So once Allow was clicked, offer Restart right away instead of waiting for a change that can't come.
+  const needRestart=(scr&&start.screen===false)||(screenAsked&&!scr);
+  const todo=$('scr-todo');
+  if(screenAsked&&!scr)todo.innerHTML='Turn on <b>'+(p.app||'Local View')+'</b> in the window macOS opened, then click <b>Restart</b> below.';
+  $('step-screen').classList.toggle('done',scr);$('step-ax').classList.toggle('done',ax);
+  $('step-restart').classList.toggle('hidden',!needRestart);
+  const show=!scr||!ax||needRestart;
+  $('setup-block').classList.toggle('hidden',!show);
+  if(show){const left=(scr?0:1)+(ax?0:1)+(needRestart?1:0);text('setup-note',left===1?'1 step left':left+' steps left');}
+  document.querySelectorAll('.appname').forEach(e=>{const n=p.app||'Local View';if(e.textContent!==n)e.textContent=n;});
+}
+document.querySelectorAll('[data-req]').forEach(b=>b.addEventListener('click',async()=>{
+  if(b.dataset.req==='screen')screenAsked=true;
+  await act('permission',{which:b.dataset.req});
+  if(state)renderSetup(state);
+}));
+$('restart-btn').addEventListener('click',async()=>{
+  if(setupRestarting)return;setupRestarting=true;$('restart-btn').disabled=true;text('restart-btn','Restarting…');
+  try{await api('restart',{});}catch(e){showNotice(e.message,true);setupRestarting=false;$('restart-btn').disabled=false;text('restart-btn','Restart');}
+});
+
+// ——— Device rows (shared by "Your devices" and "Nearby") ———
+const XSVG='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';
+function renderDevices(ul,devs,s,isMine){
+  const key=JSON.stringify([isMine?addrOpen:0,!!s.canAirDrop,devs.map(d=>[d.key,d.name,d.detail,d.online])]);
+  if(ul.dataset.key===key)return;
+  ul.dataset.key=key;ul.replaceChildren();
+  for(const d of devs){
+    const li=document.createElement('li');li.className='dev '+(d.online?'on':'off');
+    const kind=d.kind==='phone'?'phone':d.kind==='tablet'?'tablet':(d.os==='mac'||/mac/i.test(d.name)?'laptop':'desktop');
+    const t=document.createElement('div');t.className='stext';
+    const st=document.createElement('strong');st.textContent=d.name;
+    const sm=document.createElement('small');sm.textContent=(d.localview?'Local View · ':'')+(d.detail||'');t.append(st,sm);
+    const acts=document.createElement('div');acts.className='acts';
+    if(d.localview){
+      const x=document.createElement('button');x.className='link';x.textContent='Second screen';
+      x.title='Use this computer as an extra display for '+d.name+(d.os==='mac'?'':' (needs a virtual display on '+d.name+')');
+      x.addEventListener('click',()=>connectTo({peer:d.peer,mode:'extend'},d.name+' as a second screen',x));
+      const b=document.createElement('button');b.className='button sm';b.textContent='Connect';
+      b.addEventListener('click',()=>connectTo({peer:d.peer},d.name,b));
+      acts.append(x,b);
+    }else{
+      if(d.mirror){
+        const m=document.createElement('button');m.className='link';m.textContent='Control';
+        m.title='Control '+d.name+' from this Mac with Apple’s iPhone Mirroring';
+        m.addEventListener('click',()=>act2('device/mirror',{}));acts.append(m);
+      }
+      if(d.send){
+        const b=document.createElement('button');b.className='button sm';b.textContent='Send link';
+        b.title=s.canAirDrop?'AirDrop a link to '+d.name+': it opens this computer, already signed in':'Scan the QR code above with '+d.name;
+        b.addEventListener('click',()=>{if(s.canAirDrop)act2('device/send',{});else showNotice('Scan the QR code with '+d.name+'’s camera');});
+        acts.append(b);
+      }
+      if(d.hideable){
+        const h=document.createElement('button');h.className='hide-btn';h.title='Hide '+d.name;h.setAttribute('aria-label','Hide '+d.name);h.innerHTML=XSVG;
+        h.addEventListener('click',()=>act('device/hide',{name:d.name},d.name+' hidden'));acts.append(h);
+      }
+    }
+    li.append(devIcon(kind),t,acts);ul.append(li);
+  }
+  if(isMine&&!devs.length&&!addrOpen){
+    const li=document.createElement('li');li.className='empty';
+    const st=document.createElement('strong');st.textContent='No other computers yet';
+    const sm=document.createElement('span');sm.textContent='Open Local View on your other computers: they appear here';
+    li.append(st,sm);ul.append(li);
+  }
+}
+$('nearby-unhide').addEventListener('click',()=>act('device/hide',{all:true,show:true},'Hidden devices shown again'));
+
+// ——— Internet access ———
+let netPwShown=false,netEditing=false,netConnectOpen=false,netBusy=false;
+const NET_STATE={online:'Online',connecting:'Connecting…',error:'Can’t connect',off:'Off'};
+function renderNet(s){
+  const c=s.cloud||{available:false};
+  const block=$('net-block');block.classList.toggle('hidden',!c.available);
+  $('net-settings').classList.toggle('hidden',!c.available);
+  $('net-connect-toggle').classList.toggle('hidden',!c.available||!c.url);
+  if(!c.available)return;
+  const t=$('net-toggle');if(!netBusy)t.checked=!!c.enabled;
+  const st=c.enabled?(c.state||'connecting'):'off';
+  const note=$('net-note');note.className='note net-state '+st;text('net-note',c.enabled?NET_STATE[st]||st:'');
+  let sub='Off — only devices on this Wi-Fi can connect.';
+  if(c.enabled&&st==='online')sub='On — connect from anywhere with the ID and password below.';
+  else if(c.enabled&&st==='error')sub='On, but '+((c.error||'the connection server can’t be reached').replace(/^./,m=>m.toLowerCase()))+'. Retrying…';
+  else if(c.enabled)sub='Connecting to your connection server…';
+  else if(!c.url)sub='Set up your free connection server once to reach this computer from anywhere.';
+  text('net-sub',sub);
+  const sug=c.suggest||[];
+  const showSetup=!c.url&&!c.enabled&&(netSetupOpen||sug.length>0);
+  const suggesting=sug.length>0&&!netOwnServer;
+  $('net-setup').classList.toggle('suggesting',suggesting);$('net-other').classList.toggle('hidden',!suggesting);
+  const sl=$('net-suggest'),skey=JSON.stringify(sug);
+  if(sl.dataset.key!==skey){
+    sl.dataset.key=skey;sl.replaceChildren();
+    for(const g of sug){
+      const row=document.createElement('div');row.className='suggest';
+      const t=document.createElement('div');t.className='stext';
+      const st=document.createElement('strong');st.textContent=g.name+' already has a server';
+      const sm=document.createElement('small');sm.textContent=g.url.replace(/^https:\/\//,'').replace(/\/k\/.*/,'')+' (private)';t.append(st,sm);
+      const b=document.createElement('button');b.className='button sm';b.textContent='Use it';
+      b.addEventListener('click',async()=>{b.disabled=true;if(await act('settings',{cloudUrl:g.url,cloudEnabled:true},'Internet access on')){netSetupOpen=false;}b.disabled=false;});
+      row.append(t,b);sl.append(row);
+    }
+  }
+  $('net-setup').classList.toggle('hidden',!showSetup);
+  $('net-on').classList.toggle('hidden',!c.enabled);
+  if(c.enabled){
+    text('net-id-text',c.idFormatted||'…');
+    text('net-pw-text',netPwShown?(c.password||''):'•'.repeat(Math.min(12,(c.password||'').length||8)));
+    text('net-pw-toggle',netPwShown?'Hide':'Show');
+    $('net-pw-edit').classList.toggle('hidden',!netEditing);
+    text('net-err',st==='error'?(c.error||''):'');
+    const q=$('net-qr');if(c.qr&&q.dataset.key!==c.link){q.dataset.key=c.link;q.innerHTML=c.qr;}
+    $('net-qr-row').classList.toggle('hidden',!netQrOpen);text('net-qr-toggle',netQrOpen?'Hide QR':'Phone');
+  }
+  const u2=$('net-url2');if(document.activeElement!==u2&&!u2.dataset.dirty)u2.value=(c.address||c.url||'').replace(/^https:\/\//,'');
+}
+let netSetupOpen=false,netQrOpen=false,netOwnServer=false;
+$('net-other').addEventListener('click',()=>{netOwnServer=true;netSetupOpen=true;if(state)renderNet(state);});
+$('net-qr-toggle').addEventListener('click',()=>{netQrOpen=!netQrOpen;if(state)renderNet(state);});
+$('net-deploy').addEventListener('click',()=>act2('link',{which:'deploy'}));
+$('net-toggle').addEventListener('change',async e=>{
+  const c=(state&&state.cloud)||{};
+  if(e.target.checked&&!c.url){e.target.checked=false;netSetupOpen=true;if(state)renderNet(state);$('net-url').focus();return;}
+  netBusy=true;
+  await act('settings',{cloudEnabled:e.target.checked},e.target.checked?'Internet access on':'Internet access off');
+  netBusy=false;if(state)renderNet(state);
+});
+async function saveServer(input,enable){
+  let v=input.value.trim();
+  if(v&&!/^[a-z]+:\/\//i.test(v))v=(/^(localhost|127\.0\.0\.1)(:|\/|$)/i.test(v)?'http://':'https://')+v;   // "localview.you.workers.dev" is fine
+  const m=v.match(/^(https?:\/\/[^\/?#]+)(\/k\/[A-Za-z0-9_-]{16,64})?/i);   // keep a private key if pasted
+  if(m)v=m[1]+(m[2]||'');
+  const body={cloudUrl:v};if(enable&&v)body.cloudEnabled=true;
+  if(await act('settings',body,v?'Connection server saved':'Connection server removed')){input.dataset.dirty='';netSetupOpen=false;if(state)renderNet(state);}
+}
+$('net-url-form').addEventListener('submit',e=>{e.preventDefault();saveServer($('net-url'),true);});
+$('net-url-form2').addEventListener('submit',e=>{e.preventDefault();saveServer($('net-url2'),false);});
+$('net-url2').addEventListener('input',e=>{e.target.dataset.dirty='1';});
+$('net-id').addEventListener('click',()=>{const c=state&&state.cloud;if(c&&c.id)copyText(c.id,'ID copied');});
+$('net-pw').addEventListener('click',()=>{const c=state&&state.cloud;if(c&&c.password)copyText(c.password,'Password copied');});
+$('net-link').addEventListener('click',()=>{const c=state&&state.cloud;if(c&&c.link)copyText(c.link,'Link copied — open it on any device');});
+$('net-pw-toggle').addEventListener('click',()=>{netPwShown=!netPwShown;if(state)renderNet(state);});
+$('net-pw-new').addEventListener('click',async()=>{if(await act('cloud/password/new',{},'New password ready')){netPwShown=true;if(state)renderNet(state);}});
+function netPwEditor(open){netEditing=open;if(state)renderNet(state);if(open){$('net-pw-input').value='';$('net-pw-input').focus();}}
+$('net-pw-set').addEventListener('click',()=>netPwEditor(!netEditing));
+$('net-pw-cancel').addEventListener('click',()=>netPwEditor(false));
+$('net-pw-edit').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(await act('cloud/password',{password:$('net-pw-input').value},'Password changed')){netPwShown=true;netPwEditor(false);}
+});
+function netConnectForm(open){
+  netConnectOpen=open;$('net-connect-form').classList.toggle('hidden',!open);text('net-connect-toggle',open?'Cancel':'Over the internet…');
+  if(open){if(addrOpen)addrForm(false);$('net-connect-input').value='';$('net-connect-input').focus();}
+}
+$('net-connect-toggle').addEventListener('click',()=>netConnectForm(!netConnectOpen));
+$('net-connect-input').addEventListener('input',e=>{const d=e.target.value.replace(/\D/g,'').slice(0,9);e.target.value=d.replace(/(\d{3})(?=\d)/g,'$1 ');});
+$('net-connect-form').addEventListener('submit',async e=>{
+  e.preventDefault();const id=$('net-connect-input').value.replace(/\D/g,'');
+  if(id.length!==9){showNotice('The computer ID has 9 digits',true);return;}
+  if(await connectTo({cloud:id},'computer '+$('net-connect-input').value,$('net-connect-form').querySelector('.button')))netConnectForm(false);
+});
+$('net-connect-extend').addEventListener('click',async()=>{
+  const id=$('net-connect-input').value.replace(/\D/g,'');
+  if(id.length!==9){showNotice('The computer ID has 9 digits',true);return;}
+  if(await connectTo({cloud:id,mode:'extend'},'a second screen for '+$('net-connect-input').value,$('net-connect-extend')))netConnectForm(false);
+});
+
+// How to open other computers (window / full screen / browser)
+function placeSeg(seg){const b=seg.querySelector('[aria-pressed="true"]'),t=seg.querySelector('.seg-thumb');if(!b||!b.offsetWidth)return;t.style.width=b.offsetWidth+'px';t.style.transform='translateX('+b.offsetLeft+'px)';}
+function renderOpenIn(v){const seg=$('open-seg');seg.dataset.value=v;for(const b of seg.querySelectorAll('[data-open]'))b.setAttribute('aria-pressed',String(b.dataset.open===v));placeSeg(seg);}
+document.querySelectorAll('#open-seg [data-open]').forEach(b=>b.addEventListener('click',()=>{
+  if($('open-seg').dataset.value===b.dataset.open)return;renderOpenIn(b.dataset.open);act('settings',{openIn:b.dataset.open});
+}));
+window.addEventListener('resize',()=>placeSeg($('open-seg')));
+
+// Shared folder
+$('files-open').addEventListener('click',()=>act2('files/open',{}));
+$('files-send').addEventListener('click',async()=>{
+  const b=$('files-send');b.disabled=true;
+  try{const s=await api('files/send',{});render(s);const n=(s.sent||[]).length;if(n)showNotice(n===1?s.sent[0]+' is ready for your devices':n+' files are ready for your devices');}
+  catch(e){showNotice(e.message,true);}finally{b.disabled=false;}
+});
+document.querySelectorAll('#theme-seg [data-theme]').forEach(b=>b.addEventListener('click',()=>{themeSetAt=Date.now();}));
+
+// ——— Actions ———
+async function togglePause(){
+  if(!state||busy)return;busy=true;
+  await act(state.paused?'resume':'pause',{},state.paused?'Sharing resumed':'Sharing paused');busy=false;
+}
+$('cta').addEventListener('click',togglePause);
+$('url').addEventListener('click',()=>{if(state)copyText(state.url);});
+async function copyText(v,label){
+  let ok=false;
+  try{await navigator.clipboard.writeText(v);ok=true;}catch(e){}
+  if(!ok){const ta=document.createElement('textarea');ta.value=v;ta.style.position='fixed';ta.style.opacity='0';document.body.append(ta);ta.select();try{ok=document.execCommand('copy');}catch(e){}ta.remove();}
+  showNotice(ok?(label||'Copied '+v.replace(/^https?:\/\//,'')):'Couldn’t copy — select it instead',!ok);
+}
+$('pin-toggle').addEventListener('click',()=>{pinHidden=!pinHidden;if(state)render(state);});
+$('new-pin').addEventListener('click',()=>act('pin/new',{},'New PIN ready'));
+function pinEditor(open){
+  editingPin=open;$('pin-edit').classList.toggle('hidden',!open);$('pin').classList.toggle('hidden',open);$('pin-links').classList.toggle('hidden',open);
+  if(open){$('pin-input').value='';$('pin-input').focus();}
+}
+$('set-pin').addEventListener('click',()=>pinEditor(true));
+$('pin-cancel').addEventListener('click',()=>pinEditor(false));
+$('pin-input').addEventListener('input',e=>{const v=e.target.value.replace(/\D/g,'').slice(0,6);if(v!==e.target.value)e.target.value=v;});
+$('pin-edit').addEventListener('submit',async e=>{
+  e.preventDefault();const v=$('pin-input').value;
+  if(!/^\d{6}$/.test(v)){showNotice('The PIN needs exactly 6 digits',true);return;}
+  if(await act('pin',{pin:v},'PIN saved'))pinEditor(false);
+});
+async function approveAsk(){
+  const id=$('ask').dataset.id;if(!id)return;
+  const pair=!$('ask-code-form').classList.contains('hidden');
+  if(pair){
+    const code=$('ask-code').value.replace(/\D/g,'');
+    if(code.length!==6){showNotice('Type the 6-digit code shown on the new device',true);$('ask-code').focus();return;}
+    if(await act('pending/'+id+'/approve',{code},'Device trusted — it won’t need a code again'))$('ask-code').value='';
+    else{$('ask-code').select();}
+  }else act('pending/'+id+'/approve',{},'Allowed');
+}
+$('ask-allow').addEventListener('click',approveAsk);
+$('ask-code-form').addEventListener('submit',e=>{e.preventDefault();approveAsk();});
+$('ask-code').addEventListener('input',e=>{const d=e.target.value.replace(/\D/g,'').slice(0,6);e.target.value=d.length>3?d.slice(0,3)+' '+d.slice(3):d;});
+$('ask-deny').addEventListener('click',()=>{const id=$('ask').dataset.id;if(id)act('pending/'+id+'/deny',{},'Declined');});
+$('allow-control').addEventListener('change',e=>act('settings',{allowControl:e.target.checked}));
+$('ask-before').addEventListener('change',e=>act('settings',{askBeforeConnect:e.target.checked}));
+$('notify').addEventListener('change',e=>act('settings',{notify:e.target.checked}));
+$('keep-awake').addEventListener('change',e=>act('settings',{keepAwake:e.target.checked}));
+$('start-login').addEventListener('change',async e=>{
+  const on=e.target.checked;startupBusy=true;
+  const ok=await act('settings',{startAtLogin:on},on?'Local View will start when you log in':'Won’t start at login');
+  startupBusy=false;if(!ok&&state)$('start-login').checked=!!state.settings.startAtLogin;
+});
+$('alt-url').addEventListener('click',()=>{if(state&&state.urls[1])copyText(state.urls[1]);});
+document.querySelectorAll('[data-pane]').forEach(b=>b.addEventListener('click',()=>act2('open',{pane:b.dataset.pane})));
+async function act2(path,body){try{await api(path,body);}catch(e){showNotice(e.message,true);}}
+
+// Settings sheet
+function settingsOpen(){return document.body.classList.contains('settings-open');}
+function openSettings(open){document.body.classList.toggle('settings-open',open);$('settings').setAttribute('aria-hidden',String(!open));$('open-settings').classList.toggle('on',open);if(open)requestAnimationFrame(()=>{placeThumb();placeSeg($('open-seg'));});}
+$('open-settings').addEventListener('click',()=>openSettings(!settingsOpen()));
+$('close-settings').addEventListener('click',()=>openSettings(false));
+
+// Window buttons (frameless window on Windows)
+function winApi(){return window.pywebview&&window.pywebview.api;}
+$('minimize').addEventListener('click',()=>{const a=winApi();if(a&&a.minimize)a.minimize();});
+$('close').addEventListener('click',()=>{const a=winApi();if(a&&a.close)a.close();else window.close();});
+document.querySelectorAll('.titlebar button').forEach(b=>b.addEventListener('mousedown',e=>e.stopPropagation()));
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(editingPin){pinEditor(false);return;}
+    if(addrOpen&&!settingsOpen()){addrForm(false);return;}
+    if(settingsOpen()){openSettings(false);return;}
+  }
+  const tag=e.target&&e.target.tagName;
+  if(e.key==='Enter'&&!settingsOpen()&&!editingPin&&tag!=='BUTTON'&&tag!=='INPUT'&&tag!=='A'){e.preventDefault();togglePause();}
+});
+
+applyTheme();
+poll();
+</script>
+</body></html>
