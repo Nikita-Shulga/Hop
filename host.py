@@ -96,6 +96,8 @@ from PIL import Image  # noqa: E402
 from pynput.keyboard import Controller as KeyboardController, Key, KeyCode  # noqa: E402
 from pynput.mouse import Button, Controller as MouseController  # noqa: E402
 
+import i18n  # noqa: E402  (English / Russian; see i18n.py)
+from i18n import Text  # noqa: E402
 import updater  # noqa: E402  (one-click updates from GitHub Releases)
 
 try:  # Internet access (WebRTC via aiortc). Optional: without it the LAN features all still work.
@@ -133,8 +135,9 @@ LOOPBACK_IPS = frozenset(["127.0.0.1", "::1", "::ffff:127.0.0.1"])
 LOOPBACK_HOSTS = frozenset(["127.0.0.1", "localhost", "::1"])
 INPUT_TYPES = frozenset(["move", "down", "up", "click", "scroll", "key", "text"])
 DEFAULT_SETTINGS = {"allowControl": True, "askBeforeConnect": False, "theme": "system",
-                    "notify": True, "keepAwake": True, "openIn": "window"}
+                    "notify": True, "keepAwake": True, "openIn": "window", "language": "en"}
 OPEN_IN = ("window", "fullscreen", "browser")  # how this app opens other computers' screens
+# Messages to viewers are part of the protocol and stay English; viewers translate them (static/i18n.js).
 MSG_PAUSED = "Sharing is paused on this computer"
 MSG_DECLINED = "Connection declined on the host"
 MSG_KICKED = "Disconnected by the host"
@@ -156,13 +159,13 @@ MSG_PAIR_DECLINED = "This device wasn't confirmed on the computer"
 def password_problem(pw):
     """Why an internet password is too weak, or None."""
     if len(pw) < CLOUD_PASSWORD_MIN:
-        return "Use at least %d characters" % CLOUD_PASSWORD_MIN
+        return Text("pw.short", n=CLOUD_PASSWORD_MIN)
     if len(pw) > 64:
-        return "Use at most 64 characters"
+        return Text("pw.long", n=64)
     if pw.isdigit():
-        return "Use letters too, not only digits"
+        return Text("pw.digits")
     if len(set(pw.lower())) < 4:
-        return "Use more different characters"
+        return Text("pw.variety")
     return None
 SHORT_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?$")
 PEER_SHORT_RE = re.compile(r"^[a-z0-9-]{1,40}$")  # effective names may carry a -N suffix
@@ -818,7 +821,7 @@ def set_startup(on):
             return
         argv = login_argv()
         if FROZEN and "/AppTranslocation/" in " ".join(argv):
-            raise RuntimeError("Move Hop to the Applications folder first, then try again.")
+            raise RuntimeError(Text("err.startupMove"))
         import plistlib
         plist = {"Label": LAUNCH_AGENT_LABEL, "ProgramArguments": argv, "RunAtLoad": True,
                  "ProcessType": "Interactive", "LimitLoadToSessionType": "Aqua"}
@@ -832,7 +835,7 @@ def set_startup(on):
                 plistlib.dump(plist, f)
             os.replace(path + ".tmp", path)
         except OSError as e:
-            raise RuntimeError("Couldn't add the login item: %s" % e)
+            raise RuntimeError(Text("err.loginItem", detail=e))
     elif OS_NAME == "windows":
         import winreg
         try:
@@ -847,9 +850,9 @@ def set_startup(on):
         except FileNotFoundError:
             pass
         except OSError as e:
-            raise RuntimeError("Couldn't change the startup setting: %s" % e)
+            raise RuntimeError(Text("err.startupChange", detail=e))
     else:
-        raise RuntimeError("Start at login isn't supported on this system")
+        raise RuntimeError(Text("err.startupUnsupported"))
 
 
 def refresh_startup_entry():
@@ -1683,6 +1686,7 @@ class HopServer(object):
         self._update_info = None
         self.net_fails = collections.deque()  # times of wrong internet passwords (any address)
         self.net_paused_until = 0.0
+        i18n.set_language(self.setting("language"))
 
     # ---- internet access
     @property
@@ -1770,7 +1774,7 @@ class HopServer(object):
             if info["available"]:
                 log.info("Hop %s is available (this is %s)", info["latest"], VERSION)
         except Exception as e:
-            u.update(state="idle" if quiet else "error", error="" if quiet else "Couldn't reach GitHub: %s" % e,
+            u.update(state="idle" if quiet else "error", error="" if quiet else Text("update.reachGithub", detail=e),
                      checked=time.time())
             log.info("Update check failed: %s", e)
 
@@ -1782,7 +1786,7 @@ class HopServer(object):
             return
         info = self._update_info
         if not info or not info.get("available"):
-            u.update(state="error", error="There's no newer version to install.")
+            u.update(state="error", error=Text("update.noNewer"))
             return
         loop = asyncio.get_event_loop()
         u.update(state="downloading", progress=0.0, error="")
@@ -1794,7 +1798,7 @@ class HopServer(object):
             u.update(state="installing", progress=1.0)
             await loop.run_in_executor(self.io_ex, updater.apply, prepared, place, LOG_PATH)
         except Exception as e:
-            u.update(state="error", error=str(e))
+            u.update(state="error", error=e.args[0] if e.args and isinstance(e.args[0], Text) else str(e))
             log.warning("Update failed: %s", e)
             return
         log.info("Installing Hop %s: quitting so it can be replaced", info["latest"])
@@ -1846,12 +1850,12 @@ class HopServer(object):
                 continue
             # Any Apple device on this Wi-Fi announces itself (AirDrop/Handoff), not only yours: "Nearby".
             item = {"key": "near:" + d["name"], "section": "nearby", "kind": d["kind"], "name": d["name"],
-                    "online": True, "hasHop": False, "detail": "On this Wi-Fi", "hideable": True}
+                    "online": True, "hasHop": False, "detail": i18n.t("dev.onWifi"), "hideable": True}
             if d["kind"] in ("phone", "tablet"):
                 item["send"] = True                          # AirDrop the connect link
                 item["mirror"] = can_mirror and d["kind"] == "phone"
             else:
-                item["detail"] = "Install Hop on it to connect"
+                item["detail"] = i18n.t("dev.installHop")
             out.append(item)
         near_kinds = {d["kind"] for d in nearby}
         for k in (self.cfg.get("knownDevices") or [])[:6]:
@@ -1860,11 +1864,12 @@ class HopServer(object):
             if kind in near_kinds or k.get("name", "").lower() in names:
                 continue  # the same device is already listed as nearby
             names.add(k.get("name", "").lower())
-            out.append({"key": "known:" + k.get("name", ""), "section": "mine", "kind": kind, "name": k.get("name", "Device"),
+            out.append({"key": "known:" + k.get("name", ""), "section": "mine", "kind": kind,
+                        "name": k.get("name") or i18n.t("dev.generic"),
                         "online": False, "hasHop": False, "send": kind in ("phone", "tablet"),
                         "mirror": can_mirror and kind == "phone" and "iPhone" in k.get("name", ""),
-                        "detail": "Connected %s · %s" % ("over the internet" if k.get("via") == "internet" else "on Wi-Fi",
-                                                         time.strftime("%d %b", time.localtime(k.get("last", 0))))})
+                        "detail": i18n.t("dev.lastInternet" if k.get("via") == "internet" else "dev.lastWifi",
+                                         date=i18n.day_month(k.get("last", 0)))})
         return out
 
     def net_paused_for(self):
@@ -1880,8 +1885,7 @@ class HopServer(object):
             self.net_fails.clear()
             log.warning("Many wrong internet passwords from different addresses: internet sign-ins paused "
                         "for %d minutes", NET_PAUSE_SECS // 60)
-            system_notify("Someone is guessing your internet password. Hop paused internet "
-                          "sign-ins for %d minutes. If this continues, click New password." % (NET_PAUSE_SECS // 60))
+            system_notify(i18n.t("notify.guessing", n=NET_PAUSE_SECS // 60))
             self.attention()
 
     def cloud_id_changed(self, new_id):
@@ -1924,7 +1928,7 @@ class HopServer(object):
               "state": "off", "error": ""}
         if enabled and self.cloud is not None:
             st["state"] = self.cloud.state
-            st["error"] = self.cloud.error
+            st["error"] = i18n.local(self.cloud.error)
         if enabled and cid and self.site_key:
             st["link"] = "%s/#id=%s" % (self.private_address(), cid)
             st["qr"] = qr_svg(st["link"])
@@ -1948,6 +1952,8 @@ class HopServer(object):
             return v if v in ("system", "light", "dark") else "system"
         if key == "openIn":
             return v if v in OPEN_IN else "window"
+        if key == "language":
+            return i18n.normalize(v)
         return bool(v)
 
     @property
@@ -2114,7 +2120,8 @@ class HopServer(object):
         except OSError:
             return web.Response(status=404, text="static/host.html not found")
         html = (html.replace("__LV_TOKEN__", self.token)
-                    .replace("__LV_THEME__", self.setting("theme")))
+                    .replace("__LV_THEME__", self.setting("theme"))
+                    .replace("__LV_LANG__", self.setting("language")))
         resp = web.Response(text=html, content_type="text/html")
         resp.headers["Cache-Control"] = "no-store"
         resp.headers["X-Frame-Options"] = "DENY"
@@ -2146,7 +2153,7 @@ class HopServer(object):
                         for d in self.trusted_devices()],
             "netPausedFor": self.net_paused_for(),
             "devices": self.devices(),
-            "update": dict(self.update),
+            "update": {k: i18n.local(v) if isinstance(v, str) else v for k, v in self.update.items()},
             "hiddenNearby": getattr(self, "hidden_nearby_count", 0),
             "canAirDrop": OS_NAME == "mac" and self.gui is not None,
             "totals": {"fps": round(sum(v["fps"] for v in viewers), 1),
@@ -2199,7 +2206,7 @@ class HopServer(object):
         d = await self._json_body(request)
         pin = str(d.get("pin", "")).strip()
         if not (len(pin) == 6 and pin.isdigit()):
-            return self._err("PIN must be exactly 6 digits")
+            return self._err(i18n.t("err.pinDigits"))
         self.pin = pin
         self.save()
         log.info("PIN changed: %s", self.pin)
@@ -2208,7 +2215,7 @@ class HopServer(object):
     async def api_disconnect(self, request):
         s = self.sessions.get(request.match_info["sid"])
         if s is None:
-            return self._err("No such viewer", 404)
+            return self._err(i18n.t("err.noViewer"), 404)
         self.kicked[s.ip] = time.time() + KICK_BLOCK_SECS
         log.info("Disconnecting %s (host request)", s.ip)
         await s.kick(MSG_KICKED)
@@ -2217,7 +2224,7 @@ class HopServer(object):
     async def _decide(self, request, verdict):
         p = self.pending.get(request.match_info["rid"])
         if p is None:
-            return self._err("That request has expired", 404)
+            return self._err(i18n.t("err.requestExpired"), 404)
         if not p["future"].done():
             p["future"].set_result(verdict)
         return web.json_response(self.status())
@@ -2232,8 +2239,8 @@ class HopServer(object):
                 if p["tries"] >= PAIR_TRIES:
                     if not p["future"].done():
                         p["future"].set_result(MSG_PAIR_DECLINED)
-                    return self._err("Wrong code three times — the request was declined", 403)
-                return self._err("That code doesn't match the one on the device", 400)
+                    return self._err(i18n.t("err.codeThrice"), 403)
+                return self._err(i18n.t("err.codeMismatch"), 400)
         return await self._decide(request, True)
 
     async def api_deny(self, request):
@@ -2245,7 +2252,7 @@ class HopServer(object):
         lst = self.trusted_devices()
         keep = [d for d in lst if d.get("id") != tid]
         if len(keep) == len(lst):
-            return self._err("No such device", 404)
+            return self._err(i18n.t("err.noDevice"), 404)
         self.cfg["trustedDevices"] = keep
         self.save()
         log.info("Forgot a trusted device")
@@ -2256,15 +2263,17 @@ class HopServer(object):
         loop = asyncio.get_event_loop()
         # validate everything first, then apply
         if "theme" in d and d["theme"] not in ("system", "light", "dark"):
-            return self._err("Bad theme")
+            return self._err(i18n.t("err.badTheme"))
         if "openIn" in d and d["openIn"] not in OPEN_IN:
-            return self._err("Bad open mode")
+            return self._err(i18n.t("err.badOpenMode"))
+        if "language" in d and d["language"] not in i18n.LANGUAGES:
+            return self._err(i18n.t("err.badLanguage"))
         if "shortName" in d:
             v = str(d["shortName"] or "").strip().lower()
             if v.endswith(".local"):
                 v = v[:-6]
             if not valid_short(v):
-                return self._err("Use 1–30 letters, digits or hyphens (not at the start or end)")
+                return self._err(i18n.t("err.shortName"))
             d["shortName"] = v
         if "startAtLogin" in d:
             on = bool(d["startAtLogin"])
@@ -2272,9 +2281,9 @@ class HopServer(object):
                 try:
                     await loop.run_in_executor(self.io_ex, set_startup, on)
                 except RuntimeError as e:
-                    return self._err(str(e))
+                    return self._err(i18n.local(e))
                 except Exception as e:
-                    return self._err("Couldn't change the startup setting: %s" % e)
+                    return self._err(i18n.t("err.startupChange", detail=e))
                 log.info("Start at login %s", "on" if on else "off")
             self._startup_cache = (0.0, False)
         cloud_touch = False
@@ -2282,7 +2291,7 @@ class HopServer(object):
             raw = str(d.get("cloudUrl") or "").strip()
             v, key = parse_server_address(raw) if raw else ("", None)
             if v is None:
-                return self._err("That isn't a server address, like hop.yourname.workers.dev")
+                return self._err(i18n.t("err.notServer"))
             if v != str(self.cfg.get("cloudUrl") or ""):
                 self.cfg["cloudUrl"] = v
                 if not key:  # a different server without a key: create a new one for it
@@ -2294,10 +2303,9 @@ class HopServer(object):
         if "cloudEnabled" in d:
             on = bool(d["cloudEnabled"])
             if on and remote is None:
-                return self._err("Internet access isn't available in this build (%s)"
-                                 % (REMOTE_ERROR or "aiortc is missing"))
+                return self._err(i18n.t("err.noInternetBuildWhy", detail=REMOTE_ERROR or i18n.t("err.aiortcMissing")))
             if on and not self.cloud_url:
-                return self._err("Add your connection server's address first")
+                return self._err(i18n.t("err.addServerFirst"))
             if on != bool(self.cfg.get("cloudEnabled")):
                 self.cfg["cloudEnabled"] = on
                 cloud_touch = True
@@ -2308,7 +2316,7 @@ class HopServer(object):
             if k not in d:
                 continue
             v = d[k]
-            if k not in ("theme", "shortName", "openIn"):
+            if k not in ("theme", "shortName", "openIn", "language"):
                 v = bool(v)
             cur = self.cfg.get(k, DEFAULT_SETTINGS.get(k, None) if k != "shortName"
                                else self.short_want)
@@ -2321,6 +2329,8 @@ class HopServer(object):
                     if not v:
                         for s in list(self.sessions.values()):
                             s.release_input()
+                if k == "language":
+                    i18n.set_language(v)
                 if k == "shortName":
                     self._probed = None
                     if self._addr_event is not None:
@@ -2336,7 +2346,7 @@ class HopServer(object):
 
     async def api_cloud_new_password(self, request):
         if remote is None:
-            return self._err("Internet access isn't available in this build")
+            return self._err(i18n.t("err.noInternetBuild"))
         self.cfg["cloudPassword"] = remote.new_password()
         self.save()
         log.info("New internet password generated")
@@ -2347,7 +2357,7 @@ class HopServer(object):
         pw = str(d.get("password", "")).strip()
         problem = password_problem(pw)
         if problem:
-            return self._err(problem)
+            return self._err(i18n.local(problem))
         self.cfg["cloudPassword"] = pw
         self.save()
         log.info("Internet password changed")
@@ -2358,7 +2368,7 @@ class HopServer(object):
         d = await self._json_body(request)
         url = {"deploy": DEPLOY_URL, "guide": GUIDE_URL}.get(str(d.get("which", "")))
         if not url:
-            return self._err("Unknown link")
+            return self._err(i18n.t("err.unknownLink"))
         import webbrowser
         threading.Thread(target=webbrowser.open, args=(url,), daemon=True).start()
         return web.json_response({"ok": True})
@@ -2366,12 +2376,12 @@ class HopServer(object):
     async def api_device_send(self, request):
         """AirDrop this computer's connect link (with the PIN) — the phone opens it already signed in."""
         if OS_NAME != "mac" or self.gui is None:
-            return self._err("Sending links needs the Hop window on a Mac")
+            return self._err(i18n.t("err.sendLinksMac"))
         url = "http://%s:%d/#pin=%s" % (get_lan_ip(), self.port, self.pin)
         try:
             self.gui.airdrop(url)
         except Exception as e:
-            return self._err("Couldn't open AirDrop: %s" % e)
+            return self._err(i18n.t("err.airdrop", detail=e))
         return web.json_response({"ok": True})
 
     async def api_device_hide(self, request):
@@ -2388,19 +2398,19 @@ class HopServer(object):
 
     async def api_device_mirror(self, request):
         if OS_NAME != "mac" or not os.path.isdir("/System/Applications/iPhone Mirroring.app"):
-            return self._err("iPhone Mirroring needs macOS 15 or later")
+            return self._err(i18n.t("err.mirroringVersion"))
         subprocess.Popen(["/usr/bin/open", "-a", "iPhone Mirroring"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return web.json_response({"ok": True})
 
     async def api_permission(self, request):
         d = await self._json_body(request)
         ok = request_mac_permission(str(d.get("which", "")))
-        return web.json_response(self.status() if ok else {"error": "Not available"}, status=200 if ok else 400)
+        return web.json_response(self.status() if ok else {"error": i18n.t("err.notAvailable")}, status=200 if ok else 400)
 
     async def api_restart(self, request):
         """Start a fresh copy, then quit this one (macOS applies Screen Recording after a restart)."""
         if OS_NAME != "mac":
-            return self._err("Restarting is only needed on macOS")
+            return self._err(i18n.t("err.restartMacOnly"))
         cmd = relaunch_command()
         log.info("Restarting Hop")
         try:
@@ -2408,7 +2418,7 @@ class HopServer(object):
             subprocess.Popen(["/bin/sh", "-c", 'sleep 1.5; exec "$@"', "sh"] + cmd,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         except Exception as e:
-            return self._err("Couldn't restart: %s" % e)
+            return self._err(i18n.t("err.restart", detail=e))
         asyncio.get_event_loop().call_later(0.4, os.kill, os.getpid(), signal.SIGTERM)
         return web.json_response({"ok": True})
 
@@ -2443,7 +2453,7 @@ class HopServer(object):
         if d.get("peer"):
             p = self.peers.get(str(d["peer"]))
             if p is None or time.time() - p["seen"] > PEER_TTL:
-                return self._err("That computer isn't on the network anymore", 404)
+                return self._err(i18n.t("err.peerGone"), 404)
             url = "http://%s:%d/#pin=%s" % (p["ip"], p["port"], self.pin)
             title = p["name"]
         elif d.get("url"):
@@ -2452,37 +2462,38 @@ class HopServer(object):
             raw = re.split(r"[/?#]", raw, 1)[0]
             m = re.match(r"^(\[[0-9a-fA-F:]+\]|[A-Za-z0-9.-]+)(?::(\d{1,5}))?$", raw)
             if not m:
-                return self._err("Enter an address like studio.local or 192.168.1.20")
+                return self._err(i18n.t("err.enterAddress"))
             host, port = m.group(1), m.group(2)
             ports = [int(port)] if port else [EASY_PORT, DEFAULT_PORT]
             infos = await asyncio.gather(*[self._probe_info(host, pt) for pt in ports])
             found = [(pt, i) for pt, i in zip(ports, infos) if i]
             if not found:
-                return self._err("No Hop found at %s. Check the address and that "
-                                 "Hop is running there." % raw, 404)
+                return self._err(i18n.t("err.noHopAt", address=raw), 404)
             pt, info = found[0]
             if info.get("id") == self.id:
-                return self._err("That's this computer")
+                return self._err(i18n.t("err.thisComputer"))
             hostport = host if pt == 80 else "%s:%d" % (host, pt)
             url = "http://%s/#pin=%s" % (hostport, self.pin)
             title = str(info.get("name") or host)[:64]
         elif "cloud" in d:  # over the internet, through the connection server
             if not self.cloud_url or not self.site_key:
-                return self._err("Set up internet access first")
+                return self._err(i18n.t("err.setUpInternet"))
             cid = re.sub(r"\D", "", str(d.get("cloud") or ""))
             if cid and len(cid) != 9:
-                return self._err("The computer ID has 9 digits")
+                return self._err(i18n.t("err.id9"))
             if cid and cid == str(self.cfg.get("cloudId") or ""):
-                return self._err("That's this computer")
+                return self._err(i18n.t("err.thisComputer"))
             # The interface comes from this computer's own Hop; the server only introduces.
             url = "http://127.0.0.1:%d/remote%s" % (self.port, ("#id=" + cid) if cid else "")
-            title = ("Computer " + remote.format_id(cid)) if (cid and remote) else "Hop"
+            title = i18n.t("title.computer", id=remote.format_id(cid)) if (cid and remote) else "Hop"
         else:
-            return self._err("Nothing to connect to")
+            return self._err(i18n.t("err.nothingToConnect"))
         extend = d.get("mode") == "extend"
         if extend:  # this computer becomes the other one's second screen
             url += ("&" if "#" in url else "#") + "mode=extend"
-            title = "%s · Second screen" % title
+            title = i18n.t("title.secondScreen", title=title)
+        if self.setting("language") != "en":  # the viewer window speaks this app's language
+            url += ("&" if "#" in url else "#") + "lang=" + self.setting("language")
         how = d.get("openIn") if d.get("openIn") in OPEN_IN else self.setting("openIn")
         if extend and how == "window":
             how = "fullscreen"
@@ -2513,30 +2524,30 @@ class HopServer(object):
         if name:
             path = resolve_shared_file(name)
             if path is None:
-                return self._err("That file is no longer in the shared folder", 404)
+                return self._err(i18n.t("err.fileGone"), 404)
             ok = await loop.run_in_executor(self.io_ex, reveal_path, path, True)
         else:
             folder = await loop.run_in_executor(self.io_ex, ensure_shared_dir)
             ok = await loop.run_in_executor(self.io_ex, reveal_path, folder, False)
         if not ok:
-            return self._err("Couldn't open the folder")
+            return self._err(i18n.t("err.openFolder"))
         return web.json_response(self.status())
 
     async def api_files_send(self, request):
         gui = self.gui
         if gui is None:
-            return self._err("Open the Hop app window to pick files", 400)
+            return self._err(i18n.t("err.openWindowToPick"), 400)
         loop = asyncio.get_event_loop()
         try:
             picked = await loop.run_in_executor(None, gui.pick_files)
         except Exception as e:
-            return self._err("Couldn't open the file picker: %s" % e)
+            return self._err(i18n.t("err.filePicker", detail=e))
         names = []
         if picked:
             try:
                 names = await loop.run_in_executor(self.io_ex, self._copy_in, list(picked))
             except Exception as e:
-                return self._err("Couldn't copy the file: %s" % e)
+                return self._err(i18n.t("err.copyFile", detail=e))
             log.info("Offered %s to viewers", ", ".join(names))
             await self.push_files()
         st = self.status()
@@ -2659,7 +2670,7 @@ class HopServer(object):
                 saved.append(fname)
                 self.received.appendleft({"name": fname, "from": s.device, "at": time.time()})
                 log.info("Received %s (%d bytes) from %s (%s)", fname, size, s.device, s.ip)
-                self.notify("Received %s from %s" % (fname, s.device))
+                self.notify(i18n.t("notify.received", name=fname, device=i18n.device_label(s.device)))
         except _TooLarge as e:
             return self._err("%s is larger than 4 GB" % e.args[0], 413)
         except PermissionError as e:
@@ -3097,7 +3108,7 @@ class HopServer(object):
             self.by_token[session.token] = session
             log.info("Client connected: %s (%s)", ip, session.device)
             self.remember_device(session.device, remote, ip)
-            self.notify("%s (%s) is now viewing this computer" % (session.device, ip))
+            self.notify(i18n.t("notify.viewing", device=i18n.device_label(session.device), ip=ip))
             self.update_awake()
             try:
                 await session.run()
@@ -3124,8 +3135,7 @@ class HopServer(object):
         self.pending[rid] = {"ip": ip, "device": device, "ua": ua, "at": time.time(),
                              "future": fut, "code": code, "tries": 0, "timeout": timeout}
         log.info("Waiting for %s: %s (%s)", "pairing" if code else "approval", ip, device)
-        self.notify(("New device %s (%s) wants access: type the code it shows into Hop" if code
-                     else "%s (%s) wants to connect") % (device, ip))
+        self.notify(i18n.t("notify.pairing" if code else "notify.asking", device=i18n.device_label(device), ip=ip))
         self.attention()
         recv = None
         try:
@@ -3296,7 +3306,7 @@ class Session(object):
         self.reset_frame = True
         self.ack.set()
         log.info("%s (%s) is now a second screen (%dx%d)", self.device, self.ip, b[2], b[3])
-        srv.notify("%s is now a second screen" % self.device)
+        srv.notify(i18n.t("notify.extendOn", device=i18n.device_label(self.device)))
         await self.send_json({"t": "extend.ok", "monitor": idx, "monitors": self.public_monitors(),
                               "width": b[2], "height": b[3]})
 
@@ -3355,7 +3365,7 @@ class Session(object):
             except Exception as e:
                 log.warning("release_all failed for %s: %s", self.ip, e)
             if self.server.vdisplays.destroy(self.id):  # a second screen goes away with its viewer
-                self.server.notify("%s stopped being a second screen" % self.device)
+                self.server.notify(i18n.t("notify.extendOff", device=i18n.device_label(self.device)))
             self._shutdown_executors()
 
     def _shutdown_executors(self):
@@ -3731,7 +3741,7 @@ class RemoteSession(Session):
             fname = os.path.basename(final)
             srv.received.appendleft({"name": fname, "from": self.device, "at": time.time()})
             log.info("Received %s (%d bytes) from %s (%s)", fname, u["got"], self.device, self.ip)
-            srv.notify("Received %s from %s" % (fname, self.device))
+            srv.notify(i18n.t("notify.received", name=fname, device=i18n.device_label(self.device)))
             await self.send_json({"t": "up.done", "id": uid, "name": fname})
             await srv.push_files()
 
@@ -3779,17 +3789,37 @@ class RemoteSession(Session):
 
 # --------------------------------------------------------------------------- main
 
+def _banner(server, urls, windowed, lang=None):
+    """The terminal banner as (lines before the QR code, lines after it)."""
+    def tr(key, **kw):
+        return i18n.t(key, lang, **kw)
+    open_line = tr("banner.open", url=urls[0])
+    pad = " " * max(0, len(open_line) - len(urls[0]) - len(tr("banner.or", url="")))  # line up the addresses
+    head = ["", "=" * 60, tr("banner.running", name=server.name, os=OS_NAME), "=" * 60, open_line]
+    head += [pad + tr("banner.or", url=u) for u in urls[1:]]
+    head += [tr("banner.pin", pin=server.pin), ""]
+    tail = []
+    if OS_NAME == "mac":
+        tail.append(tr("banner.mac", app=responsible_app() or tr("banner.thisTerminal")))
+    tail += [tr("banner.stopWindow" if windowed else "banner.stop"), ""]
+    return head, tail
+
+
+def _print_lines(lines, fallback):
+    try:
+        text = "\n".join(lines)
+        if sys.stdout.encoding:
+            text.encode(sys.stdout.encoding)  # a console that can't show the chosen language gets English
+    except (UnicodeEncodeError, LookupError):
+        text = "\n".join(fallback)
+    print(text)
+
+
 def print_banner(server, windowed=False):
     urls = server.urls()
-    print("")
-    print("=" * 60)
-    print(" Hop host '%s' (%s) is running" % (server.name, OS_NAME))
-    print("=" * 60)
-    print("  Open in a browser on your LAN:  %s" % urls[0])
-    for u in urls[1:]:
-        print("                              or  %s" % u)
-    print("  PIN: %s" % server.pin)
-    print("")
+    head, tail = _banner(server, urls, windowed)
+    head_en, tail_en = _banner(server, urls, windowed, "en")
+    _print_lines(head, head_en)
     try:
         import qrcode
         qr = qrcode.QRCode(border=1)
@@ -3798,15 +3828,7 @@ def print_banner(server, windowed=False):
         qr.print_ascii(out=sys.stdout, invert=True)
     except Exception:
         pass
-    if OS_NAME == "mac":
-        print("  macOS: grant Screen Recording + Accessibility to %s in "
-              "System Settings > Privacy & Security, then restart it."
-              % (responsible_app() or "this terminal app"))
-    if windowed:
-        print("  Close the Hop window (or press Ctrl+C here) to stop.")
-    else:
-        print("  Press Ctrl+C to stop.")
-    print("")
+    _print_lines(tail, tail_en)
     try:
         sys.stdout.flush()
     except Exception:
@@ -4182,12 +4204,16 @@ def run_window(server, background=False, on_quit=None):
     kwargs = {"private_mode": False, "storage_path": storage}
     if os.path.isfile(icon):
         kwargs["icon"] = icon
+    words = i18n.webview_localization()  # menu and dialog words; a language change applies at the next start
+    if words:
+        kwargs["localization"] = words
     log.info("Opening the Hop window%s", " (minimized)" if background else "")
     try:
         webview.start(**kwargs)
-    except TypeError:  # older pywebview without icon= / storage_path=
+    except TypeError:  # older pywebview without icon= / storage_path= / localization=
         kwargs.pop("icon", None)
         kwargs.pop("storage_path", None)
+        kwargs.pop("localization", None)
         webview.start(**kwargs)
     finally:
         server.on_attention = None
@@ -4259,6 +4285,7 @@ def main():
 
     migrate_from_local_view()
     cfg = load_config()
+    i18n.set_language(cfg.get("language"))
     dirty = False
     if args.pin is not None:
         pin = args.pin.strip()
@@ -4319,7 +4346,7 @@ def main():
         msg = "Could not start Hop on port %d: %s" % (args.port, thread.error)
         log.error(msg)
         if NO_CONSOLE or FROZEN:
-            fatal_dialog(msg + "\n\nIs another program using this port?")
+            fatal_dialog(i18n.t("fatal.port", port=args.port, detail=thread.error) + "\n\n" + i18n.t("fatal.portHint"))
         sys.exit(1)
 
     stopped = threading.Event()

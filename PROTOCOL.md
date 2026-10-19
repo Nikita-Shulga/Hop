@@ -37,7 +37,13 @@ to set the same PIN on all their machines so jumping between devices is seamless
 Brute force protection: per client IP, after 5 failures lock out for 60 s; each failure delays 1 s.
 
 `~/.hop.json`: `{"pin": "...", "id": "...", "allowControl": true, "askBeforeConnect": false,
-"theme": "system"|"light"|"dark", "notify": true}` (the last four are host-window settings; defaults shown).
+"theme": "system"|"light"|"dark", "notify": true, "language": "en"|"ru"}` (host-window settings after the
+PIN and id; defaults shown).
+
+Message texts in this protocol (`error`, `pending`, `extend.err`, `up.err`, `down.err`, …) are always English,
+whatever language the host uses: viewers match some of them, and translate what they show with
+`static/i18n.js` (`HopI18n.message`). The viewer keeps its own language in localStorage `lv.lang`
+(default `"en"`); a `#lang=ru` in its address (added by the Hop app to viewer windows it opens) sets it.
 
 ## WebSocket `/ws`
 First client message MUST be text `{"t":"auth","pin":"123456"}` within 10 s.
@@ -98,8 +104,8 @@ to existing LAN and internet sessions. Viewers update capabilities immediately; 
 also releases held input. Older viewers remain protected by host-side permission checks.
 
 ## Host window API (loopback only)
-`GET /host` serves `static/host.html` with a random per-process token substituted for `__LV_TOKEN__`
-and the saved theme for `__LV_THEME__`. `/host`, `/static/host.html` and every `/api/host/*` route return
+`GET /host` serves `static/host.html` with a random per-process token substituted for `__LV_TOKEN__`,
+the saved theme for `__LV_THEME__` and the language for `__LV_LANG__`. `/host`, `/static/host.html` and every `/api/host/*` route return
 **403** unless the TCP peer is loopback (`127.0.0.1`/`::1`) **and** the `Host` header is
 `127.0.0.1`/`localhost`/`[::1]` (blocks LAN access and DNS rebinding — these routes expose the PIN).
 `/api/host/*` also requires header `X-Hop-Token: <token>`; POSTs with an `Origin` header must come
@@ -121,7 +127,9 @@ from `http://127.0.0.1|localhost|[::1]:<port>`. The page polls status once a sec
 - `POST /api/host/viewers/{id}/disconnect`
 - `POST /api/host/pending/{id}/approve`, `POST /api/host/pending/{id}/deny` (404 when expired)
 - `POST /api/host/settings` — any subset of `{"allowControl":bool,"askBeforeConnect":bool,
-  "theme":"system"|"light"|"dark","notify":bool}` (saved). Turning control off releases held keys/buttons.
+  "theme":"system"|"light"|"dark","notify":bool,"language":"en"|"ru"}` (saved). Turning control off releases
+  held keys/buttons. The host window's API errors, status details, notifications and update messages follow
+  `language` (`i18n.py`).
 - `POST /api/host/open` `{"pane":"screen"|"accessibility"}` — opens the macOS Privacy pane.
 
 All POSTs return the new status object (or `{"error": "..."}` with 4xx).

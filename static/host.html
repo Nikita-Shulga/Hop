@@ -1,14 +1,17 @@
 <!doctype html>
-<html lang="en" data-pref="__LV_THEME__"><head>
+<html lang="en" data-pref="__LV_THEME__" data-lang="__LV_LANG__"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark">
 <title>Hop</title>
 <link rel="icon" href="/static/icon.png">
 <link rel="stylesheet" href="/static/theme.css">
+<script src="/static/i18n.js"></script>
 <script>
 /* Apply the saved theme before first paint (no flash). */
 (function(){var p=document.documentElement.dataset.pref;if(['system','light','dark'].indexOf(p)<0)p='system';
 var light=p==='light'||(p==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);
-document.documentElement.dataset.mode=light?'light':'dark';})();
+document.documentElement.dataset.mode=light?'light':'dark';
+/* The saved language (English unless chosen in Settings). */
+HopI18n.setLang(document.documentElement.dataset.lang);})();
 </script>
 <style>
 /* Host-window additions on top of the shared Quiet AI theme (theme.css). */
@@ -148,6 +151,7 @@ main::-webkit-scrollbar{width:0}
 #nearby li.dev .picon.dev{width:24px;height:24px}
 .devlist li.dev.on .picon.dev{background:color-mix(in srgb,var(--green) 12%,transparent);color:var(--green);box-shadow:none}
 .devlist li.dev.off{opacity:.78}
+:lang(ru) .devlist li.dev .stext small{white-space:normal}  /* longer Russian details wrap instead of being cut */
 .devlist li.dev+li.dev::before{left:48px}
 
 /* Internet access */
@@ -187,104 +191,104 @@ main::-webkit-scrollbar{width:0}
       <span class="brand-name">Hop</span>
     </div>
     <div class="tb-actions">
-      <button id="open-settings" class="tb" aria-label="Settings" title="Settings"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6.5M12 5h1.5M2.5 11h1.5M7 11h6.5"/><circle cx="10.5" cy="5" r="1.5"/><circle cx="5.5" cy="11" r="1.5"/></svg></button>
+      <button id="open-settings" class="tb" aria-label="Settings" title="Settings" data-i18n-aria="c.settings" data-i18n-title="c.settings"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6.5M12 5h1.5M2.5 11h1.5M7 11h6.5"/><circle cx="10.5" cy="5" r="1.5"/><circle cx="5.5" cy="11" r="1.5"/></svg></button>
       <span class="tb-sep win"></span>
-      <button id="minimize" class="tb win" aria-label="Minimize"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8h7"/></svg></button>
-      <button id="close" class="tb win close" aria-label="Close"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6"/></svg></button>
+      <button id="minimize" class="tb win" aria-label="Minimize" data-i18n-aria="h.minimize"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8h7"/></svg></button>
+      <button id="close" class="tb win close" aria-label="Close" data-i18n-aria="h.close"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6"/></svg></button>
     </div>
   </header>
 
   <main>
     <section id="hero" class="hero" data-tone="preview" aria-live="polite">
       <div class="hero-top">
-        <span class="badge"><i></i><span id="badge-text">Starting</span></span>
-        <span id="rate" class="provider hidden" title="Streaming rate"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 9.5l2.5-3 2.5 2 3-4.5 4 5"/></svg><span id="rate-text"></span></span>
+        <span class="badge"><i></i><span id="badge-text" data-i18n="h.starting">Starting</span></span>
+        <span id="rate" class="provider hidden" title="Streaming rate" data-i18n-title="h.streamingRate"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 9.5l2.5-3 2.5 2 3-4.5 4 5"/></svg><span id="rate-text"></span></span>
       </div>
       <h1 id="headline" class="headline">&nbsp;</h1>
       <p id="summary" class="summary">&nbsp;</p>
       <canvas id="signal" class="signal" aria-hidden="true"></canvas>
     </section>
 
-    <button id="upd-banner" class="upd-banner hidden" type="button"><i></i><span id="upd-banner-text"></span><span class="upd-cta">Update now<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span></button>
+    <button id="upd-banner" class="upd-banner hidden" type="button"><i></i><span id="upd-banner-text"></span><span class="upd-cta"><span data-i18n="h.updateNow">Update now</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span></button>
 
     <section class="block hidden" id="setup-block">
-      <div class="block-head"><h2>Finish setting up</h2><span class="note" id="setup-note"></span></div>
+      <div class="block-head"><h2 data-i18n="h.finishSetup">Finish setting up</h2><span class="note" id="setup-note"></span></div>
       <div class="panel setup">
-        <div class="srow step" id="step-screen"><span class="stepnum">1</span><div class="stext"><strong>Let your devices see this screen</strong><small><span class="todo" id="scr-todo">macOS asks once — turn on <b class="appname">Hop</b> under Screen Recording.</span><span class="ok">Screen Recording is on.</span></small></div><button class="button sm" data-req="screen">Allow</button></div>
-        <div class="srow step" id="step-ax"><span class="stepnum">2</span><div class="stext"><strong>Let them click and type</strong><small><span class="todo">Turn on <b class="appname">Hop</b> under Accessibility.</span><span class="ok">Accessibility is on.</span></small></div><button class="button sm" data-req="accessibility">Allow</button></div>
-        <div class="srow step hidden" id="step-restart"><span class="stepnum">3</span><div class="stext"><strong>Restart Hop</strong><small>macOS turns on screen access after a restart. It takes a second.</small></div><button class="button sm" id="restart-btn">Restart</button></div>
+        <div class="srow step" id="step-screen"><span class="stepnum">1</span><div class="stext"><strong data-i18n="h.stepScreen">Let your devices see this screen</strong><small><span class="todo" id="scr-todo">macOS asks once — turn on <b class="appname">Hop</b> under Screen Recording.</span><span class="ok" data-i18n="h.stepScreenOk">Screen Recording is on.</span></small></div><button class="button sm" data-req="screen" data-i18n="h.allow">Allow</button></div>
+        <div class="srow step" id="step-ax"><span class="stepnum">2</span><div class="stext"><strong data-i18n="h.stepAx">Let them click and type</strong><small><span class="todo" data-i18n-html="h.stepAxTodo">Turn on <b class="appname">Hop</b> under Accessibility.</span><span class="ok" data-i18n="h.stepAxOk">Accessibility is on.</span></small></div><button class="button sm" data-req="accessibility" data-i18n="h.allow">Allow</button></div>
+        <div class="srow step hidden" id="step-restart"><span class="stepnum">3</span><div class="stext"><strong data-i18n="h.stepRestart">Restart Hop</strong><small data-i18n="h.stepRestartHint">macOS turns on screen access after a restart. It takes a second.</small></div><button class="button sm" id="restart-btn">Restart</button></div>
       </div>
     </section>
 
     <section class="block">
-      <div class="block-head"><h2>Your devices</h2><span class="clinks"><button id="net-connect-toggle" class="link hidden">Over the internet…</button><button id="addr-toggle" class="link">Connect to address…</button></span></div>
+      <div class="block-head"><h2 data-i18n="h.yourDevices">Your devices</h2><span class="clinks"><button id="net-connect-toggle" class="link hidden" data-i18n="h.overInternet">Over the internet…</button><button id="addr-toggle" class="link" data-i18n="h.connectToAddress">Connect to address…</button></span></div>
       <div class="panel peers-panel">
-        <ul id="peers" class="chat-list devlist" aria-label="Other computers running Hop"></ul>
-        <form id="net-connect-form" class="addr-form hidden" autocomplete="off"><input id="net-connect-input" class="input" placeholder="Computer ID, e.g. 123 456 789" inputmode="numeric" spellcheck="false" aria-label="ID of a computer to connect to over the internet"><button class="link" type="button" id="net-connect-extend" title="Use this computer as its second screen">Second screen</button><button class="button sm" type="submit">Connect</button></form>
-        <form id="addr-form" class="addr-form hidden" autocomplete="off"><input id="addr-input" class="input" placeholder="studio.local or 192.168.1.20" spellcheck="false" autocapitalize="off" aria-label="Address of another computer"><button class="button sm" type="submit">Connect</button></form>
+        <ul id="peers" class="chat-list devlist" aria-label="Other computers running Hop" data-i18n-aria="h.otherHops"></ul>
+        <form id="net-connect-form" class="addr-form hidden" autocomplete="off"><input id="net-connect-input" class="input" placeholder="Computer ID, e.g. 123 456 789" inputmode="numeric" spellcheck="false" aria-label="ID of a computer to connect to over the internet" data-i18n-ph="h.idPlaceholder" data-i18n-aria="h.idLabel"><button class="link" type="button" id="net-connect-extend" title="Use this computer as its second screen" data-i18n-title="h.extendThisTitle" data-i18n="c.secondScreen">Second screen</button><button class="button sm" type="submit" data-i18n="c.connect">Connect</button></form>
+        <form id="addr-form" class="addr-form hidden" autocomplete="off"><input id="addr-input" class="input" placeholder="studio.local or 192.168.1.20" spellcheck="false" autocapitalize="off" aria-label="Address of another computer" data-i18n-ph="h.addrPlaceholder" data-i18n-aria="h.addrLabel"><button class="button sm" type="submit" data-i18n="c.connect">Connect</button></form>
       </div>
     </section>
 
     <section class="block hidden" id="nearby-block">
-      <div class="block-head"><h2>Nearby</h2><button id="nearby-unhide" class="link hidden"></button></div>
-      <div class="panel list-panel"><ul id="nearby" class="chat-list devlist" aria-label="Other Apple devices on this Wi-Fi"></ul></div>
-      <p class="foot">Apple devices on this Wi-Fi announce themselves (that's how AirDrop finds them), so some may not be yours. Nobody can connect through this list. <b>Hide</b> the ones you don't need.</p>
+      <div class="block-head"><h2 data-i18n="h.nearby">Nearby</h2><button id="nearby-unhide" class="link hidden"></button></div>
+      <div class="panel list-panel"><ul id="nearby" class="chat-list devlist" aria-label="Other Apple devices on this Wi-Fi" data-i18n-aria="h.nearbyLabel"></ul></div>
+      <p class="foot" data-i18n-html="h.nearbyFoot">Apple devices on this Wi-Fi announce themselves (that's how AirDrop finds them), so some may not be yours. Nobody can connect through this list. <b>Hide</b> the ones you don't need.</p>
     </section>
 
     <section class="block">
-      <div class="block-head"><h2>Connect a device</h2><span class="note">Same Wi-Fi</span></div>
+      <div class="block-head"><h2 data-i18n="h.connectDevice">Connect a device</h2><span class="note" data-i18n="h.sameWifi">Same Wi-Fi</span></div>
       <div class="panel connect-panel">
-        <div id="qr" class="qr" title="Scan with your phone's camera"></div>
+        <div id="qr" class="qr" title="Scan with your phone's camera" data-i18n-title="h.scanTitle"></div>
         <div class="cside">
-          <div class="crow"><span class="clabel">Address</span><button id="alt-url" class="alt-url hidden" title="Copy the IP address (works when the name doesn't)"></button></div>
+          <div class="crow"><span class="clabel" data-i18n="h.address">Address</span><button id="alt-url" class="alt-url hidden" title="Copy the IP address (works when the name doesn't)" data-i18n-title="h.altUrlTitle"></button></div>
           <button id="url" class="url-btn" title="Copy address"><span id="url-text">&nbsp;</span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.2A1.3 1.3 0 0 0 9.2 2H3.8A1.3 1.3 0 0 0 2.5 3.3v5.4A1.3 1.3 0 0 0 3.8 10H4"/></svg></button>
-          <div class="crow"><span class="clabel">PIN</span><button id="pin-toggle" class="link">Hide</button></div>
-          <div id="pin" class="pin" aria-label="PIN"><b></b><b></b><b></b><b></b><b></b><b></b></div>
-          <form id="pin-edit" class="pin-edit hidden" autocomplete="off"><input id="pin-input" class="input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" aria-label="New 6-digit PIN"><button class="button" type="submit">Save</button><button id="pin-cancel" class="link" type="button">Cancel</button></form>
-          <div id="pin-links" class="clinks"><button id="new-pin" class="link">New PIN</button><button id="set-pin" class="link">Set PIN…</button></div>
+          <div class="crow"><span class="clabel" data-i18n="c.pin">PIN</span><button id="pin-toggle" class="link">Hide</button></div>
+          <div id="pin" class="pin" aria-label="PIN" data-i18n-aria="c.pin"><b></b><b></b><b></b><b></b><b></b><b></b></div>
+          <form id="pin-edit" class="pin-edit hidden" autocomplete="off"><input id="pin-input" class="input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" aria-label="New 6-digit PIN" data-i18n-aria="h.newPinLabel"><button class="button" type="submit" data-i18n="c.save">Save</button><button id="pin-cancel" class="link" type="button" data-i18n="c.cancel">Cancel</button></form>
+          <div id="pin-links" class="clinks"><button id="new-pin" class="link" data-i18n="h.newPin">New PIN</button><button id="set-pin" class="link" data-i18n="h.setPin">Set PIN…</button></div>
         </div>
       </div>
     </section>
 
     <section class="block" id="net-block">
-      <div class="block-head"><h2>Internet access</h2><span id="net-note" class="note net-state"></span></div>
+      <div class="block-head"><h2 data-i18n="h.internetAccess">Internet access</h2><span id="net-note" class="note net-state"></span></div>
       <div class="panel">
-        <div class="srow"><div class="stext"><strong>Reach this computer from anywhere</strong><small id="net-sub">Off — only devices on this Wi-Fi can connect.</small></div><label class="switch"><input id="net-toggle" type="checkbox" aria-label="Internet access"><span></span></label></div>
+        <div class="srow"><div class="stext"><strong data-i18n="h.reachAnywhere">Reach this computer from anywhere</strong><small id="net-sub">Off — only devices on this Wi-Fi can connect.</small></div><label class="switch"><input id="net-toggle" type="checkbox" aria-label="Internet access" data-i18n-aria="h.internetAccess"><span></span></label></div>
         <div id="net-setup" class="net-body hidden">
           <div id="net-suggest"></div>
-          <button id="net-other" class="link hidden" type="button">Use a different server…</button>
-          <div class="nstep"><span class="stepnum">1</span><div class="stext"><strong>Create your free server</strong><small>One time, on Cloudflare: sign in or sign up (free), then press <b>Deploy</b>.</small></div><button class="button sm" id="net-deploy" type="button">Create</button></div>
-          <div class="nstep"><span class="stepnum">2</span><div class="stext"><strong>Paste its address</strong><small>Cloudflare shows it when it's done, like <b>hop.yourname.workers.dev</b></small></div></div>
-          <form id="net-url-form" class="url-form" autocomplete="off"><input id="net-url" class="input" placeholder="hop.yourname.workers.dev" spellcheck="false" autocapitalize="off" aria-label="Connection server address"><button class="button sm" type="submit">Connect</button></form>
-          <small class="preview">Your other computers find it by themselves when they're on the same Wi-Fi.</small>
+          <button id="net-other" class="link hidden" type="button" data-i18n="h.otherServer">Use a different server…</button>
+          <div class="nstep"><span class="stepnum">1</span><div class="stext"><strong data-i18n="h.createServer">Create your free server</strong><small data-i18n-html="h.createServerHint">One time, on Cloudflare: sign in or sign up (free), then press <b>Deploy</b>.</small></div><button class="button sm" id="net-deploy" type="button" data-i18n="h.create">Create</button></div>
+          <div class="nstep"><span class="stepnum">2</span><div class="stext"><strong data-i18n="h.pasteAddress">Paste its address</strong><small data-i18n-html="h.pasteAddressHint">Cloudflare shows it when it's done, like <b>hop.yourname.workers.dev</b></small></div></div>
+          <form id="net-url-form" class="url-form" autocomplete="off"><input id="net-url" class="input" placeholder="hop.yourname.workers.dev" spellcheck="false" autocapitalize="off" aria-label="Connection server address" data-i18n-aria="h.serverAddress"><button class="button sm" type="submit" data-i18n="h.connectServer">Connect</button></form>
+          <small class="preview" data-i18n="h.findItself">Your other computers find it by themselves when they're on the same Wi-Fi.</small>
         </div>
         <div id="net-on" class="net-body hidden">
           <div class="net-grid">
-            <div class="net-cell"><span class="clabel">ID</span><button id="net-id" class="net-val" title="Copy ID"><span id="net-id-text"></span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.2A1.3 1.3 0 0 0 9.2 2H3.8A1.3 1.3 0 0 0 2.5 3.3v5.4A1.3 1.3 0 0 0 3.8 10h.2"/></svg></button></div>
-            <div class="net-cell"><div class="crow"><span class="clabel">Password</span><button id="net-pw-toggle" class="link">Show</button></div><button id="net-pw" class="net-val pw" title="Copy password"><span id="net-pw-text"></span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.2A1.3 1.3 0 0 0 9.2 2H3.8A1.3 1.3 0 0 0 2.5 3.3v5.4A1.3 1.3 0 0 0 3.8 10h.2"/></svg></button></div>
+            <div class="net-cell"><span class="clabel">ID</span><button id="net-id" class="net-val" title="Copy ID" data-i18n-title="h.copyId"><span id="net-id-text"></span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.2A1.3 1.3 0 0 0 9.2 2H3.8A1.3 1.3 0 0 0 2.5 3.3v5.4A1.3 1.3 0 0 0 3.8 10h.2"/></svg></button></div>
+            <div class="net-cell"><div class="crow"><span class="clabel" data-i18n="c.password">Password</span><button id="net-pw-toggle" class="link">Show</button></div><button id="net-pw" class="net-val pw" title="Copy password" data-i18n-title="h.copyPassword"><span id="net-pw-text"></span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 3.5v-.2A1.3 1.3 0 0 0 9.2 2H3.8A1.3 1.3 0 0 0 2.5 3.3v5.4A1.3 1.3 0 0 0 3.8 10h.2"/></svg></button></div>
           </div>
-          <form id="net-pw-edit" class="pin-edit hidden" autocomplete="off"><input id="net-pw-input" class="input" maxlength="64" placeholder="At least 8 characters, letters and digits" aria-label="New internet password" spellcheck="false" autocapitalize="off"><button class="button" type="submit">Save</button><button class="link" type="button" id="net-pw-cancel">Cancel</button></form>
-          <div class="crow"><div class="clinks"><button id="net-pw-new" class="link">New password</button><button id="net-pw-set" class="link">Set password…</button></div><div class="clinks"><button id="net-qr-toggle" class="link" title="Scan with your phone to connect from anywhere">Phone</button><button id="net-link" class="link" title="Copy a link that opens Hop with this ID filled in">Copy link</button></div></div>
-          <div id="net-qr-row" class="net-qr-row hidden"><div id="net-qr" class="qr" title="Scan with your phone's camera"></div><div class="stext"><strong>Connect your phone from anywhere</strong><small>Scan with the camera, then enter the password. Add it to the Home Screen and it opens like an app, on any network.</small></div></div>
+          <form id="net-pw-edit" class="pin-edit hidden" autocomplete="off"><input id="net-pw-input" class="input" maxlength="64" placeholder="At least 8 characters, letters and digits" aria-label="New internet password" data-i18n-ph="h.pwPlaceholder" data-i18n-aria="h.newNetPassword" spellcheck="false" autocapitalize="off"><button class="button" type="submit" data-i18n="c.save">Save</button><button class="link" type="button" id="net-pw-cancel" data-i18n="c.cancel">Cancel</button></form>
+          <div class="crow"><div class="clinks"><button id="net-pw-new" class="link" data-i18n="h.newPassword">New password</button><button id="net-pw-set" class="link" data-i18n="h.setPassword">Set password…</button></div><div class="clinks"><button id="net-qr-toggle" class="link" title="Scan with your phone to connect from anywhere" data-i18n-title="h.phoneTitle">Phone</button><button id="net-link" class="link" title="Copy a link that opens Hop with this ID filled in" data-i18n-title="h.copyLinkTitle" data-i18n="h.copyLink">Copy link</button></div></div>
+          <div id="net-qr-row" class="net-qr-row hidden"><div id="net-qr" class="qr" title="Scan with your phone's camera" data-i18n-title="h.scanTitle"></div><div class="stext"><strong data-i18n="h.phoneAnywhere">Connect your phone from anywhere</strong><small data-i18n="h.phoneAnywhereHint">Scan with the camera, then enter the password. Add it to the Home Screen and it opens like an app, on any network.</small></div></div>
           <div id="net-err" class="net-err" role="alert"></div>
         </div>
       </div>
     </section>
 
     <section class="block">
-      <div class="block-head"><h2>Connected</h2><span id="viewers-note" class="note"></span></div>
-      <div class="panel list-panel"><ul id="viewers" class="chat-list" aria-label="Connected devices"></ul></div>
+      <div class="block-head"><h2 data-i18n="h.connectedHead">Connected</h2><span id="viewers-note" class="note"></span></div>
+      <div class="panel list-panel"><ul id="viewers" class="chat-list" aria-label="Connected devices" data-i18n-aria="h.connectedDevices"></ul></div>
     </section>
 
     <section class="block">
-      <div class="block-head"><h2>Shared folder</h2><span id="files-note" class="note"></span></div>
+      <div class="block-head"><h2 data-i18n="c.sharedFolder">Shared folder</h2><span id="files-note" class="note"></span></div>
       <div class="panel files-panel">
         <div class="frow">
           <span class="ficon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.6c0-.8.6-1.4 1.4-1.4h2.7l1.5 1.6h4.9c.8 0 1.4.6 1.4 1.4v5.6c0 .8-.6 1.4-1.4 1.4H3.4c-.8 0-1.4-.6-1.4-1.4Z"/><path d="M8 7v3.6M6.4 9 8 10.6 9.6 9"/></svg></span>
-          <div class="stext"><strong>Files to and from your devices</strong><small id="folder-path" title="Shared folder">&nbsp;</small></div>
-          <div class="links"><button id="files-open" class="link">Open</button><button id="files-send" class="link">Send a file…</button></div>
+          <div class="stext"><strong data-i18n="h.filesTitle">Files to and from your devices</strong><small id="folder-path" title="Shared folder">&nbsp;</small></div>
+          <div class="links"><button id="files-open" class="link" data-i18n="h.open">Open</button><button id="files-send" class="link" data-i18n="h.sendFile">Send a file…</button></div>
         </div>
-        <ul id="received" class="chat-list" aria-label="Recently received files"></ul>
+        <ul id="received" class="chat-list" aria-label="Recently received files" data-i18n-aria="h.recentFiles"></ul>
       </div>
     </section>
 
@@ -294,92 +298,99 @@ main::-webkit-scrollbar{width:0}
 
   <div id="ask" class="ask hidden" role="alertdialog" aria-live="assertive">
     <div class="ask-top"><span class="ask-ic" id="ask-ic"></span><div class="stext"><strong id="ask-title"></strong><small id="ask-detail"></small></div></div>
-    <form id="ask-code-form" class="pin-edit hidden" autocomplete="off"><input id="ask-code" class="input" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" placeholder="000 000" aria-label="Code shown on the new device"></form>
-    <div class="ask-actions"><button id="ask-deny" class="link danger">Deny</button><button id="ask-allow" class="button">Allow</button></div>
+    <form id="ask-code-form" class="pin-edit hidden" autocomplete="off"><input id="ask-code" class="input" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" placeholder="000 000" aria-label="Code shown on the new device" data-i18n-aria="h.codeLabel"></form>
+    <div class="ask-actions"><button id="ask-deny" class="link danger" data-i18n="h.deny">Deny</button><button id="ask-allow" class="button">Allow</button></div>
   </div>
-  <div id="notice" class="notice hidden" role="status"><span id="notice-text"></span><button id="notice-act" class="notice-act hidden"></button><button id="dismiss-notice" aria-label="Dismiss"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6"/></svg></button></div>
+  <div id="notice" class="notice hidden" role="status"><span id="notice-text"></span><button id="notice-act" class="notice-act hidden"></button><button id="dismiss-notice" aria-label="Dismiss" data-i18n-aria="c.dismiss"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6"/></svg></button></div>
 
-  <aside id="settings" class="sheet" aria-label="Settings" aria-hidden="true">
-    <div class="sheet-bar"><button id="close-settings" class="back"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>Back</button><h2>Settings</h2><span></span></div>
+  <aside id="settings" class="sheet" aria-label="Settings" data-i18n-aria="c.settings" aria-hidden="true">
+    <div class="sheet-bar"><button id="close-settings" class="back"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg><span data-i18n="c.back">Back</span></button><h2 data-i18n="c.settings">Settings</h2><span></span></div>
     <div class="sheet-body">
-      <div class="block-head"><h2>Appearance</h2></div>
+      <div class="block-head"><h2 data-i18n="c.appearance">Appearance</h2></div>
       <div class="panel">
         <div class="srow appearance">
-          <div id="theme-seg" class="seg" role="group" aria-label="Theme" data-value="system"><span class="seg-thumb" aria-hidden="true"></span>
-            <button data-theme="system"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.2" width="11" height="7.6" rx="1.4"/><path d="M6 13h4"/></svg>System</button>
-            <button data-theme="light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/></svg>Light</button>
-            <button data-theme="dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg>Dark</button>
+          <div id="theme-seg" class="seg" role="group" aria-label="Theme" data-i18n-aria="c.theme" data-value="system"><span class="seg-thumb" aria-hidden="true"></span>
+            <button data-theme="system"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.2" width="11" height="7.6" rx="1.4"/><path d="M6 13h4"/></svg><span data-i18n="c.system">System</span></button>
+            <button data-theme="light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/></svg><span data-i18n="c.light">Light</span></button>
+            <button data-theme="dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg><span data-i18n="c.dark">Dark</span></button>
+          </div>
+        </div>
+        <div class="srow field">
+          <label data-i18n="c.language">Language</label>
+          <div id="lang-seg" class="seg" role="group" aria-label="Language" data-i18n-aria="c.language" data-value=""><span class="seg-thumb" aria-hidden="true"></span>
+            <button data-lang="en" lang="en">English</button>
+            <button data-lang="ru" lang="ru">Русский</button>
           </div>
         </div>
       </div>
 
-      <div class="block-head"><h2>Address</h2></div>
+      <div class="block-head"><h2 data-i18n="h.address">Address</h2></div>
       <div class="panel">
         <div class="srow field">
-          <label for="short-input">Name on this network</label>
-          <form id="short-form" class="short-form" autocomplete="off"><div id="short-wrap" class="short-wrap"><span>http://</span><input id="short-input" maxlength="30" spellcheck="false" autocapitalize="off" aria-label="Name on this network"><span id="short-suffix">.local</span></div><button id="short-save" class="button" type="submit" disabled>Save</button></form>
+          <label for="short-input" data-i18n="h.nameOnNetwork">Name on this network</label>
+          <form id="short-form" class="short-form" autocomplete="off"><div id="short-wrap" class="short-wrap"><span>http://</span><input id="short-input" maxlength="30" spellcheck="false" autocapitalize="off" aria-label="Name on this network" data-i18n-aria="h.nameOnNetwork"><span id="short-suffix">.local</span></div><button id="short-save" class="button" type="submit" disabled data-i18n="c.save">Save</button></form>
           <small id="short-preview" class="preview">&nbsp;</small>
         </div>
       </div>
-      <p class="foot">Letters, digits and hyphens. Devices on this Wi-Fi open this address; if another computer already uses the name, this one adds “-2”.</p>
+      <p class="foot" data-i18n="h.addressFoot">Letters, digits and hyphens. Devices on this Wi-Fi open this address; if another computer already uses the name, this one adds “-2”.</p>
 
-      <div class="block-head"><h2>Other computers</h2></div>
+      <div class="block-head"><h2 data-i18n="h.otherComputers">Other computers</h2></div>
       <div class="panel">
         <div class="srow field">
-          <label>Open their screens</label>
-          <div id="open-seg" class="seg" role="group" aria-label="Open other computers in" data-value=""><span class="seg-thumb" aria-hidden="true"></span>
-            <button data-open="window"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.6"/><path d="M2 5.8h12"/></svg>Window</button>
-            <button data-open="fullscreen"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V3.5a1 1 0 0 1 1-1H6M10 2.5h2.5a1 1 0 0 1 1 1V6M13.5 10v2.5a1 1 0 0 1-1 1H10M6 13.5H3.5a1 1 0 0 1-1-1V10"/></svg>Full screen</button>
-            <button data-open="browser"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><path d="M2.4 8h11.2M8 2.4c1.6 1.6 2.3 3.5 2.3 5.6S9.6 12 8 13.6M8 2.4C6.4 4 5.7 5.9 5.7 8S6.4 12 8 13.6"/></svg>Browser</button>
+          <label data-i18n="h.openScreens">Open their screens</label>
+          <div id="open-seg" class="seg" role="group" aria-label="Open other computers in" data-i18n-aria="h.openIn" data-value=""><span class="seg-thumb" aria-hidden="true"></span>
+            <button data-open="window"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.6"/><path d="M2 5.8h12"/></svg><span data-i18n="h.window">Window</span></button>
+            <button data-open="fullscreen"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V3.5a1 1 0 0 1 1-1H6M10 2.5h2.5a1 1 0 0 1 1 1V6M13.5 10v2.5a1 1 0 0 1-1 1H10M6 13.5H3.5a1 1 0 0 1-1-1V10"/></svg><span data-i18n="h.fullScreen">Full screen</span></button>
+            <button data-open="browser"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><path d="M2.4 8h11.2M8 2.4c1.6 1.6 2.3 3.5 2.3 5.6S9.6 12 8 13.6M8 2.4C6.4 4 5.7 5.9 5.7 8S6.4 12 8 13.6"/></svg><span data-i18n="h.browser">Browser</span></button>
           </div>
         </div>
       </div>
-      <p class="foot"><b>Window</b> and <b>Full screen</b> open inside Hop, like TeamViewer; <b>Browser</b> uses a tab in your web browser. <b>Second screen</b> always opens full screen.</p>
+      <p class="foot" data-i18n-html="h.openFoot"><b>Window</b> and <b>Full screen</b> open inside Hop, like TeamViewer; <b>Browser</b> uses a tab in your web browser. <b>Second screen</b> always opens full screen.</p>
 
       <div id="net-settings">
-        <div class="block-head"><h2>Internet access</h2></div>
+        <div class="block-head"><h2 data-i18n="h.internetAccess">Internet access</h2></div>
         <div class="panel">
           <div class="srow field">
-            <label for="net-url2">Connection server — your private address</label>
-            <form id="net-url-form2" class="url-form" autocomplete="off"><input id="net-url2" class="input" placeholder="https://hop.yourname.workers.dev" spellcheck="false" autocapitalize="off" aria-label="Connection server address"><button class="button sm" type="submit">Save</button></form>
+            <label for="net-url2" data-i18n="h.serverLabel">Connection server — your private address</label>
+            <form id="net-url-form2" class="url-form" autocomplete="off"><input id="net-url2" class="input" placeholder="https://hop.yourname.workers.dev" spellcheck="false" autocapitalize="off" aria-label="Connection server address" data-i18n-aria="h.serverAddress"><button class="button sm" type="submit" data-i18n="c.save">Save</button></form>
           </div>
         </div>
-        <p class="foot">Your devices meet through this server (free on Cloudflare); the video, control and password then go directly between them, encrypted end to end. The server is <b>private</b>: it only answers at this address (with its key) — anyone else gets “Not found”. Your other computers pick it up with “Use it”; your phone gets it from the Phone QR code.</p>
-        <div class="block-head"><h2>Trusted devices</h2><span id="trusted-note" class="note"></span></div>
-        <div class="panel list-panel"><ul id="trusted" class="chat-list" aria-label="Devices trusted for internet access"></ul></div>
-        <p class="foot">A device connecting over the internet for the first time shows a code that you type here; after that it only needs the ID and password. <b>Forget</b> a device to make it confirm again.</p>
+        <p class="foot" data-i18n-html="h.serverFoot">Your devices meet through this server (free on Cloudflare); the video, control and password then go directly between them, encrypted end to end. The server is <b>private</b>: it only answers at this address (with its key) — anyone else gets “Not found”. Your other computers pick it up with “Use it”; your phone gets it from the Phone QR code.</p>
+        <div class="block-head"><h2 data-i18n="h.trustedDevices">Trusted devices</h2><span id="trusted-note" class="note"></span></div>
+        <div class="panel list-panel"><ul id="trusted" class="chat-list" aria-label="Devices trusted for internet access" data-i18n-aria="h.trustedLabel"></ul></div>
+        <p class="foot" data-i18n-html="h.trustedFoot">A device connecting over the internet for the first time shows a code that you type here; after that it only needs the ID and password. <b>Forget</b> a device to make it confirm again.</p>
       </div>
 
-      <div class="block-head"><h2>Sharing</h2></div>
+      <div class="block-head"><h2 data-i18n="h.sharing">Sharing</h2></div>
       <div class="panel">
-        <div class="srow"><div class="stext"><strong>Allow control</strong><small>Viewers can use the mouse and keyboard. Off makes every connection view-only.</small></div><label class="switch"><input id="allow-control" type="checkbox" aria-label="Allow control"><span></span></label></div>
-        <div class="srow"><div class="stext"><strong>Ask before someone connects</strong><small>After the right PIN, a device waits until you allow it here. Unanswered requests are declined after 30 seconds.</small></div><label class="switch"><input id="ask-before" type="checkbox" aria-label="Ask before someone connects"><span></span></label></div>
-        <div class="srow"><div class="stext"><strong>Keep this computer awake</strong><small>While someone is connected, the computer and its display don’t go to sleep.</small></div><label class="switch"><input id="keep-awake" type="checkbox" aria-label="Keep this computer awake"><span></span></label></div>
-        <div class="srow" id="notify-row"><div class="stext"><strong>Show notifications</strong><small>Tell me when a device connects or asks to.</small></div><label class="switch"><input id="notify" type="checkbox" aria-label="Show notifications"><span></span></label></div>
+        <div class="srow"><div class="stext"><strong data-i18n="h.allowControl">Allow control</strong><small data-i18n="h.allowControlHint">Viewers can use the mouse and keyboard. Off makes every connection view-only.</small></div><label class="switch"><input id="allow-control" type="checkbox" aria-label="Allow control" data-i18n-aria="h.allowControl"><span></span></label></div>
+        <div class="srow"><div class="stext"><strong data-i18n="h.askBefore">Ask before someone connects</strong><small data-i18n="h.askBeforeHint">After the right PIN, a device waits until you allow it here. Unanswered requests are declined after 30 seconds.</small></div><label class="switch"><input id="ask-before" type="checkbox" aria-label="Ask before someone connects" data-i18n-aria="h.askBefore"><span></span></label></div>
+        <div class="srow"><div class="stext"><strong data-i18n="h.keepAwake">Keep this computer awake</strong><small data-i18n="h.keepAwakeHint">While someone is connected, the computer and its display don’t go to sleep.</small></div><label class="switch"><input id="keep-awake" type="checkbox" aria-label="Keep this computer awake" data-i18n-aria="h.keepAwake"><span></span></label></div>
+        <div class="srow" id="notify-row"><div class="stext"><strong data-i18n="h.notify">Show notifications</strong><small data-i18n="h.notifyHint">Tell me when a device connects or asks to.</small></div><label class="switch"><input id="notify" type="checkbox" aria-label="Show notifications" data-i18n-aria="h.notify"><span></span></label></div>
       </div>
 
       <div id="startup-block">
-        <div class="block-head"><h2>Startup</h2></div>
+        <div class="block-head"><h2 data-i18n="h.startup">Startup</h2></div>
         <div class="panel">
-          <div class="srow"><div class="stext"><strong>Start at login</strong><small id="startup-sub">Open Hop in the background when you log in, so this computer is always reachable.</small></div><label class="switch"><input id="start-login" type="checkbox" aria-label="Start at login"><span></span></label></div>
+          <div class="srow"><div class="stext"><strong data-i18n="h.startAtLogin">Start at login</strong><small id="startup-sub" data-i18n="h.startAtLoginHint">Open Hop in the background when you log in, so this computer is always reachable.</small></div><label class="switch"><input id="start-login" type="checkbox" aria-label="Start at login" data-i18n-aria="h.startAtLogin"><span></span></label></div>
         </div>
       </div>
 
       <div id="perm-block">
-        <div class="block-head"><h2>Permissions</h2></div>
+        <div class="block-head"><h2 data-i18n="h.permissions">Permissions</h2></div>
         <div class="panel">
-          <div class="srow perm"><div class="stext"><strong>Screen Recording</strong><small id="perm-screen" class="fstate"></small></div><button class="link" data-pane="screen">Open Settings</button></div>
-          <div class="srow perm"><div class="stext"><strong>Accessibility</strong><small id="perm-ax" class="fstate"></small></div><button class="link" data-pane="accessibility">Open Settings</button></div>
+          <div class="srow perm"><div class="stext"><strong data-i18n="h.screenRecording">Screen Recording</strong><small id="perm-screen" class="fstate"></small></div><button class="link" data-pane="screen" data-i18n="h.openSettings">Open Settings</button></div>
+          <div class="srow perm"><div class="stext"><strong data-i18n="h.accessibility">Accessibility</strong><small id="perm-ax" class="fstate"></small></div><button class="link" data-pane="accessibility" data-i18n="h.openSettings">Open Settings</button></div>
         </div>
         <p class="foot" id="perm-foot"></p>
       </div>
 
-      <div class="block-head"><h2>About</h2><span id="version" class="note"></span></div>
+      <div class="block-head"><h2 data-i18n="c.about">About</h2><span id="version" class="note"></span></div>
       <div class="panel">
-        <div class="srow" id="update-row"><div class="stext"><strong>Updates</strong><small id="upd-sub">Hop checks GitHub for new versions automatically.</small></div><button id="upd-check" class="link">Check now</button><button id="upd-install" class="button sm hidden">Update now</button></div>
-        <div class="srow prose"><p>Hop lets your phone, tablet or another computer see and control this one. On the same Wi-Fi, open the address and enter the PIN. From anywhere, turn on Internet access and use the ID and password.</p><p class="muted">On Wi-Fi nothing leaves your network. Over the internet, devices connect directly and encrypted; the connection server only introduces them. Files your devices send land in the shared folder.</p></div>
+        <div class="srow" id="update-row"><div class="stext"><strong data-i18n="h.updates">Updates</strong><small id="upd-sub">Hop checks GitHub for new versions automatically.</small></div><button id="upd-check" class="link" data-i18n="h.checkNow">Check now</button><button id="upd-install" class="button sm hidden" data-i18n="h.updateNow">Update now</button></div>
+        <div class="srow prose"><p data-i18n="h.about1">Hop lets your phone, tablet or another computer see and control this one. On the same Wi-Fi, open the address and enter the PIN. From anywhere, turn on Internet access and use the ID and password.</p><p class="muted" data-i18n="h.about2">On Wi-Fi nothing leaves your network. Over the internet, devices connect directly and encrypted; the connection server only introduces them. Files your devices send land in the shared folder.</p></div>
       </div>
-      <p class="foot">Use the same PIN on all your computers to hop between them from the device list. Never forward this port on your router — use Internet access instead.</p>
+      <p class="foot" data-i18n="h.aboutFoot">Use the same PIN on all your computers to hop between them from the device list. Never forward this port on your router — use Internet access instead.</p>
     </div>
   </aside>
 
@@ -390,13 +401,14 @@ const $=id=>document.getElementById(id);
 const shell=new URLSearchParams(location.search).get('shell')||'';
 if(shell==='mac'||shell==='win')document.body.classList.add('shell-'+shell);
 let state=null,busy=false,pinHidden=false,editingPin=false,lastOk=0;
+const I18N=window.HopI18n,t=I18N.t;
 
 // ——— API ———
 async function api(path,body){
   const opts={method:body===undefined?'GET':'POST',headers:{'X-Hop-Token':TOKEN},cache:'no-store'};
   if(body!==undefined){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
   const r=await fetch('/api/host/'+path,opts);let j={};try{j=await r.json();}catch(e){}
-  if(!r.ok)throw new Error(j.error||('Request failed ('+r.status+')'));
+  if(!r.ok)throw new Error(j.error||t('h.requestFailed',{status:r.status}));
   return j;
 }
 async function act(path,body,msg){
@@ -411,9 +423,20 @@ async function poll(){
 
 // ——— Helpers ———
 function text(id,v){const n=$(id);if(n.textContent!==v)n.textContent=v;}
-function plural(n,one,many){return n+' '+(n===1?one:many);}
-function ago(sec){sec=Math.max(0,sec|0);if(sec<60)return 'just now';const m=Math.floor(sec/60);if(m<60)return m+' min';return Math.floor(m/60)+' hr '+(m%60)+' min';}
-function rate(kbps){return kbps>=1000?(kbps/1000).toFixed(1)+' Mb/s':kbps+' kb/s';}
+function ago(sec){sec=Math.max(0,sec|0);if(sec<60)return t('h.justNow');const m=Math.floor(sec/60);if(m<60)return t('h.min',{m});return t('h.hrMin',{h:Math.floor(m/60),m:m%60});}
+function rate(kbps){return kbps>=1000?t('h.rateMb',{n:I18N.lang()==='en'?(kbps/1000).toFixed(1):I18N.num(+(kbps/1000).toFixed(1))}):t('h.rateKb',{n:kbps});}
+// Device names the host guesses from the browser ("Windows PC", "iPhone · Internet", "iPad · 20 Oct 2026")
+const DEV_KEYS={'Browser':'h.dev.Browser','Windows PC':'h.dev.WindowsPC','Android tablet':'h.dev.AndroidTablet','Internet':'h.dev.internet'};
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function devLabel(name){
+  name=String(name||'');if(I18N.lang()==='en')return name;
+  return name.split(' · ').map(p=>{
+    if(DEV_KEYS[p])return t(DEV_KEYS[p]);
+    const m=p.match(/^(\d{1,2}) ([A-Z][a-z]{2}) (\d{4})$/),mi=m?MONTHS.indexOf(m[2]):-1;
+    if(mi>=0){try{return new Date(+m[3],mi,+m[1]).toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'});}catch(e){}}
+    return p;
+  }).join(' · ');
+}
 const DEV={
   phone:'<rect x="4.8" y="1.8" width="6.4" height="12.4" rx="1.6"/><path d="M7.2 12h1.6"/>',
   tablet:'<rect x="3.2" y="1.8" width="9.6" height="12.4" rx="1.6"/><path d="M7.2 12h1.6"/>',
@@ -447,6 +470,23 @@ window.addEventListener('resize',placeThumb);
 document.querySelectorAll('#theme-seg [data-theme]').forEach(b=>b.addEventListener('click',()=>{
   if(pref===b.dataset.theme)return;pref=b.dataset.theme;applyTheme();act('settings',{theme:pref});
 }));
+
+// ——— Language (saved by the host, so its notifications and messages follow it too) ———
+let langSetAt=0;
+function applyLang(l){
+  l=I18N.setLang(l);
+  I18N.apply(document);
+  const seg=$('lang-seg');seg.dataset.value=l;
+  for(const b of seg.querySelectorAll('[data-lang]'))b.setAttribute('aria-pressed',String(b.dataset.lang===l));
+  document.querySelectorAll('[data-key]').forEach(e=>{delete e.dataset.key;});  // lists re-render in the new language
+  text('addr-toggle',addrOpen?t('c.cancel'):t('h.connectToAddress'));text('net-connect-toggle',netConnectOpen?t('c.cancel'):t('h.overInternet'));
+  if(state)render(state);
+  requestAnimationFrame(()=>{placeThumb();placeSeg($('open-seg'));placeSeg(seg);});
+}
+document.querySelectorAll('#lang-seg [data-lang]').forEach(b=>b.addEventListener('click',()=>{
+  if(I18N.lang()===b.dataset.lang)return;langSetAt=Date.now();applyLang(b.dataset.lang);act('settings',{language:b.dataset.lang});
+}));
+window.addEventListener('resize',()=>placeSeg($('lang-seg')));
 
 // ——— Signal strip (ported from Quiet AI renderer.js) ———
 const signal={mode:'quiet',amp:0,heights:[],canvas:$('signal')};
@@ -484,7 +524,7 @@ requestAnimationFrame(drawSignal);
 
 // ——— Render ———
 function offline(){
-  $('hero').dataset.tone='error';text('badge-text','Stopped');text('summary','Hop isn’t running on this computer anymore.');setSignal('quiet');
+  $('hero').dataset.tone='error';text('badge-text',t('h.stopped'));text('summary',t('h.notRunning'));setSignal('quiet');
   $('cta').disabled=true;
 }
 function render(s){
@@ -496,57 +536,58 @@ function render(s){
   const viewers=s.viewers||[],pending=s.pending||[],n=viewers.length;
   const tone=s.paused?'preview':n?'countdown':'armed';
   $('hero').dataset.tone=tone;
-  text('badge-text',s.paused?'Paused':n?'In use':'Sharing');
-  text('headline',s.name||'This computer');
-  const sum=$('summary'),key=JSON.stringify([s.paused,n,s.url,viewers.map(v=>v.device)]);
+  text('badge-text',s.paused?t('c.paused'):n?t('h.inUse'):t('h.sharingBadge'));
+  text('headline',s.name||t('h.thisComputer'));
+  const sum=$('summary'),key=JSON.stringify([s.paused,n,s.url,viewers.map(v=>v.device),s.settings.allowControl]);
   if(sum.dataset.key!==key){
     sum.dataset.key=key;sum.replaceChildren();
-    if(s.paused)sum.append('Paused — no one can connect until you resume.');
-    else if(n){const names=[...new Set(viewers.map(v=>v.device))];sum.append((n===1?names[0]+' is':plural(n,'device','devices')+' are')+' viewing this screen'+(s.settings.allowControl?'':' · view only')+'.');}
-    else{const u=document.createElement('span');u.className='url';u.textContent=s.url;sum.append('Open ',u,' on any device on this Wi-Fi');}
+    const viewOnly=s.settings.allowControl?'':t('h.viewOnlySuffix');
+    if(s.paused)sum.append(t('h.pausedSummary'));
+    else if(n){const names=[...new Set(viewers.map(v=>v.device))];sum.append(n===1?t('h.viewingOne',{device:devLabel(names[0]),viewOnly}):t('h.viewingMany',{n,viewOnly}));}
+    else{const u=document.createElement('span');u.className='url';u.textContent=s.url;const parts=t('h.openUrl',{url:'\u0000'}).split('\u0000');sum.append(parts[0],u,parts[1]||'');}
   }
   sum.title=s.paused?'':s.url;
   const fps=(s.totals&&s.totals.fps)||0,kbps=(s.totals&&s.totals.kbps)||0;
   if(s.paused)setSignal('quiet');
   else if(n)setSignal('active',Math.min(1,.35+.65*Math.min(1,fps/20)));
   else setSignal('idle',.32);
-  $('rate').classList.toggle('hidden',!n||s.paused);text('rate-text',fps>=1?Math.round(fps)+' fps · '+rate(kbps):'Screen idle');
+  $('rate').classList.toggle('hidden',!n||s.paused);text('rate-text',fps>=1?t('h.rate',{n:Math.round(fps),rate:rate(kbps)}):t('h.screenIdle'));
 
   // Connect panel
   const qr=$('qr');
-  if(qr.dataset.key!==s.url){qr.dataset.key=s.url;qr.innerHTML=s.qr||'';const off=document.createElement('div');off.className='qr-off hidden';off.textContent='Paused';qr.append(off);}
+  if(qr.dataset.key!==s.url){qr.dataset.key=s.url;qr.innerHTML=s.qr||'';const off=document.createElement('div');off.className='qr-off hidden';off.textContent=t('c.paused');qr.append(off);}
   qr.classList.toggle('off',!!s.paused);qr.querySelector('.qr-off').classList.toggle('hidden',!s.paused);
-  text('url-text',s.url);$('url').title='Copy '+s.url;
-  const alt=(s.urls||[])[1]||'';$('alt-url').classList.toggle('hidden',!alt);text('alt-url',alt?'or '+alt.replace(/^https?:\/\//,''):'');
+  text('url-text',s.url);$('url').title=t('h.copyUrl',{url:s.url});
+  const alt=(s.urls||[])[1]||'';$('alt-url').classList.toggle('hidden',!alt);text('alt-url',alt?t('h.orUrl',{url:alt.replace(/^https?:\/\//,'')}):'');
   const digits=String(s.pin||'').split('');
   $('pin').classList.toggle('hide',pinHidden);
   [...$('pin').children].forEach((b,i)=>{const v=pinHidden?'•':(digits[i]||'');if(b.textContent!==v)b.textContent=v;});
-  text('pin-toggle',pinHidden?'Show':'Hide');
+  text('pin-toggle',pinHidden?t('c.show'):t('c.hide'));
 
   // Connected
-  text('viewers-note',n?plural(n,'device','devices'):'');
+  text('viewers-note',n?t('c.deviceCount',{n}):'');
   const list=$('viewers'),vkey=JSON.stringify(viewers.map(v=>[v.id,v.device,v.ip]));
   if(list.dataset.key!==vkey){
     list.dataset.key=vkey;list.replaceChildren();
     for(const v of viewers){
       const li=document.createElement('li');li.dataset.id=v.id;
-      const t=document.createElement('span');t.className='title';t.append(v.device);
-      const ip=document.createElement('span');ip.className='dim';ip.textContent=v.ip;t.append(ip);t.title=v.ua||'';
+      const ti=document.createElement('span');ti.className='title';ti.append(devLabel(v.device));
+      const ip=document.createElement('span');ip.className='dim';ip.textContent=ipLabel(v.ip);ti.append(ip);ti.title=v.ua||'';
       const tm=document.createElement('span');tm.className='time';
       const live=document.createElement('i');live.className='live amber';
-      const d=document.createElement('button');d.className='link danger';d.textContent='Disconnect';
-      d.addEventListener('click',()=>act('viewers/'+encodeURIComponent(v.id)+'/disconnect',{},v.device+' disconnected'));
-      li.append(devIcon(devKind(v.device)),t,tm,live,d);list.append(li);
+      const d=document.createElement('button');d.className='link danger';d.textContent=t('h.disconnect');
+      d.addEventListener('click',()=>act('viewers/'+encodeURIComponent(v.id)+'/disconnect',{},t('h.deviceDisconnected',{device:devLabel(v.device)})));
+      li.append(devIcon(devKind(v.device)),ti,tm,live,d);list.append(li);
     }
     if(!n){
       const li=document.createElement('li');li.className='empty';
-      const st=document.createElement('strong');st.textContent='No one is viewing';
-      const sm=document.createElement('span');sm.textContent='Scan the code with your iPhone to start';
+      const st=document.createElement('strong');st.textContent=t('h.noViewers');
+      const sm=document.createElement('span');sm.textContent=t('h.scanToStart');
       li.append(st,sm);list.append(li);
     }
   }
-  for(const v of viewers){const li=list.querySelector('li[data-id="'+v.id+'"]');if(li){const tm=li.querySelector('.time');const val=ago(v.seconds)+(v.fps?' · '+Math.round(v.fps)+' fps':'');if(tm.textContent!==val)tm.textContent=val;}}
-  list.querySelectorAll('.empty span').forEach(e=>{const val=s.paused?'Resume sharing to let devices connect':'Scan the code with your iPhone to start';if(e.textContent!==val)e.textContent=val;});
+  for(const v of viewers){const li=list.querySelector('li[data-id="'+v.id+'"]');if(li){const tm=li.querySelector('.time');const val=ago(v.seconds)+(v.fps?' · '+t('u.fps',{n:Math.round(v.fps)}):'');if(tm.textContent!==val)tm.textContent=val;}}
+  list.querySelectorAll('.empty span').forEach(e=>{const val=s.paused?t('h.resumeToConnect'):t('h.scanToStart');if(e.textContent!==val)e.textContent=val;});
 
   // Your devices (Hop computers + devices that connected before) and Nearby (other Apple devices)
   const all=s.devices||[],mine=all.filter(d=>d.section!=='nearby'),near=all.filter(d=>d.section==='nearby');
@@ -554,24 +595,24 @@ function render(s){
   renderDevices($('nearby'),near,s,false);
   const hid=s.hiddenNearby||0;
   $('nearby-block').classList.toggle('hidden',!near.length&&!hid);
-  $('nearby-unhide').classList.toggle('hidden',!hid);text('nearby-unhide',hid?'Show '+hid+' hidden':'');
+  $('nearby-unhide').classList.toggle('hidden',!hid);text('nearby-unhide',hid?t('h.showHidden',{n:hid}):'');
 
   // Shared folder
   text('folder-path',s.folder||'');$('folder-path').title=s.folder||'';
   $('files-send').classList.toggle('hidden',!s.windowed);
   const rec=(s.received||[]).slice(0,3),rlist=$('received'),rkey=JSON.stringify(rec.map(r=>[r.name,r.at]));
-  text('files-note',rec.length?'Received':'');
+  text('files-note',rec.length?t('h.received'):'');
   if(rlist.dataset.key!==rkey){
     rlist.dataset.key=rkey;rlist.replaceChildren();
     for(const r of rec){
       const li=document.createElement('li');li.dataset.at=r.at;
       const ic=document.createElement('span');ic.className='picon dev';ic.innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.2h5l3 3v8.6H4z"/><path d="M9 2.2v3h3"/></svg>';
-      const t=document.createElement('span');t.className='title';t.append(r.name);t.title=r.name;
-      const fr=document.createElement('span');fr.className='dim';fr.textContent=r.from;t.append(fr);
+      const ti=document.createElement('span');ti.className='title';ti.append(r.name);ti.title=r.name;
+      const fr=document.createElement('span');fr.className='dim';fr.textContent=devLabel(r.from);ti.append(fr);
       const tm=document.createElement('span');tm.className='time';
-      const a=document.createElement('button');a.className='link';a.textContent='Show';
+      const a=document.createElement('button');a.className='link';a.textContent=t('c.show');
       a.addEventListener('click',()=>act2('files/open',{name:r.name}));
-      li.append(ic,t,tm,a);rlist.append(li);
+      li.append(ic,ti,tm,a);rlist.append(li);
     }
   }
   const nowS=Date.now()/1000;
@@ -580,8 +621,8 @@ function render(s){
   if(seenReceived===null)seenReceived=newest?newest.at:0;
   else if(newest&&newest.at>seenReceived){
     const fresh=(s.received||[]).filter(r=>r.at>seenReceived);seenReceived=newest.at;
-    const msg=fresh.length===1?'Received '+fresh[0].name+' from '+fresh[0].from:'Received '+fresh.length+' files from '+fresh[0].from;
-    showNotice(msg,false,{label:'Show',fn:()=>act2('files/open',fresh.length===1?{name:fresh[0].name}:{})});
+    const msg=fresh.length===1?t('h.receivedOne',{name:fresh[0].name,from:devLabel(fresh[0].from)}):t('h.receivedMany',{n:fresh.length,from:devLabel(fresh[0].from)});
+    showNotice(msg,false,{label:t('c.show'),fn:()=>act2('files/open',fresh.length===1?{name:fresh[0].name}:{})});
   }
 
   // Approval request
@@ -591,14 +632,14 @@ function render(s){
     const isNew=ask.dataset.id!==p0.id;
     ask.dataset.id=p0.id;
     $('ask-code-form').classList.toggle('hidden',!p0.pair);
-    text('ask-allow',p0.pair?'Trust':'Allow');
+    text('ask-allow',p0.pair?t('h.trust'):t('h.allow'));
     if(p0.pair){
-      text('ask-title','New device: '+p0.device.replace(/ · Internet$/,''));
-      text('ask-detail','Type the code it shows to trust it for internet access · '+p0.expiresIn+' s');
+      text('ask-title',t('h.newDevice',{device:devLabel(p0.device.replace(/ · Internet$/,''))}));
+      text('ask-detail',t('h.pairDetail',{n:p0.expiresIn}));
       if(isNew){$('ask-code').value='';setTimeout(()=>$('ask-code').focus(),50);}
     }else{
-      text('ask-title',p0.device+' wants to connect');
-      text('ask-detail',p0.ip+' · declined in '+p0.expiresIn+' s'+(pending.length>1?' · '+(pending.length-1)+' more waiting':''));
+      text('ask-title',t('h.wantsConnect',{device:devLabel(p0.device)}));
+      text('ask-detail',t('h.askDetail',{ip:ipLabel(p0.ip),n:p0.expiresIn})+(pending.length>1?t('h.moreWaiting',{n:pending.length-1}):''));
     }
     const k=devKind(p0.device);if($('ask-ic').dataset.k!==k){$('ask-ic').dataset.k=k;$('ask-ic').innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true">'+DEV[k]+'</svg>';}
   }
@@ -609,24 +650,25 @@ function render(s){
     tl.dataset.key=tkey;tl.replaceChildren();
     for(const d of tr){
       const li=document.createElement('li');
-      const t=document.createElement('span');t.className='title';t.textContent=d.name||'Device';
-      const f=document.createElement('button');f.className='link danger';f.textContent='Forget';
-      f.addEventListener('click',()=>act('trusted/'+encodeURIComponent(d.id)+'/forget',{},'Device forgotten — it will need a code next time'));
-      li.append(devIcon(devKind(d.name)),t,f);tl.append(li);
+      const ti=document.createElement('span');ti.className='title';ti.textContent=d.name?devLabel(d.name):t('h.device');
+      const f=document.createElement('button');f.className='link danger';f.textContent=t('h.forget');
+      f.addEventListener('click',()=>act('trusted/'+encodeURIComponent(d.id)+'/forget',{},t('h.forgotten')));
+      li.append(devIcon(devKind(d.name)),ti,f);tl.append(li);
     }
-    if(!tr.length){const li=document.createElement('li');li.className='empty';const st=document.createElement('span');st.textContent='None yet';li.append(st);tl.append(li);}
+    if(!tr.length){const li=document.createElement('li');li.className='empty';const st=document.createElement('span');st.textContent=t('h.noneYet');li.append(st);tl.append(li);}
   }
-  text('trusted-note',tr.length?plural(tr.length,'device','devices'):'');
+  text('trusted-note',tr.length?t('c.deviceCount',{n:tr.length}):'');
   // Internet sign-ins paused after many wrong passwords
-  if(s.netPausedFor&&s.cloud&&s.cloud.enabled)text('net-err','Someone tried many wrong passwords. Internet sign-ins are paused for '+Math.ceil(s.netPausedFor/60)+' min. If it keeps happening, click New password.');
+  if(s.netPausedFor&&s.cloud&&s.cloud.enabled)text('net-err',t('h.netPausedErr',{n:Math.ceil(s.netPausedFor/60)}));
 
   // CTA
   $('cta').className='cta'+(s.paused?'':' secondary');
-  text('cta-text',s.paused?'Resume sharing':'Pause sharing');
+  text('cta-text',s.paused?t('h.resumeSharing'):t('h.pauseSharing'));
 
   // Settings
   const st=s.settings||{};
   if(pref!==st.theme&&!themePending()){pref=st.theme||'system';applyTheme();}
+  if(st.language&&I18N.lang()!==st.language&&Date.now()-langSetAt>1500){applyLang(st.language);return;}
   $('allow-control').checked=!!st.allowControl;$('ask-before').checked=!!st.askBeforeConnect;$('notify').checked=!!st.notify;
   $('keep-awake').checked=!!st.keepAwake;if(!startupBusy)$('start-login').checked=!!st.startAtLogin;
   $('startup-block').classList.toggle('hidden',s.os!=='mac'&&s.os!=='windows');
@@ -635,14 +677,16 @@ function render(s){
   $('notify-row').classList.toggle('hidden',s.os!=='mac');
   const perm=s.permissions;$('perm-block').classList.toggle('hidden',!perm);
   if(perm){
-    const set=(id,v)=>{const e=$(id);e.className='fstate '+(v===true?'ok':v===false?'bad':'');const val=v===true?'Allowed':v===false?'Not allowed':'Unknown';if(e.textContent!==val)e.textContent=val;};
+    const set=(id,v)=>{const e=$(id);e.className='fstate '+(v===true?'ok':v===false?'bad':'');const val=v===true?t('h.allowed'):v===false?t('h.notAllowed'):t('h.unknown');if(e.textContent!==val)e.textContent=val;};
     set('perm-screen',perm.screen);set('perm-ax',perm.accessibility);
-    const app=perm.app||'the app that started Hop (e.g. Terminal)';
-    const f='Screen Recording lets viewers see the screen; Accessibility lets them click and type. Allow both for '+app+' in Privacy & Security, then quit and reopen it.';
-    text('perm-foot',f);
+    text('perm-foot',perm.app?t('h.permFoot',{app:appLabel(perm.app)}):t('h.permFootAnon'));
   }
-  text('version','Version '+(s.version||''));
+  text('version',t('h.version',{v:s.version||''}));
 }
+// macOS shows Terminal as «Терминал» in Russian; other app names stay as they are
+function appLabel(a){return a==='Terminal'&&I18N.lang()==='ru'?'Терминал':a;}
+// Internet viewers have no address to show: the host reports "Internet"
+function ipLabel(ip){return ip==='Internet'?t('h.dev.internet'):ip;}
 let themeSetAt=0;function themePending(){return Date.now()-themeSetAt<1500;}
 let addrOpen=false,seenReceived=null,shortDirty=false,startupBusy=false;
 
@@ -655,36 +699,38 @@ function shortPreview(){
   $('short-save').disabled=!ok||v===st.shortName;
   pv.classList.remove('warn');pv.replaceChildren();
   const b=document.createElement('b');
-  if(v&&!ok){pv.classList.add('warn');pv.append('Use letters, digits and hyphens (not at the start or end).');return;}
-  if(v&&v!==st.shortName){b.textContent='http://'+v+'.local'+port;pv.append('Devices will open ',b);return;}
-  if(state.mdns===false){pv.classList.add('warn');pv.append('This network doesn’t allow names right now — devices use the IP address.');return;}
+  const withUrl=(key,vars)=>{const parts=t(key,Object.assign({url:'\u0000'},vars)).split('\u0000');pv.append(parts[0],b,parts[1]||'');};
+  if(v&&!ok){pv.classList.add('warn');pv.append(t('h.shortBad'));return;}
+  if(v&&v!==st.shortName){b.textContent='http://'+v+'.local'+port;withUrl('h.shortWill');return;}
+  if(state.mdns===false){pv.classList.add('warn');pv.append(t('h.shortNoMdns'));return;}
   b.textContent='http://'+state.short+'.local'+port;
-  if(state.short!==st.shortName){pv.classList.add('warn');pv.append(st.shortName+'.local is taken here, so this computer is ',b);return;}
-  pv.append('Devices open ',b);
+  if(state.short!==st.shortName){pv.classList.add('warn');withUrl('h.shortTaken',{name:st.shortName});return;}
+  withUrl('h.shortOpen');
 }
 $('short-input').addEventListener('input',e=>{const c=e.target.value.toLowerCase().replace(/[\s_.]+/g,'-').replace(/[^a-z0-9-]/g,'');if(c!==e.target.value)e.target.value=c;shortDirty=true;shortPreview();});
 $('short-form').addEventListener('submit',async e=>{
   e.preventDefault();const v=$('short-input').value.trim().toLowerCase();
-  if(await act('settings',{shortName:v},'Address saved')){shortDirty=false;$('short-input').blur();}
+  if(await act('settings',{shortName:v},t('h.addressSaved'))){shortDirty=false;$('short-input').blur();}
 });
 $('short-input').addEventListener('keydown',e=>{if(e.key==='Escape'&&shortDirty){e.stopPropagation();shortDirty=false;$('short-input').value=(state&&state.settings.shortName)||'';shortPreview();}});
 
 // Connect to another computer
-async function connectTo(body,label,btn){
+/* opening: the notice to show, e.g. t('h.openingName',{name}) */
+async function connectTo(body,opening,btn){
   if(btn)btn.disabled=true;
-  try{render(await api('connect',body));showNotice('Opening '+label+'…');return true;}
+  try{render(await api('connect',body));showNotice(opening);return true;}
   catch(e){showNotice(e.message,true);return false;}
   finally{if(btn)btn.disabled=false;}
 }
 function addrForm(open){
-  addrOpen=open;$('addr-form').classList.toggle('hidden',!open);if(open&&netConnectOpen)netConnectForm(false);text('addr-toggle',open?'Cancel':'Connect to address…');
+  addrOpen=open;$('addr-form').classList.toggle('hidden',!open);if(open&&netConnectOpen)netConnectForm(false);text('addr-toggle',open?t('c.cancel'):t('h.connectToAddress'));
   if(state)render(state);if(open){$('addr-input').value='';$('addr-input').focus();}
 }
 $('addr-toggle').addEventListener('click',()=>addrForm(!addrOpen));
 $('addr-form').addEventListener('submit',async e=>{
   e.preventDefault();const v=$('addr-input').value.trim();if(!v){$('addr-input').focus();return;}
   const b=$('addr-form').querySelector('.button');
-  if(await connectTo({url:v},v,b))addrForm(false);
+  if(await connectTo({url:v},t('h.openingName',{name:v}),b))addrForm(false);
 });
 
 // ——— First-run checklist (macOS permissions) ———
@@ -697,13 +743,15 @@ function renderSetup(s){
   // So once Allow was clicked, offer Restart right away instead of waiting for a change that can't come.
   const needRestart=(scr&&start.screen===false)||(screenAsked&&!scr);
   const todo=$('scr-todo');
-  if(screenAsked&&!scr)todo.innerHTML='Turn on <b>'+(p.app||'Hop')+'</b> in the window macOS opened, then click <b>Restart</b> below.';
+  const todoHtml=screenAsked&&!scr?I18N.html('h.stepScreenTodoAsked',{app:appLabel(p.app||'Hop')}):I18N.html('h.stepScreenTodo');
+  if(todo.innerHTML!==todoHtml)todo.innerHTML=todoHtml;
+  if(!setupRestarting)text('restart-btn',t('h.restart'));
   $('step-screen').classList.toggle('done',scr);$('step-ax').classList.toggle('done',ax);
   $('step-restart').classList.toggle('hidden',!needRestart);
   const show=!scr||!ax||needRestart;
   $('setup-block').classList.toggle('hidden',!show);
-  if(show){const left=(scr?0:1)+(ax?0:1)+(needRestart?1:0);text('setup-note',left===1?'1 step left':left+' steps left');}
-  document.querySelectorAll('.appname').forEach(e=>{const n=p.app||'Hop';if(e.textContent!==n)e.textContent=n;});
+  if(show){const left=(scr?0:1)+(ax?0:1)+(needRestart?1:0);text('setup-note',t('h.stepsLeft',{n:left}));}
+  document.querySelectorAll('.appname').forEach(e=>{const n=appLabel(p.app||'Hop');if(e.textContent!==n)e.textContent=n;});
 }
 document.querySelectorAll('[data-req]').forEach(b=>b.addEventListener('click',async()=>{
   if(b.dataset.req==='screen')screenAsked=true;
@@ -711,8 +759,8 @@ document.querySelectorAll('[data-req]').forEach(b=>b.addEventListener('click',as
   if(state)renderSetup(state);
 }));
 $('restart-btn').addEventListener('click',async()=>{
-  if(setupRestarting)return;setupRestarting=true;$('restart-btn').disabled=true;text('restart-btn','Restarting…');
-  try{await api('restart',{});}catch(e){showNotice(e.message,true);setupRestarting=false;$('restart-btn').disabled=false;text('restart-btn','Restart');}
+  if(setupRestarting)return;setupRestarting=true;$('restart-btn').disabled=true;text('restart-btn',t('h.restarting'));
+  try{await api('restart',{});}catch(e){showNotice(e.message,true);setupRestarting=false;$('restart-btn').disabled=false;text('restart-btn',t('h.restart'));}
 });
 
 // ——— Device rows (shared by "Your devices" and "Nearby") ———
@@ -724,84 +772,84 @@ function renderDevices(ul,devs,s,isMine){
   for(const d of devs){
     const li=document.createElement('li');li.className='dev '+(d.online?'on':'off');
     const kind=d.kind==='phone'?'phone':d.kind==='tablet'?'tablet':(d.os==='mac'||/mac/i.test(d.name)?'laptop':'desktop');
-    const t=document.createElement('div');t.className='stext';
-    const st=document.createElement('strong');st.textContent=d.name;
-    const sm=document.createElement('small');sm.textContent=(d.hasHop?'Hop · ':'')+(d.detail||'');t.append(st,sm);
+    const ti=document.createElement('div');ti.className='stext';
+    const st=document.createElement('strong');st.textContent=d.hasHop?d.name:devLabel(d.name);
+    const sm=document.createElement('small');sm.textContent=d.hasHop?t('h.hop',{detail:d.detail||''}):(d.detail||'');ti.append(st,sm);
     const acts=document.createElement('div');acts.className='acts';
     if(d.hasHop){
-      const x=document.createElement('button');x.className='link';x.textContent='Second screen';
-      x.title='Use this computer as an extra display for '+d.name+(d.os==='mac'?'':' (needs a virtual display on '+d.name+')');
-      x.addEventListener('click',()=>connectTo({peer:d.peer,mode:'extend'},d.name+' as a second screen',x));
-      const b=document.createElement('button');b.className='button sm';b.textContent='Connect';
-      b.addEventListener('click',()=>connectTo({peer:d.peer},d.name,b));
+      const x=document.createElement('button');x.className='link';x.textContent=t('c.secondScreen');
+      x.title=t(d.os==='mac'?'h.extendTitleMac':'h.extendTitle',{name:d.name});
+      x.addEventListener('click',()=>connectTo({peer:d.peer,mode:'extend'},t('h.openingExtendName',{name:d.name}),x));
+      const b=document.createElement('button');b.className='button sm';b.textContent=t('c.connect');
+      b.addEventListener('click',()=>connectTo({peer:d.peer},t('h.openingName',{name:d.name}),b));
       acts.append(x,b);
     }else{
       if(d.mirror){
-        const m=document.createElement('button');m.className='link';m.textContent='Control';
-        m.title='Control '+d.name+' from this Mac with Apple’s iPhone Mirroring';
+        const m=document.createElement('button');m.className='link';m.textContent=t('h.mirror');
+        m.title=t('h.mirrorTitle',{name:devLabel(d.name)});
         m.addEventListener('click',()=>act2('device/mirror',{}));acts.append(m);
       }
       if(d.send){
-        const b=document.createElement('button');b.className='button sm';b.textContent='Send link';
-        b.title=s.canAirDrop?'AirDrop a link to '+d.name+': it opens this computer, already signed in':'Scan the QR code above with '+d.name;
-        b.addEventListener('click',()=>{if(s.canAirDrop)act2('device/send',{});else showNotice('Scan the QR code with '+d.name+'’s camera');});
+        const b=document.createElement('button');b.className='button sm';b.textContent=t('h.sendLink');
+        b.title=s.canAirDrop?t('h.airdropTitle',{name:devLabel(d.name)}):t('h.scanWith',{name:devLabel(d.name)});
+        b.addEventListener('click',()=>{if(s.canAirDrop)act2('device/send',{});else showNotice(t('h.scanWithCamera',{name:devLabel(d.name)}));});
         acts.append(b);
       }
       if(d.hideable){
-        const h=document.createElement('button');h.className='hide-btn';h.title='Hide '+d.name;h.setAttribute('aria-label','Hide '+d.name);h.innerHTML=XSVG;
-        h.addEventListener('click',()=>act('device/hide',{name:d.name},d.name+' hidden'));acts.append(h);
+        const h=document.createElement('button');h.className='hide-btn';h.title=t('h.hideName',{name:devLabel(d.name)});h.setAttribute('aria-label',h.title);h.innerHTML=XSVG;
+        h.addEventListener('click',()=>act('device/hide',{name:d.name},t('h.hidden',{name:devLabel(d.name)})));acts.append(h);
       }
     }
-    li.append(devIcon(kind),t,acts);ul.append(li);
+    li.append(devIcon(kind),ti,acts);ul.append(li);
   }
   if(isMine&&!devs.length&&!addrOpen){
     const li=document.createElement('li');li.className='empty';
-    const st=document.createElement('strong');st.textContent='No other computers yet';
-    const sm=document.createElement('span');sm.textContent='Open Hop on your other computers: they appear here';
+    const st=document.createElement('strong');st.textContent=t('h.noComputers');
+    const sm=document.createElement('span');sm.textContent=t('h.noComputersHint');
     li.append(st,sm);ul.append(li);
   }
 }
-$('nearby-unhide').addEventListener('click',()=>act('device/hide',{all:true,show:true},'Hidden devices shown again'));
+$('nearby-unhide').addEventListener('click',()=>act('device/hide',{all:true,show:true},t('h.unhidden')));
 
 // ——— Updates (GitHub Releases) ———
 function renderUpdate(s){
-  const u=s.update||{};let sub='Hop checks GitHub for new versions automatically.';
+  const u=s.update||{};let sub=t('h.updAuto');
   const busy=u.state==='downloading'||u.state==='installing';
   if(u.problem)sub=u.problem;
-  else if(u.state==='checking')sub='Checking GitHub…';
-  else if(u.state==='downloading')sub='Downloading Hop '+u.latest+'… '+Math.round((u.progress||0)*100)+'%';
-  else if(u.state==='installing')sub='Installing Hop '+u.latest+' — Hop will reopen in a moment.';
-  else if(u.state==='error')sub=u.error||'The update didn’t work. Try again.';
-  else if(u.available)sub='Hop '+u.latest+' is available. You have '+(s.version||'')+'.';
-  else if(u.checked)sub='You have the latest version ('+(s.version||'')+').';
+  else if(u.state==='checking')sub=t('h.checking');
+  else if(u.state==='downloading')sub=t('h.downloading',{v:u.latest,p:Math.round((u.progress||0)*100)});
+  else if(u.state==='installing')sub=t('h.installing',{v:u.latest});
+  else if(u.state==='error')sub=u.error||t('h.updateFailed');
+  else if(u.available)sub=t('h.available',{v:u.latest,cur:s.version||''});
+  else if(u.checked)sub=t('h.latest',{cur:s.version||''});
   text('upd-sub',sub);
   $('upd-install').classList.toggle('hidden',!u.available||!!u.problem||busy);
   $('upd-check').classList.toggle('hidden',busy);
   const b=$('upd-banner');b.classList.toggle('hidden',!(u.available||busy)||!!u.problem);b.classList.toggle('busy',busy);
-  text('upd-banner-text',busy?sub:'Hop '+u.latest+' is available');
+  text('upd-banner-text',busy?sub:t('h.bannerAvailable',{v:u.latest}));
 }
 $('upd-check').addEventListener('click',()=>act('update/check',{}));
-async function startUpdate(){if(state&&state.update&&state.update.available)await act('update/install',{},'Downloading the update…');}
+async function startUpdate(){if(state&&state.update&&state.update.available)await act('update/install',{},t('h.downloadingUpdate'));}
 $('upd-install').addEventListener('click',startUpdate);
 $('upd-banner').addEventListener('click',()=>{if(!$('upd-banner').classList.contains('busy'))startUpdate();});
 
 // ——— Internet access ———
 let netPwShown=false,netEditing=false,netConnectOpen=false,netBusy=false;
-const NET_STATE={online:'Online',connecting:'Connecting…',error:'Can’t connect',off:'Off'};
+const NET_STATE={online:'h.net.online',connecting:'h.net.connecting',error:'h.net.error',off:'h.net.off'};
 function renderNet(s){
   const c=s.cloud||{available:false};
   const block=$('net-block');block.classList.toggle('hidden',!c.available);
   $('net-settings').classList.toggle('hidden',!c.available);
   $('net-connect-toggle').classList.toggle('hidden',!c.available||!c.url);
   if(!c.available)return;
-  const t=$('net-toggle');if(!netBusy)t.checked=!!c.enabled;
+  const tg=$('net-toggle');if(!netBusy)tg.checked=!!c.enabled;
   const st=c.enabled?(c.state||'connecting'):'off';
-  const note=$('net-note');note.className='note net-state '+st;text('net-note',c.enabled?NET_STATE[st]||st:'');
-  let sub='Off — only devices on this Wi-Fi can connect.';
-  if(c.enabled&&st==='online')sub='On — connect from anywhere with the ID and password below.';
-  else if(c.enabled&&st==='error')sub='On, but '+((c.error||'the connection server can’t be reached').replace(/^./,m=>m.toLowerCase()))+'. Retrying…';
-  else if(c.enabled)sub='Connecting to your connection server…';
-  else if(!c.url)sub='Set up your free connection server once to reach this computer from anywhere.';
+  const note=$('net-note');note.className='note net-state '+st;text('net-note',c.enabled?(NET_STATE[st]?t(NET_STATE[st]):st):'');
+  let sub=t('h.netOff');
+  if(c.enabled&&st==='online')sub=t('h.netOnline');
+  else if(c.enabled&&st==='error')sub=t('h.netOnBut',{error:(c.error||t('h.netServerUnreachable')).replace(/^./,m=>m.toLowerCase())});
+  else if(c.enabled)sub=t('h.netConnecting');
+  else if(!c.url)sub=t('h.netSetUp');
   text('net-sub',sub);
   const sug=c.suggest||[];
   const showSetup=!c.url&&!c.enabled&&(netSetupOpen||sug.length>0);
@@ -812,12 +860,12 @@ function renderNet(s){
     sl.dataset.key=skey;sl.replaceChildren();
     for(const g of sug){
       const row=document.createElement('div');row.className='suggest';
-      const t=document.createElement('div');t.className='stext';
-      const st=document.createElement('strong');st.textContent=g.name+' already has a server';
-      const sm=document.createElement('small');sm.textContent=g.url.replace(/^https:\/\//,'').replace(/\/k\/.*/,'')+' (private)';t.append(st,sm);
-      const b=document.createElement('button');b.className='button sm';b.textContent='Use it';
-      b.addEventListener('click',async()=>{b.disabled=true;if(await act('settings',{cloudUrl:g.url,cloudEnabled:true},'Internet access on')){netSetupOpen=false;}b.disabled=false;});
-      row.append(t,b);sl.append(row);
+      const ti=document.createElement('div');ti.className='stext';
+      const st=document.createElement('strong');st.textContent=t('h.hasServer',{name:g.name});
+      const sm=document.createElement('small');sm.textContent=t('h.privateServer',{host:g.url.replace(/^https:\/\//,'').replace(/\/k\/.*/,'')});ti.append(st,sm);
+      const b=document.createElement('button');b.className='button sm';b.textContent=t('h.useIt');
+      b.addEventListener('click',async()=>{b.disabled=true;if(await act('settings',{cloudUrl:g.url,cloudEnabled:true},t('h.netOn'))){netSetupOpen=false;}b.disabled=false;});
+      row.append(ti,b);sl.append(row);
     }
   }
   $('net-setup').classList.toggle('hidden',!showSetup);
@@ -825,11 +873,11 @@ function renderNet(s){
   if(c.enabled){
     text('net-id-text',c.idFormatted||'…');
     text('net-pw-text',netPwShown?(c.password||''):'•'.repeat(Math.min(12,(c.password||'').length||8)));
-    text('net-pw-toggle',netPwShown?'Hide':'Show');
+    text('net-pw-toggle',netPwShown?t('c.hide'):t('c.show'));
     $('net-pw-edit').classList.toggle('hidden',!netEditing);
     text('net-err',st==='error'?(c.error||''):'');
     const q=$('net-qr');if(c.qr&&q.dataset.key!==c.link){q.dataset.key=c.link;q.innerHTML=c.qr;}
-    $('net-qr-row').classList.toggle('hidden',!netQrOpen);text('net-qr-toggle',netQrOpen?'Hide QR':'Phone');
+    $('net-qr-row').classList.toggle('hidden',!netQrOpen);text('net-qr-toggle',netQrOpen?t('h.hideQr'):t('h.phone'));
   }
   const u2=$('net-url2');if(document.activeElement!==u2&&!u2.dataset.dirty)u2.value=(c.address||c.url||'').replace(/^https:\/\//,'');
 }
@@ -841,7 +889,7 @@ $('net-toggle').addEventListener('change',async e=>{
   const c=(state&&state.cloud)||{};
   if(e.target.checked&&!c.url){e.target.checked=false;netSetupOpen=true;if(state)renderNet(state);$('net-url').focus();return;}
   netBusy=true;
-  await act('settings',{cloudEnabled:e.target.checked},e.target.checked?'Internet access on':'Internet access off');
+  await act('settings',{cloudEnabled:e.target.checked},e.target.checked?t('h.netOn'):t('h.netOffNotice'));
   netBusy=false;if(state)renderNet(state);
 });
 async function saveServer(input,enable){
@@ -850,38 +898,38 @@ async function saveServer(input,enable){
   const m=v.match(/^(https?:\/\/[^\/?#]+)(\/k\/[A-Za-z0-9_-]{16,64})?/i);   // keep a private key if pasted
   if(m)v=m[1]+(m[2]||'');
   const body={cloudUrl:v};if(enable&&v)body.cloudEnabled=true;
-  if(await act('settings',body,v?'Connection server saved':'Connection server removed')){input.dataset.dirty='';netSetupOpen=false;if(state)renderNet(state);}
+  if(await act('settings',body,v?t('h.serverSaved'):t('h.serverRemoved'))){input.dataset.dirty='';netSetupOpen=false;if(state)renderNet(state);}
 }
 $('net-url-form').addEventListener('submit',e=>{e.preventDefault();saveServer($('net-url'),true);});
 $('net-url-form2').addEventListener('submit',e=>{e.preventDefault();saveServer($('net-url2'),false);});
 $('net-url2').addEventListener('input',e=>{e.target.dataset.dirty='1';});
-$('net-id').addEventListener('click',()=>{const c=state&&state.cloud;if(c&&c.id)copyText(c.id,'ID copied');});
-$('net-pw').addEventListener('click',()=>{const c=state&&state.cloud;if(c&&c.password)copyText(c.password,'Password copied');});
-$('net-link').addEventListener('click',()=>{const c=state&&state.cloud;if(c&&c.link)copyText(c.link,'Link copied — open it on any device');});
+$('net-id').addEventListener('click',()=>{const c=state&&state.cloud;if(c&&c.id)copyText(c.id,t('h.idCopied'));});
+$('net-pw').addEventListener('click',()=>{const c=state&&state.cloud;if(c&&c.password)copyText(c.password,t('h.pwCopied'));});
+$('net-link').addEventListener('click',()=>{const c=state&&state.cloud;if(c&&c.link)copyText(c.link,t('h.linkCopied'));});
 $('net-pw-toggle').addEventListener('click',()=>{netPwShown=!netPwShown;if(state)renderNet(state);});
-$('net-pw-new').addEventListener('click',async()=>{if(await act('cloud/password/new',{},'New password ready')){netPwShown=true;if(state)renderNet(state);}});
+$('net-pw-new').addEventListener('click',async()=>{if(await act('cloud/password/new',{},t('h.pwReady'))){netPwShown=true;if(state)renderNet(state);}});
 function netPwEditor(open){netEditing=open;if(state)renderNet(state);if(open){$('net-pw-input').value='';$('net-pw-input').focus();}}
 $('net-pw-set').addEventListener('click',()=>netPwEditor(!netEditing));
 $('net-pw-cancel').addEventListener('click',()=>netPwEditor(false));
 $('net-pw-edit').addEventListener('submit',async e=>{
   e.preventDefault();
-  if(await act('cloud/password',{password:$('net-pw-input').value},'Password changed')){netPwShown=true;netPwEditor(false);}
+  if(await act('cloud/password',{password:$('net-pw-input').value},t('h.pwChanged'))){netPwShown=true;netPwEditor(false);}
 });
 function netConnectForm(open){
-  netConnectOpen=open;$('net-connect-form').classList.toggle('hidden',!open);text('net-connect-toggle',open?'Cancel':'Over the internet…');
+  netConnectOpen=open;$('net-connect-form').classList.toggle('hidden',!open);text('net-connect-toggle',open?t('c.cancel'):t('h.overInternet'));
   if(open){if(addrOpen)addrForm(false);$('net-connect-input').value='';$('net-connect-input').focus();}
 }
 $('net-connect-toggle').addEventListener('click',()=>netConnectForm(!netConnectOpen));
 $('net-connect-input').addEventListener('input',e=>{const d=e.target.value.replace(/\D/g,'').slice(0,9);e.target.value=d.replace(/(\d{3})(?=\d)/g,'$1 ');});
 $('net-connect-form').addEventListener('submit',async e=>{
   e.preventDefault();const id=$('net-connect-input').value.replace(/\D/g,'');
-  if(id.length!==9){showNotice('The computer ID has 9 digits',true);return;}
-  if(await connectTo({cloud:id},'computer '+$('net-connect-input').value,$('net-connect-form').querySelector('.button')))netConnectForm(false);
+  if(id.length!==9){showNotice(t('c.computerId9'),true);return;}
+  if(await connectTo({cloud:id},t('h.openingId',{id:$('net-connect-input').value}),$('net-connect-form').querySelector('.button')))netConnectForm(false);
 });
 $('net-connect-extend').addEventListener('click',async()=>{
   const id=$('net-connect-input').value.replace(/\D/g,'');
-  if(id.length!==9){showNotice('The computer ID has 9 digits',true);return;}
-  if(await connectTo({cloud:id,mode:'extend'},'a second screen for '+$('net-connect-input').value,$('net-connect-extend')))netConnectForm(false);
+  if(id.length!==9){showNotice(t('c.computerId9'),true);return;}
+  if(await connectTo({cloud:id,mode:'extend'},t('h.openingExtendId',{id:$('net-connect-input').value}),$('net-connect-extend')))netConnectForm(false);
 });
 
 // How to open other computers (window / full screen / browser)
@@ -896,7 +944,7 @@ window.addEventListener('resize',()=>placeSeg($('open-seg')));
 $('files-open').addEventListener('click',()=>act2('files/open',{}));
 $('files-send').addEventListener('click',async()=>{
   const b=$('files-send');b.disabled=true;
-  try{const s=await api('files/send',{});render(s);const n=(s.sent||[]).length;if(n)showNotice(n===1?s.sent[0]+' is ready for your devices':n+' files are ready for your devices');}
+  try{const s=await api('files/send',{});render(s);const n=(s.sent||[]).length;if(n)showNotice(n===1?t('h.readyOne',{name:s.sent[0]}):t('h.readyMany',{n}));}
   catch(e){showNotice(e.message,true);}finally{b.disabled=false;}
 });
 document.querySelectorAll('#theme-seg [data-theme]').forEach(b=>b.addEventListener('click',()=>{themeSetAt=Date.now();}));
@@ -904,7 +952,7 @@ document.querySelectorAll('#theme-seg [data-theme]').forEach(b=>b.addEventListen
 // ——— Actions ———
 async function togglePause(){
   if(!state||busy)return;busy=true;
-  await act(state.paused?'resume':'pause',{},state.paused?'Sharing resumed':'Sharing paused');busy=false;
+  await act(state.paused?'resume':'pause',{},state.paused?t('h.sharingResumed'):t('h.sharingPaused'));busy=false;
 }
 $('cta').addEventListener('click',togglePause);
 $('url').addEventListener('click',()=>{if(state)copyText(state.url);});
@@ -912,10 +960,10 @@ async function copyText(v,label){
   let ok=false;
   try{await navigator.clipboard.writeText(v);ok=true;}catch(e){}
   if(!ok){const ta=document.createElement('textarea');ta.value=v;ta.style.position='fixed';ta.style.opacity='0';document.body.append(ta);ta.select();try{ok=document.execCommand('copy');}catch(e){}ta.remove();}
-  showNotice(ok?(label||'Copied '+v.replace(/^https?:\/\//,'')):'Couldn’t copy — select it instead',!ok);
+  showNotice(ok?(label||t('h.copiedValue',{value:v.replace(/^https?:\/\//,'')})):t('h.copyFailed'),!ok);
 }
 $('pin-toggle').addEventListener('click',()=>{pinHidden=!pinHidden;if(state)render(state);});
-$('new-pin').addEventListener('click',()=>act('pin/new',{},'New PIN ready'));
+$('new-pin').addEventListener('click',()=>act('pin/new',{},t('h.pinReady')));
 function pinEditor(open){
   editingPin=open;$('pin-edit').classList.toggle('hidden',!open);$('pin').classList.toggle('hidden',open);$('pin-links').classList.toggle('hidden',open);
   if(open){$('pin-input').value='';$('pin-input').focus();}
@@ -925,30 +973,30 @@ $('pin-cancel').addEventListener('click',()=>pinEditor(false));
 $('pin-input').addEventListener('input',e=>{const v=e.target.value.replace(/\D/g,'').slice(0,6);if(v!==e.target.value)e.target.value=v;});
 $('pin-edit').addEventListener('submit',async e=>{
   e.preventDefault();const v=$('pin-input').value;
-  if(!/^\d{6}$/.test(v)){showNotice('The PIN needs exactly 6 digits',true);return;}
-  if(await act('pin',{pin:v},'PIN saved'))pinEditor(false);
+  if(!/^\d{6}$/.test(v)){showNotice(t('h.pin6'),true);return;}
+  if(await act('pin',{pin:v},t('h.pinSaved')))pinEditor(false);
 });
 async function approveAsk(){
   const id=$('ask').dataset.id;if(!id)return;
   const pair=!$('ask-code-form').classList.contains('hidden');
   if(pair){
     const code=$('ask-code').value.replace(/\D/g,'');
-    if(code.length!==6){showNotice('Type the 6-digit code shown on the new device',true);$('ask-code').focus();return;}
-    if(await act('pending/'+id+'/approve',{code},'Device trusted — it won’t need a code again'))$('ask-code').value='';
+    if(code.length!==6){showNotice(t('h.code6'),true);$('ask-code').focus();return;}
+    if(await act('pending/'+id+'/approve',{code},t('h.trusted')))$('ask-code').value='';
     else{$('ask-code').select();}
-  }else act('pending/'+id+'/approve',{},'Allowed');
+  }else act('pending/'+id+'/approve',{},t('h.allowed'));
 }
 $('ask-allow').addEventListener('click',approveAsk);
 $('ask-code-form').addEventListener('submit',e=>{e.preventDefault();approveAsk();});
 $('ask-code').addEventListener('input',e=>{const d=e.target.value.replace(/\D/g,'').slice(0,6);e.target.value=d.length>3?d.slice(0,3)+' '+d.slice(3):d;});
-$('ask-deny').addEventListener('click',()=>{const id=$('ask').dataset.id;if(id)act('pending/'+id+'/deny',{},'Declined');});
+$('ask-deny').addEventListener('click',()=>{const id=$('ask').dataset.id;if(id)act('pending/'+id+'/deny',{},t('h.declined'));});
 $('allow-control').addEventListener('change',e=>act('settings',{allowControl:e.target.checked}));
 $('ask-before').addEventListener('change',e=>act('settings',{askBeforeConnect:e.target.checked}));
 $('notify').addEventListener('change',e=>act('settings',{notify:e.target.checked}));
 $('keep-awake').addEventListener('change',e=>act('settings',{keepAwake:e.target.checked}));
 $('start-login').addEventListener('change',async e=>{
   const on=e.target.checked;startupBusy=true;
-  const ok=await act('settings',{startAtLogin:on},on?'Hop will start when you log in':'Won’t start at login');
+  const ok=await act('settings',{startAtLogin:on},on?t('h.willStart'):t('h.wontStart'));
   startupBusy=false;if(!ok&&state)$('start-login').checked=!!state.settings.startAtLogin;
 });
 $('alt-url').addEventListener('click',()=>{if(state&&state.urls[1])copyText(state.urls[1]);});
@@ -957,7 +1005,7 @@ async function act2(path,body){try{await api(path,body);}catch(e){showNotice(e.m
 
 // Settings sheet
 function settingsOpen(){return document.body.classList.contains('settings-open');}
-function openSettings(open){document.body.classList.toggle('settings-open',open);$('settings').setAttribute('aria-hidden',String(!open));$('open-settings').classList.toggle('on',open);if(open)requestAnimationFrame(()=>{placeThumb();placeSeg($('open-seg'));});}
+function openSettings(open){document.body.classList.toggle('settings-open',open);$('settings').setAttribute('aria-hidden',String(!open));$('open-settings').classList.toggle('on',open);if(open)requestAnimationFrame(()=>{placeThumb();placeSeg($('open-seg'));placeSeg($('lang-seg'));});}
 $('open-settings').addEventListener('click',()=>openSettings(!settingsOpen()));
 $('close-settings').addEventListener('click',()=>openSettings(false));
 
@@ -978,6 +1026,7 @@ document.addEventListener('keydown',e=>{
 });
 
 applyTheme();
+applyLang(I18N.lang());
 poll();
 </script>
 </body></html>

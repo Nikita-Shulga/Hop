@@ -35,7 +35,7 @@ hiddenimports += collect_submodules("webview", filter=_webview_platform)
 hiddenimports += collect_submodules("zeroconf")
 hiddenimports += collect_submodules("aiohttp")
 # Internet access (remote.py): WebRTC stack. av (FFmpeg) ships its own hook in pyinstaller-hooks-contrib.
-hiddenimports += ["remote", "updater"] + collect_submodules("aiortc") + collect_submodules("aioice")
+hiddenimports += ["remote", "updater", "i18n"] + collect_submodules("aiortc") + collect_submodules("aioice")
 hiddenimports += ["pylibsrtp", "google_crc32c", "pyee", "OpenSSL", "av.video.frame", "av.codec"]
 hiddenimports += ["pyperclip", "ifaddr", "qrcode", "qrcode.image.svg", "PIL.Image", "PIL.JpegImagePlugin",
                   "mss"]

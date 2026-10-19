@@ -29,6 +29,8 @@ from aiortc.rtcrtpsender import RTCRtpSender
 from av import VideoFrame
 from PIL import Image
 
+from i18n import Text  # status text the host window shows in its own language
+
 log = logging.getLogger("hop.remote")
 
 # aiortc's defaults are tuned for webcams (VP8 at most 1.5 Mbit/s). Screen text needs more; the
@@ -320,8 +322,7 @@ class CloudLink(object):
                 raise
             except WSServerHandshakeError as e:
                 if e.status == 403:
-                    self._set("error", "This server is already set up with another private address. Paste the "
-                                       "full address shown on your other computer (it ends with /k/…)")
+                    self._set("error", Text("cloud.otherAddress"))
                     await asyncio.sleep(30)
                     continue
                 if e.status == 409:
@@ -332,10 +333,10 @@ class CloudLink(object):
                     log.warning("ID %s belongs to another computer; switched to %s",
                                 format_id(old), format_id(self.host_id))
                     continue
-                self._set("error", "The connection server refused this computer (HTTP %s)" % e.status)
+                self._set("error", Text("cloud.refused", status=e.status))
             except Exception as e:
                 log.info("Connection server unreachable: %s", e)
-                self._set("error", "Can't reach the connection server")
+                self._set("error", Text("cloud.unreachable"))
             if self._stopped:
                 break
             await asyncio.sleep(delay)

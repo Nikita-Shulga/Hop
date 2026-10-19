@@ -30,6 +30,17 @@ if (/^\/k\/[A-Za-z0-9_-]{16,64}\//.test(location.pathname)) document.getElementB
   if (sa) document.documentElement.classList.add('standalone');
 })();
 </script>
+<script src="/static/i18n.js"></script>
+<script>
+/* the saved language: English unless chosen in Settings (or passed as #lang=ru by the Hop app that opened this) */
+(function () {
+  var l = 'en';
+  try { var v = localStorage.getItem('lv.lang'); if (v) l = JSON.parse(v); } catch (e) {}
+  var m = location.hash.match(/[#&]lang=([a-z]{2})\b/);
+  if (m && HopI18n.norm(m[1]) === m[1]) { l = m[1]; try { localStorage.setItem('lv.lang', JSON.stringify(l)); } catch (e) {} }
+  HopI18n.setLang(l);
+})();
+</script>
 <link rel="stylesheet" href="/static/theme.css">
 <style>
 /* ——— Hop viewer — layout on top of the shared Quiet AI theme ——— */
@@ -238,6 +249,7 @@ textarea.input{display:block;width:100%;min-height:96px;max-height:40vh;padding:
 @media (pointer:coarse){textarea.input{font-size:16px;line-height:21px}}
 .actrow{display:flex;align-items:center;gap:10px;margin-top:10px}
 .actrow .note{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:lang(ru) .actrow .note{white-space:normal;line-height:16px}  /* longer Russian notes wrap instead of being cut */
 .actrow .button{display:inline-flex;align-items:center;gap:6px;flex:none}
 .actrow .button svg{width:14px;height:14px}
 .button.ghost{background:var(--fill);color:var(--text);box-shadow:var(--select-shadow);font-weight:500}
@@ -334,8 +346,8 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
         <span class="brand-name">Hop</span>
       </div>
       <div class="tb-actions">
-        <button class="tb" id="bTheme" type="button" aria-label="Switch light or dark" title="Light / dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg></button>
-        <button class="tb" id="bSettings0" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6.5M12 5h1.5M2.5 11h1.5M7 11h6.5"/><circle cx="10.5" cy="5" r="1.5"/><circle cx="5.5" cy="11" r="1.5"/></svg></button>
+        <button class="tb" id="bTheme" type="button" aria-label="Switch light or dark" title="Light / dark" data-i18n-aria="v.themeSwitch"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg></button>
+        <button class="tb" id="bSettings0" type="button" aria-label="Settings" title="Settings" data-i18n-aria="c.settings" data-i18n-title="c.settings"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6.5M12 5h1.5M2.5 11h1.5M7 11h6.5"/><circle cx="10.5" cy="5" r="1.5"/><circle cx="5.5" cy="11" r="1.5"/></svg></button>
       </div>
     </header>
 
@@ -343,7 +355,7 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
       <section id="hero" class="hero" data-tone="preview" aria-live="polite">
         <div class="hero-top">
           <span class="badge"><i></i><span id="badgeText">Looking…</span></span>
-          <span class="chip" title="Streams stay on your local network"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.8" y="7" width="8.4" height="6.2" rx="1.5"/><path d="M5.8 7V5.4a2.2 2.2 0 0 1 4.4 0V7"/></svg>Local network</span>
+          <span class="chip" title="Streams stay on your local network" data-i18n-title="v.lanTitle"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.8" y="7" width="8.4" height="6.2" rx="1.5"/><path d="M5.8 7V5.4a2.2 2.2 0 0 1 4.4 0V7"/></svg><span data-i18n="v.lan">Local network</span></span>
         </div>
         <h1 id="headline" class="headline">Finding host…</h1>
         <p id="summary" class="summary">&nbsp;</p>
@@ -351,39 +363,39 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
       </section>
 
       <form id="connectForm" class="block" autocomplete="off">
-        <div class="block-head"><h2><label for="pin">PIN</label></h2><span class="note">Shown on the host</span></div>
+        <div class="block-head"><h2><label for="pin" data-i18n="c.pin">PIN</label></h2><span class="note" data-i18n="v.shownOnHost">Shown on the host</span></div>
         <div class="pin" id="pinWrap">
           <div class="pin-boxes" id="pinBoxes" aria-hidden="true"></div>
-          <input id="pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" aria-label="PIN">
+          <input id="pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" aria-label="PIN" data-i18n-aria="c.pin">
         </div>
         <div class="perr" id="connectErr" role="alert"></div>
       </form>
 
       <form id="cloudForm" class="block" autocomplete="on" hidden>
         <div class="cfield">
-          <div class="block-head"><h2><label for="cid">Computer ID</label></h2><span class="note">Shown in Hop on that computer</span></div>
+          <div class="block-head"><h2><label for="cid" data-i18n="v.computerId">Computer ID</label></h2><span class="note" data-i18n="v.shownInHop">Shown in Hop on that computer</span></div>
           <input id="cid" name="username" class="input big" type="text" inputmode="numeric" autocomplete="username" placeholder="123 456 789" maxlength="11" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next">
         </div>
         <div class="cfield">
-          <div class="block-head"><h2><label for="cpw">Password</label></h2></div>
+          <div class="block-head"><h2><label for="cpw" data-i18n="c.password">Password</label></h2></div>
           <input id="cpw" name="password" class="input big pw" type="password" autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" maxlength="64">
         </div>
-        <label class="remember"><input type="checkbox" id="cRemember" checked>Remember on this device</label>
+        <label class="remember"><input type="checkbox" id="cRemember" checked><span data-i18n="v.remember">Remember on this device</span></label>
         <div class="perr" id="cloudErr" role="alert"></div>
       </form>
 
       <section class="block" id="recentBlock" hidden>
-        <div class="block-head"><h2>Your computers</h2><span class="note" id="recentNote"></span></div>
-        <div class="panel list-panel"><ul class="chat-list" id="recentList" aria-label="Recent computers"></ul></div>
+        <div class="block-head"><h2 data-i18n="v.yourComputers">Your computers</h2><span class="note" id="recentNote"></span></div>
+        <div class="panel list-panel"><ul class="chat-list" id="recentList" aria-label="Recent computers" data-i18n-aria="v.recentComputers"></ul></div>
       </section>
 
       <section class="block" id="lanDevices">
-        <div class="block-head"><h2>Devices on this network</h2><span class="note peer-note"></span></div>
+        <div class="block-head"><h2 data-i18n="v.devicesOnNetwork">Devices on this network</h2><span class="note peer-note"></span></div>
         <div class="panel list-panel">
-          <ul class="chat-list" id="peers1" aria-label="Devices"></ul>
+          <ul class="chat-list" id="peers1" aria-label="Devices" data-i18n-aria="c.devices"></ul>
           <form class="addip" data-addip autocomplete="off">
-            <input class="input" type="text" inputmode="url" placeholder="mac.local or 192.168.1.20" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Computer address or IP">
-            <button class="button" type="submit">Go</button>
+            <input class="input" type="text" inputmode="url" placeholder="mac.local or 192.168.1.20" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Computer address or IP" data-i18n-ph="v.addrPlaceholder" data-i18n-aria="v.addrLabel">
+            <button class="button" type="submit" data-i18n="v.go">Go</button>
           </form>
         </div>
       </section>
@@ -392,13 +404,13 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
 
     <footer class="footer">
       <button class="cta" id="connectBtn" type="submit" form="connectForm"><span id="ctaText">Connect</span><kbd>↵</kbd></button>
-      <p class="foot">Use the same PIN on all your computers to hop between them.</p>
+      <p class="foot" id="connectFoot" data-i18n="v.footLan">Use the same PIN on all your computers to hop between them.</p>
       <section class="block" id="a2hs" hidden>
         <div class="panel tip" role="note">
           <span class="tile"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2.6"/><path d="M8 5.4v5.2M5.4 8h5.2"/></svg></span>
-          <div class="stext"><strong>Add to Home Screen</strong>
-            <small>Tap <svg viewBox="0 0 16 16" aria-label="Share"><path d="M8 2.2v7.6M5.4 4.6L8 2.2l2.6 2.4"/><path d="M5.6 6.6H4.4c-.6 0-1 .4-1 1v5.2c0 .6.4 1 1 1h7.2c.6 0 1-.4 1-1V7.6c0-.6-.4-1-1-1h-1.2"/></svg> Share, then “Add to Home Screen” — Hop opens full screen, like an app.</small></div>
-          <button class="tb" id="a2hsX" type="button" aria-label="Dismiss tip" title="Dismiss"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button>
+          <div class="stext"><strong data-i18n="v.a2hsTitle">Add to Home Screen</strong>
+            <small><span data-i18n="v.a2hsTap">Tap</span> <svg viewBox="0 0 16 16" aria-label="Share" data-i18n-aria="v.a2hsShare"><path d="M8 2.2v7.6M5.4 4.6L8 2.2l2.6 2.4"/><path d="M5.6 6.6H4.4c-.6 0-1 .4-1 1v5.2c0 .6.4 1 1 1h7.2c.6 0 1-.4 1-1V7.6c0-.6-.4-1-1-1h-1.2"/></svg> <span data-i18n="v.a2hsRest">Share, then “Add to Home Screen” — Hop opens full screen, like an app.</span></small></div>
+          <button class="tb" id="a2hsX" type="button" aria-label="Dismiss tip" title="Dismiss" data-i18n-aria="v.dismissTip" data-i18n-title="c.dismiss"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button>
         </div>
       </section>
     </footer>
@@ -410,28 +422,28 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
   <div id="stage"><canvas id="screen" tabindex="-1"></canvas></div>
   <div id="hot"></div>
   <div id="toolbar">
-    <button id="pill" type="button" aria-label="Show toolbar" title="Show toolbar"><i class="dot" id="pillDot"></i><span id="pillTxt">Hop</span></button>
-    <div id="bar" role="toolbar" aria-label="Viewer controls">
+    <button id="pill" type="button" aria-label="Show toolbar" title="Show toolbar" data-i18n-aria="v.showToolbar" data-i18n-title="v.showToolbar"><i class="dot" id="pillDot"></i><span id="pillTxt">Hop</span></button>
+    <div id="bar" role="toolbar" aria-label="Viewer controls" data-i18n-aria="v.viewerControls">
       <div id="stat" class="tbadge" title=""><i class="dot" id="statDot"></i><span id="statName">Host</span><span id="statTxt">–</span></div>
-      <div id="viewOnly" class="tbadge vo" title="View only — control is turned off on the host" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 8s2.2-4.2 6.2-4.2S14.2 8 14.2 8 12 12.2 8 12.2 1.8 8 1.8 8z"/><circle cx="8" cy="8" r="1.9"/></svg><span>View only</span></div>
+      <div id="viewOnly" class="tbadge vo" title="View only — control is turned off on the host" data-i18n-title="v.viewOnlyTitle" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 8s2.2-4.2 6.2-4.2S14.2 8 14.2 8 12 12.2 8 12.2 1.8 8 1.8 8z"/><circle cx="8" cy="8" r="1.9"/></svg><span data-i18n="c.viewOnly">View only</span></div>
       <button class="tb" id="bMode" type="button" title="Input mode" aria-label="Input mode" data-touch data-ovf></button>
       <span id="zoomGrp" style="display:contents">
-        <button class="tb" id="bZoomOut" type="button" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8"/></svg></button>
-        <button class="tb" id="zoomv" type="button" title="Fit to screen" aria-label="Fit to screen">1×</button>
-        <button class="tb" id="bZoomIn" type="button" title="Zoom in" aria-label="Zoom in"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8M8 4v8"/></svg></button>
+        <button class="tb" id="bZoomOut" type="button" title="Zoom out" aria-label="Zoom out" data-i18n-title="v.zoomOut" data-i18n-aria="v.zoomOut"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8"/></svg></button>
+        <button class="tb" id="zoomv" type="button" title="Fit to screen" aria-label="Fit to screen" data-i18n-title="v.fit" data-i18n-aria="v.fit">1×</button>
+        <button class="tb" id="bZoomIn" type="button" title="Zoom in" aria-label="Zoom in" data-i18n-title="v.zoomIn" data-i18n-aria="v.zoomIn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8M8 4v8"/></svg></button>
       </span>
-      <button class="tb" id="bKbd" type="button" title="Keyboard" aria-label="Keyboard" data-touch><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="4" width="12.4" height="8.2" rx="1.6"/><path d="M4.4 6.9h.01M6.8 6.9h.01M9.2 6.9h.01M11.6 6.9h.01M5.6 9.6h4.8"/></svg></button>
-      <button class="tb" id="bKeys" type="button" title="Shortcuts" aria-label="Shortcuts" aria-haspopup="menu"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 6V4.5A1.5 1.5 0 1 0 4.5 6H6zm0 0h4M6 6v4m4-4V4.5A1.5 1.5 0 1 1 11.5 6H10zm0 0v4m0 0h1.5A1.5 1.5 0 1 1 10 11.5V10zm0 0H6m0 0v1.5A1.5 1.5 0 1 1 4.5 10H6z"/></svg></button>
-      <button class="tb" id="bClip" type="button" title="Clipboard" aria-label="Clipboard" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="3" width="9.6" height="11" rx="1.8"/><path d="M6 3V2.6c0-.5.4-.8.8-.8h2.4c.5 0 .8.4.8.8V3c0 .5-.4.8-.8.8H6.8C6.4 3.8 6 3.5 6 3z"/><path d="M5.8 7.4h4.4M5.8 10h2.8"/></svg></button>
-      <button class="tb" id="bFiles" type="button" title="Files" aria-label="Files" hidden data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 4.6c0-.7.5-1.2 1.2-1.2h2.8l1.4 1.5h5c.7 0 1.2.5 1.2 1.2v5.8c0 .7-.5 1.2-1.2 1.2H3.4c-.7 0-1.2-.5-1.2-1.2z"/><path d="M8 7.2v3.6M6.4 9.2L8 10.8l1.6-1.6"/></svg></button>
-      <button class="tb" id="bDevices" type="button" title="Devices" aria-label="Devices" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="3" width="9.6" height="7" rx="1.3"/><path d="M4.6 12.8h4"/><rect x="11.8" y="6" width="2.8" height="6.8" rx=".8"/></svg></button>
-      <button class="tb" id="bSettings" type="button" title="Settings" aria-label="Settings" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6.5M12 5h1.5M2.5 11h1.5M7 11h6.5"/><circle cx="10.5" cy="5" r="1.5"/><circle cx="5.5" cy="11" r="1.5"/></svg></button>
-      <button class="tb" id="bExtend" type="button" title="Use as a second screen" aria-label="Use as a second screen" data-ovf hidden><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.6" y="3.4" width="7.4" height="5.6" rx="1.1"/><rect x="7" y="6.6" width="7.4" height="5.6" rx="1.1"/><path d="M4 11.6h2.4"/></svg></button>
-      <button class="tb" id="bFull" type="button" title="Fullscreen" aria-label="Fullscreen" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.8 6V3.6c0-.4.4-.8.8-.8H6M10 2.8h2.4c.4 0 .8.4.8.8V6M13.2 10v2.4c0 .4-.4.8-.8.8H10M6 13.2H3.6c-.4 0-.8-.4-.8-.8V10"/></svg></button>
-      <button class="tb" id="bHide" type="button" title="Hide toolbar" aria-label="Hide toolbar" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 9.8L8 6.3l3.5 3.5"/></svg></button>
-      <button class="tb" id="bMore" type="button" title="More" aria-label="More" aria-haspopup="menu"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.6 8h.01M8 8h.01M12.4 8h.01" stroke-width="2.2"/></svg></button>
+      <button class="tb" id="bKbd" type="button" title="Keyboard" aria-label="Keyboard" data-i18n-title="v.keyboard" data-i18n-aria="v.keyboard" data-touch><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="4" width="12.4" height="8.2" rx="1.6"/><path d="M4.4 6.9h.01M6.8 6.9h.01M9.2 6.9h.01M11.6 6.9h.01M5.6 9.6h4.8"/></svg></button>
+      <button class="tb" id="bKeys" type="button" title="Shortcuts" aria-label="Shortcuts" data-i18n-title="v.shortcuts" data-i18n-aria="v.shortcuts" aria-haspopup="menu"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 6V4.5A1.5 1.5 0 1 0 4.5 6H6zm0 0h4M6 6v4m4-4V4.5A1.5 1.5 0 1 1 11.5 6H10zm0 0v4m0 0h1.5A1.5 1.5 0 1 1 10 11.5V10zm0 0H6m0 0v1.5A1.5 1.5 0 1 1 4.5 10H6z"/></svg></button>
+      <button class="tb" id="bClip" type="button" title="Clipboard" aria-label="Clipboard" data-i18n-title="c.clipboard" data-i18n-aria="c.clipboard" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="3" width="9.6" height="11" rx="1.8"/><path d="M6 3V2.6c0-.5.4-.8.8-.8h2.4c.5 0 .8.4.8.8V3c0 .5-.4.8-.8.8H6.8C6.4 3.8 6 3.5 6 3z"/><path d="M5.8 7.4h4.4M5.8 10h2.8"/></svg></button>
+      <button class="tb" id="bFiles" type="button" title="Files" aria-label="Files" data-i18n-title="c.files" data-i18n-aria="c.files" hidden data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 4.6c0-.7.5-1.2 1.2-1.2h2.8l1.4 1.5h5c.7 0 1.2.5 1.2 1.2v5.8c0 .7-.5 1.2-1.2 1.2H3.4c-.7 0-1.2-.5-1.2-1.2z"/><path d="M8 7.2v3.6M6.4 9.2L8 10.8l1.6-1.6"/></svg></button>
+      <button class="tb" id="bDevices" type="button" title="Devices" aria-label="Devices" data-i18n-title="c.devices" data-i18n-aria="c.devices" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="3" width="9.6" height="7" rx="1.3"/><path d="M4.6 12.8h4"/><rect x="11.8" y="6" width="2.8" height="6.8" rx=".8"/></svg></button>
+      <button class="tb" id="bSettings" type="button" title="Settings" aria-label="Settings" data-i18n-title="c.settings" data-i18n-aria="c.settings" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6.5M12 5h1.5M2.5 11h1.5M7 11h6.5"/><circle cx="10.5" cy="5" r="1.5"/><circle cx="5.5" cy="11" r="1.5"/></svg></button>
+      <button class="tb" id="bExtend" type="button" title="Use as a second screen" aria-label="Use as a second screen" data-i18n-title="v.useAsSecond" data-i18n-aria="v.useAsSecond" data-ovf hidden><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.6" y="3.4" width="7.4" height="5.6" rx="1.1"/><rect x="7" y="6.6" width="7.4" height="5.6" rx="1.1"/><path d="M4 11.6h2.4"/></svg></button>
+      <button class="tb" id="bFull" type="button" title="Fullscreen" aria-label="Fullscreen" data-i18n-title="v.fullscreen" data-i18n-aria="v.fullscreen" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.8 6V3.6c0-.4.4-.8.8-.8H6M10 2.8h2.4c.4 0 .8.4.8.8V6M13.2 10v2.4c0 .4-.4.8-.8.8H10M6 13.2H3.6c-.4 0-.8-.4-.8-.8V10"/></svg></button>
+      <button class="tb" id="bHide" type="button" title="Hide toolbar" aria-label="Hide toolbar" data-i18n-title="v.hideToolbar" data-i18n-aria="v.hideToolbar" data-ovf><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 9.8L8 6.3l3.5 3.5"/></svg></button>
+      <button class="tb" id="bMore" type="button" title="More" aria-label="More" data-i18n-title="v.more" data-i18n-aria="v.more" aria-haspopup="menu"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.6 8h.01M8 8h.01M12.4 8h.01" stroke-width="2.2"/></svg></button>
       <span class="tb-sep"></span>
-      <button class="tb danger" id="bDisc" type="button" title="Disconnect" aria-label="Disconnect"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v4.6M4.9 4.6a4.6 4.6 0 1 0 6.2 0"/></svg></button>
+      <button class="tb danger" id="bDisc" type="button" title="Disconnect" aria-label="Disconnect" data-i18n-title="c.disconnect" data-i18n-aria="c.disconnect"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v4.6M4.9 4.6a4.6 4.6 0 1 0 6.2 0"/></svg></button>
     </div>
   </div>
   <div id="keyrow" hidden>
@@ -442,152 +454,155 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
     <button class="k" data-k="Meta" data-sticky id="kMeta">Win</button>
     <button class="k" data-k="Shift" data-sticky>Shift</button>
     <button class="k" data-k="Delete">Del</button>
-    <button class="k" data-k="ArrowLeft" aria-label="Left"><svg viewBox="0 0 16 16"><path d="M9.5 4.5L6 8l3.5 3.5"/></svg></button>
-    <button class="k" data-k="ArrowUp" aria-label="Up"><svg viewBox="0 0 16 16"><path d="M4.5 9.5L8 6l3.5 3.5"/></svg></button>
-    <button class="k" data-k="ArrowDown" aria-label="Down"><svg viewBox="0 0 16 16"><path d="M4.5 6.5L8 10l3.5-3.5"/></svg></button>
-    <button class="k" data-k="ArrowRight" aria-label="Right"><svg viewBox="0 0 16 16"><path d="M6.5 4.5L10 8l-3.5 3.5"/></svg></button>
-    <button class="k" data-k="Backspace" aria-label="Backspace"><svg viewBox="0 0 16 16"><path d="M5.6 3.8h7.2c.7 0 1.2.5 1.2 1.2v6c0 .7-.5 1.2-1.2 1.2H5.6L2 8z"/><path d="M7.6 6.4l3 3.2M10.6 6.4l-3 3.2"/></svg></button>
-    <button class="k" data-k="Enter" aria-label="Enter"><svg viewBox="0 0 16 16"><path d="M12.8 3.8v3.4c0 .9-.7 1.6-1.6 1.6H3.6M6.2 6.2L3.6 8.8l2.6 2.6"/></svg></button>
-    <button class="k" data-act="hidekb" title="Hide keyboard" aria-label="Hide keyboard"><svg viewBox="0 0 16 16"><path d="M4.5 6.5L8 10l3.5-3.5"/><path d="M5 13h6" stroke-opacity=".5"/></svg></button>
+    <button class="k" data-k="ArrowLeft" aria-label="Left" data-i18n-aria="v.key.left"><svg viewBox="0 0 16 16"><path d="M9.5 4.5L6 8l3.5 3.5"/></svg></button>
+    <button class="k" data-k="ArrowUp" aria-label="Up" data-i18n-aria="v.key.up"><svg viewBox="0 0 16 16"><path d="M4.5 9.5L8 6l3.5 3.5"/></svg></button>
+    <button class="k" data-k="ArrowDown" aria-label="Down" data-i18n-aria="v.key.down"><svg viewBox="0 0 16 16"><path d="M4.5 6.5L8 10l3.5-3.5"/></svg></button>
+    <button class="k" data-k="ArrowRight" aria-label="Right" data-i18n-aria="v.key.right"><svg viewBox="0 0 16 16"><path d="M6.5 4.5L10 8l-3.5 3.5"/></svg></button>
+    <button class="k" data-k="Backspace" aria-label="Backspace" data-i18n-aria="v.key.backspace"><svg viewBox="0 0 16 16"><path d="M5.6 3.8h7.2c.7 0 1.2.5 1.2 1.2v6c0 .7-.5 1.2-1.2 1.2H5.6L2 8z"/><path d="M7.6 6.4l3 3.2M10.6 6.4l-3 3.2"/></svg></button>
+    <button class="k" data-k="Enter" aria-label="Enter" data-i18n-aria="v.key.enter"><svg viewBox="0 0 16 16"><path d="M12.8 3.8v3.4c0 .9-.7 1.6-1.6 1.6H3.6M6.2 6.2L3.6 8.8l2.6 2.6"/></svg></button>
+    <button class="k" data-act="hidekb" title="Hide keyboard" aria-label="Hide keyboard" data-i18n-title="v.hideKeyboard" data-i18n-aria="v.hideKeyboard"><svg viewBox="0 0 16 16"><path d="M4.5 6.5L8 10l3.5-3.5"/><path d="M5 13h6" stroke-opacity=".5"/></svg></button>
   </div>
   <div id="overlay" hidden>
     <div class="hero ovcard" data-tone="countdown">
-      <div class="hero-top"><span class="badge"><i></i><span>Reconnecting</span></span></div>
-      <p class="headline" id="ovTitle">Connection lost</p>
+      <div class="hero-top"><span class="badge"><i></i><span data-i18n="v.reconnectingBadge">Reconnecting</span></span></div>
+      <p class="headline" id="ovTitle" data-i18n="v.connectionLost">Connection lost</p>
       <p class="summary" id="ovText">Connecting…</p>
       <canvas class="signal" id="ovSignal" aria-hidden="true"></canvas>
-      <div class="ovact"><button class="cta secondary" id="ovCancel" type="button">Cancel</button></div>
+      <div class="ovact"><button class="cta secondary" id="ovCancel" type="button" data-i18n="c.cancel">Cancel</button></div>
     </div>
   </div>
 </div>
 
 <!-- ================= SETTINGS ================= -->
 <div class="sheet" id="sheetSettings" hidden>
-  <div class="sheet-card" role="dialog" aria-label="Settings">
-    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>Back</button><h2>Settings</h2><span></span></div>
+  <div class="sheet-card" role="dialog" aria-label="Settings" data-i18n-aria="c.settings">
+    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg><span data-i18n="c.back">Back</span></button><h2 data-i18n="c.settings">Settings</h2><span></span></div>
     <div class="sheet-body">
-      <div class="block-head"><h2>Mode</h2></div>
+      <div class="block-head"><h2 data-i18n="v.mode">Mode</h2></div>
       <div class="panel">
-        <div class="srow"><div class="stext"><strong id="modeTitle">Control or second screen</strong><small id="modeHint">Control shows the other computer's screen. Second screen turns this screen into an extra display for it.</small></div></div>
-        <div class="srow"><div class="seg" id="sView" role="group" aria-label="Mode"><span class="seg-thumb" aria-hidden="true"></span>
-          <button type="button" data-v="control">Control</button><button type="button" data-v="extend">Second screen</button></div></div>
+        <div class="srow"><div class="stext"><strong id="modeTitle" data-i18n="v.modeTitle">Control or second screen</strong><small id="modeHint">Control shows the other computer's screen. Second screen turns this screen into an extra display for it.</small></div></div>
+        <div class="srow"><div class="seg" id="sView" role="group" aria-label="Mode" data-i18n-aria="v.mode"><span class="seg-thumb" aria-hidden="true"></span>
+          <button type="button" data-v="control" data-i18n="c.control">Control</button><button type="button" data-v="extend" data-i18n="c.secondScreen">Second screen</button></div></div>
       </div>
 
-      <div class="block-head"><h2>Stream</h2></div>
+      <div class="block-head"><h2 data-i18n="v.stream">Stream</h2></div>
       <div class="panel">
-        <div class="srow"><div class="stext"><strong>Display</strong><small id="monHint">Connect to choose a display</small></div>
+        <div class="srow"><div class="stext"><strong data-i18n="v.display">Display</strong><small id="monHint">Connect to choose a display</small></div>
           <button class="select" id="sMonitor" type="button" aria-haspopup="menu"><span class="select-value">—</span><svg class="updown" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 6.5L8 4l2.5 2.5M5.5 9.5L8 12l2.5-2.5"/></svg></button></div>
-        <div class="srow"><div class="stext"><strong>Quality</strong><small>JPEG quality — lower is faster</small></div>
-          <div class="range"><input type="range" id="sQuality" min="20" max="95" step="5" aria-label="Quality"><output id="sQualityV"></output></div></div>
-        <div class="srow"><div class="stext"><strong>Resolution</strong><small>Maximum stream width</small></div>
+        <div class="srow"><div class="stext"><strong data-i18n="v.quality">Quality</strong><small data-i18n="v.qualityHint">JPEG quality — lower is faster</small></div>
+          <div class="range"><input type="range" id="sQuality" min="20" max="95" step="5" aria-label="Quality" data-i18n-aria="v.quality"><output id="sQualityV"></output></div></div>
+        <div class="srow"><div class="stext"><strong data-i18n="v.resolution">Resolution</strong><small data-i18n="v.resolutionHint">Maximum stream width</small></div>
           <button class="select" id="sMaxw" type="button" aria-haspopup="menu"><span class="select-value"></span><svg class="updown" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 6.5L8 4l2.5 2.5M5.5 9.5L8 12l2.5-2.5"/></svg></button></div>
-        <div class="srow"><div class="stext"><strong>Frame rate</strong><small>Frames per second</small></div>
-          <div class="seg inline" id="sFps" role="group" aria-label="Frame rate"><span class="seg-thumb" aria-hidden="true"></span>
+        <div class="srow"><div class="stext"><strong data-i18n="v.frameRate">Frame rate</strong><small data-i18n="v.frameRateHint">Frames per second</small></div>
+          <div class="seg inline" id="sFps" role="group" aria-label="Frame rate" data-i18n-aria="v.frameRate"><span class="seg-thumb" aria-hidden="true"></span>
             <button type="button" data-v="5">5</button><button type="button" data-v="10">10</button><button type="button" data-v="20">20</button><button type="button" data-v="30">30</button></div></div>
       </div>
 
-      <div class="block-head"><h2>Keyboard</h2></div>
+      <div class="block-head"><h2 data-i18n="v.keyboard">Keyboard</h2></div>
       <div class="panel">
-        <div class="srow"><div class="stext"><strong>Swap Ctrl ↔ Cmd</strong><small id="swapHint"></small></div>
-          <label class="switch"><input type="checkbox" id="sSwap" aria-label="Swap Ctrl and Cmd"><span></span></label></div>
+        <div class="srow"><div class="stext"><strong data-i18n="v.swap">Swap Ctrl ↔ Cmd</strong><small id="swapHint"></small></div>
+          <label class="switch"><input type="checkbox" id="sSwap" aria-label="Swap Ctrl and Cmd" data-i18n-aria="v.swapLabel"><span></span></label></div>
       </div>
 
       <div id="touchHelp" data-touch>
-        <div class="block-head"><h2>Gestures</h2></div>
+        <div class="block-head"><h2 data-i18n="v.gestures">Gestures</h2></div>
         <div class="panel">
-          <div class="srow prose"><p><strong>Trackpad</strong> — drag to move the pointer · tap to click · double-tap to double-click · tap, then press and drag to drag · long-press to right-click.</p></div>
-          <div class="srow prose"><p><strong>Touch</strong> — tap where you want to click · long-press to right-click · drag to drag.</p></div>
-          <div class="srow prose"><p><strong>Both</strong> — pinch to zoom (move while pinching to pan) · two-finger drag to scroll · two-finger tap to right-click · two-finger double-tap to zoom in or back to fit · three-finger tap for the keyboard. Rotate the phone for a bigger picture.</p></div>
+          <div class="srow prose"><p data-i18n-html="v.gestTrackpad"><strong>Trackpad</strong> — drag to move the pointer · tap to click · double-tap to double-click · tap, then press and drag to drag · long-press to right-click.</p></div>
+          <div class="srow prose"><p data-i18n-html="v.gestTouch"><strong>Touch</strong> — tap where you want to click · long-press to right-click · drag to drag.</p></div>
+          <div class="srow prose"><p data-i18n-html="v.gestBoth"><strong>Both</strong> — pinch to zoom (move while pinching to pan) · two-finger drag to scroll · two-finger tap to right-click · two-finger double-tap to zoom in or back to fit · three-finger tap for the keyboard. Rotate the phone for a bigger picture.</p></div>
         </div>
       </div>
 
-      <div class="block-head"><h2>Appearance</h2></div>
+      <div class="block-head"><h2 data-i18n="c.appearance">Appearance</h2></div>
       <div class="panel">
         <div class="srow appearance">
-          <div id="themeSeg" class="seg" role="group" aria-label="Theme"><span class="seg-thumb" aria-hidden="true"></span>
-            <button type="button" data-v="system"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.2" width="11" height="7.6" rx="1.4"/><path d="M6 13h4"/></svg>System</button>
-            <button type="button" data-v="light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/></svg>Light</button>
-            <button type="button" data-v="dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg>Dark</button>
+          <div id="themeSeg" class="seg" role="group" aria-label="Theme" data-i18n-aria="c.theme"><span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" data-v="system"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.2" width="11" height="7.6" rx="1.4"/><path d="M6 13h4"/></svg><span data-i18n="c.system">System</span></button>
+            <button type="button" data-v="light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/></svg><span data-i18n="c.light">Light</span></button>
+            <button type="button" data-v="dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 9.6A5 5 0 0 1 6.4 3.4 5 5 0 1 0 12.6 9.6Z"/></svg><span data-i18n="c.dark">Dark</span></button>
           </div>
         </div>
+        <div class="srow"><div class="stext"><strong data-i18n="c.language">Language</strong></div>
+          <div class="seg inline" id="langSeg" role="group" aria-label="Language" data-i18n-aria="c.language"><span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" data-v="en" lang="en">English</button><button type="button" data-v="ru" lang="ru">Русский</button></div></div>
       </div>
 
-      <div class="block-head"><h2>About</h2><span class="note">Hop</span></div>
+      <div class="block-head"><h2 data-i18n="c.about">About</h2><span class="note">Hop</span></div>
       <div class="panel">
-        <div class="srow prose"><p id="aboutText">Shows and controls this computer from any browser on the same network. On Wi-Fi nothing goes through the internet — no accounts, no cloud.</p></div>
+        <div class="srow prose"><p id="aboutText" data-i18n="v.aboutLan">Shows and controls this computer from any browser on the same network. On Wi-Fi nothing goes through the internet — no accounts, no cloud.</p></div>
       </div>
-      <p class="foot">Use the same PIN on all your computers to hop between them from the Devices list.</p>
+      <p class="foot" data-i18n="v.footSettings">Use the same PIN on all your computers to hop between them from the Devices list.</p>
     </div>
   </div>
 </div>
 
 <!-- ================= DEVICES ================= -->
 <div class="sheet" id="sheetDevices" hidden>
-  <div class="sheet-card" role="dialog" aria-label="Devices">
-    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>Back</button><h2>Devices</h2><span></span></div>
+  <div class="sheet-card" role="dialog" aria-label="Devices" data-i18n-aria="c.devices">
+    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg><span data-i18n="c.back">Back</span></button><h2 data-i18n="c.devices">Devices</h2><span></span></div>
     <div class="sheet-body">
-      <div class="block-head"><h2>On this network</h2><span class="note peer-note"></span></div>
+      <div class="block-head"><h2 data-i18n="v.onNetwork">On this network</h2><span class="note peer-note"></span></div>
       <div class="panel list-panel">
-        <ul class="chat-list" id="peers2" aria-label="Devices"></ul>
+        <ul class="chat-list" id="peers2" aria-label="Devices" data-i18n-aria="c.devices"></ul>
         <form class="addip" data-addip autocomplete="off">
-          <input class="input" type="text" inputmode="url" placeholder="mac.local or 192.168.1.20" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Computer address or IP">
-          <button class="button" type="submit">Go</button>
+          <input class="input" type="text" inputmode="url" placeholder="mac.local or 192.168.1.20" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Computer address or IP" data-i18n-ph="v.addrPlaceholder" data-i18n-aria="v.addrLabel">
+          <button class="button" type="submit" data-i18n="v.go">Go</button>
         </form>
       </div>
-      <p class="foot">Computers running Hop appear here automatically. Your PIN is carried over when you switch.</p>
+      <p class="foot" data-i18n="v.footDevices">Computers running Hop appear here automatically. Your PIN is carried over when you switch.</p>
     </div>
   </div>
 </div>
 
 <!-- ================= CLIPBOARD ================= -->
 <div class="sheet" id="sheetClip" hidden>
-  <div class="sheet-card" role="dialog" aria-label="Clipboard">
-    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>Back</button><h2>Clipboard</h2><span></span></div>
+  <div class="sheet-card" role="dialog" aria-label="Clipboard" data-i18n-aria="c.clipboard">
+    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg><span data-i18n="c.back">Back</span></button><h2 data-i18n="c.clipboard">Clipboard</h2><span></span></div>
     <div class="sheet-body">
-      <div class="block-head"><h2><label for="clipOut">Send text to <span class="hn">the host</span></label></h2></div>
+      <div class="block-head"><h2><label for="clipOut" id="clipOutLabel">Send text to the host</label></h2></div>
       <div class="panel pad">
-        <textarea id="clipOut" class="input" rows="4" placeholder="Paste or type here…" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
-        <div class="actrow"><span class="note" id="clipOutNote">Goes to the clipboard on <span class="hn">the host</span></span>
+        <textarea id="clipOut" class="input" rows="4" placeholder="Paste or type here…" data-i18n-ph="v.clipPlaceholder" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+        <div class="actrow"><span class="note" id="clipOutNote">Goes to the clipboard on the host</span>
           <button class="button" id="clipSend" type="button" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3.4M4.4 6.8L8 3.2l3.6 3.6"/></svg><span>Send</span></button></div>
       </div>
-      <p class="offnote" id="clipOff" hidden>View only — sending is turned off on the host.</p>
+      <p class="offnote" id="clipOff" data-i18n="v.clipOff" hidden>View only — sending is turned off on the host.</p>
 
-      <div class="block-head"><h2>From <span class="hn">the host</span></h2><button class="link" id="clipRefresh" type="button">Refresh</button></div>
+      <div class="block-head"><h2 id="clipFromHead">From the host</h2><button class="link" id="clipRefresh" type="button" data-i18n="v.refresh">Refresh</button></div>
       <div class="panel pad">
         <div class="clipbox empty" id="clipIn" aria-live="polite">Loading…</div>
         <div class="actrow"><span class="note" id="clipInNote"></span>
           <button class="button ghost" id="clipCopy" type="button" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.2" y="5.2" width="8" height="8" rx="1.6"/><path d="M10.8 5.2V4.4c0-.9-.7-1.6-1.6-1.6H4.4c-.9 0-1.6.7-1.6 1.6v4.8c0 .9.7 1.6 1.6 1.6h.8"/></svg><span>Copy</span></button></div>
       </div>
-      <p class="foot">Text only. When something new is copied on <span class="hn">the host</span>, a notice offers to copy it here too.</p>
+      <p class="foot" id="clipFoot">Text only. When something new is copied on the host, a notice offers to copy it here too.</p>
     </div>
   </div>
 </div>
 
 <!-- ================= FILES ================= -->
 <div class="sheet" id="sheetFiles" hidden>
-  <div class="sheet-card" role="dialog" aria-label="Files">
-    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>Back</button><h2>Files</h2><span></span></div>
+  <div class="sheet-card" role="dialog" aria-label="Files" data-i18n-aria="c.files">
+    <div class="sheet-bar"><button class="back" data-close type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg><span data-i18n="c.back">Back</span></button><h2 data-i18n="c.files">Files</h2><span></span></div>
     <div class="sheet-body">
-      <div class="block-head"><h2>Shared folder</h2><span class="note">on <span class="hn">the host</span></span></div>
+      <div class="block-head"><h2 data-i18n="c.sharedFolder">Shared folder</h2><span class="note" id="filesOnHost">on the host</span></div>
       <div class="panel">
         <div class="folder-row">
           <span class="tile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 4.6c0-.7.5-1.2 1.2-1.2h2.8l1.4 1.5h5c.7 0 1.2.5 1.2 1.2v5.8c0 .7-.5 1.2-1.2 1.2H3.4c-.7 0-1.2-.5-1.2-1.2z"/></svg></span>
           <div class="stext"><strong>Hop</strong><small id="filesFolder">~/Downloads/Hop</small></div>
-          <button class="button" id="filesUpload" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V3.4M4.6 6.6L8 3.2l3.4 3.4M3 12.8h10"/></svg><span>Upload</span></button>
+          <button class="button" id="filesUpload" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V3.4M4.6 6.6L8 3.2l3.4 3.4M3 12.8h10"/></svg><span data-i18n="v.upload">Upload</span></button>
         </div>
         <div class="upl" id="upl" hidden>
-          <div class="upl-top"><span id="uplName"></span><output id="uplPct"></output><button class="link" id="uplCancel" type="button">Cancel</button></div>
-          <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Upload progress"><i id="uplBar"></i></div>
+          <div class="upl-top"><span id="uplName"></span><output id="uplPct"></output><button class="link" id="uplCancel" type="button" data-i18n="c.cancel">Cancel</button></div>
+          <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Upload progress" data-i18n-aria="v.uploadProgress"><i id="uplBar"></i></div>
         </div>
       </div>
-      <p class="offnote" id="filesOff" hidden>View only — uploading is turned off on the host. You can still download.</p>
+      <p class="offnote" id="filesOff" data-i18n="v.filesOff" hidden>View only — uploading is turned off on the host. You can still download.</p>
       <input type="file" id="filesInput" multiple hidden>
 
-      <div class="block-head"><h2>Files</h2><span class="note" id="filesCount"></span></div>
+      <div class="block-head"><h2 data-i18n="c.files">Files</h2><span class="note" id="filesCount"></span></div>
       <div class="panel list-panel">
-        <ul class="chat-list" id="filesList" aria-label="Files on the host"></ul>
+        <ul class="chat-list" id="filesList" aria-label="Files on the host" data-i18n-aria="v.filesOnHost"></ul>
       </div>
-      <p class="foot"><span id="filesHow">Tap</span> a file to download it. Files dropped into this folder on <span class="hn">the host</span> appear here.</p>
+      <p class="foot" id="filesFoot">Tap a file to download it. Files dropped into this folder on the host appear here.</p>
     </div>
   </div>
 </div>
@@ -595,14 +610,14 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
 <div id="drop" hidden aria-hidden="true">
   <div class="dropcard">
     <span class="tile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V3.4M4.6 6.6L8 3.2l3.4 3.4M3 12.8h10"/></svg></span>
-    <strong id="dropTitle">Drop to send</strong>
-    <span id="dropSub">Saved to the shared folder</span>
+    <strong id="dropTitle" data-i18n="v.dropToSend">Drop to send</strong>
+    <span id="dropSub" data-i18n="v.savedToShared">Saved to the shared folder</span>
   </div>
 </div>
 
 <div id="menu" class="menu" role="menu" hidden></div>
 <input id="kbd" type="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="enter" aria-hidden="true" tabindex="-1">
-<div id="toast" class="notice" role="status"><i></i><span id="toastText"></span><button class="tact" id="toastAct" type="button" hidden></button><button class="tx" id="toastX" type="button" aria-label="Dismiss" title="Dismiss" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></div>
+<div id="toast" class="notice" role="status"><i></i><span id="toastText"></span><button class="tact" id="toastAct" type="button" hidden></button><button class="tx" id="toastX" type="button" aria-label="Dismiss" title="Dismiss" data-i18n-aria="c.dismiss" data-i18n-title="c.dismiss" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></div>
 
 <video id="rv" playsinline muted autoplay aria-hidden="true"></video>
 <script>
@@ -628,6 +643,43 @@ var isPhone = coarse && Math.min(screen.width, screen.height) < 600;
 var OS_NAMES = { mac: 'macOS', windows: 'Windows', linux: 'Linux' };
 
 var isStandalone = document.documentElement.classList.contains('standalone');
+
+/* ================= language (static/i18n.js) ================= */
+// Text that changes at run time is set with say(): it remembers the key, so switching the language
+// re-renders it in place. Messages from hosts arrive in English and go through sayMsg() / I18N.message().
+var I18N = window.HopI18n, t = I18N.t;
+var said = [];
+function say(el, key, vars, attr) {
+  if (typeof el === 'string') el = $(el);
+  if (!el) return;
+  if (!el.__say) { el.__say = {}; said.push(el); }
+  el.__say[attr || 'text'] = [key, vars];
+  paintSaid(el, attr || 'text');
+}
+function sayMsg(el, msg, attr) { say(el, null, msg, attr); }
+/* text that isn't translated (a name, an address, a code): forget any key set before */
+function plain(el, text) {
+  if (typeof el === 'string') el = $(el);
+  if (el.__say) delete el.__say.text;
+  el.textContent = text;
+}
+function paintSaid(el, attr) {
+  var s = el.__say[attr], v = s[0] == null ? I18N.message(s[1]) : t(s[0], s[1]);
+  if (attr === 'text') { if (el.textContent !== v) el.textContent = v; }
+  else if (attr === 'title') el.title = v;
+  else el.setAttribute(attr, v);
+}
+var M = I18N.en; // canonical English of our own msg.* messages (errors flow through the same path as the host's)
+var langListeners = [];
+function setLanguage(l) {
+  l = I18N.setLang(l); LS.set('lang', l);
+  I18N.apply(document);
+  said.forEach(function (el) { Object.keys(el.__say).forEach(function (a) { paintSaid(el, a); }); });
+  langListeners.forEach(function (fn) { try { fn(); } catch (e) {} });
+  setSeg($('#langSeg'), l);
+  requestAnimationFrame(placeThumbs);
+}
+function onLanguage(fn) { langListeners.push(fn); }
 
 /* notice; `action` = {label, fn} adds a button (e.g. "Copy") and a dismiss ×, and keeps it up longer */
 var toastTimer = null, toastAction = null;
@@ -669,22 +721,23 @@ function copyText(s) {
 }
 function fmtSize(n) {
   n = +n || 0;
-  if (n < 1000) return n + ' B';
-  var u = ['KB', 'MB', 'GB', 'TB'], i = -1;
+  if (n < 1000) return n + ' ' + t('u.b');
+  var u = ['u.kb', 'u.mb', 'u.gb', 'u.tb'], i = -1;
   do { n /= 1024; i++; } while (n >= 1000 && i < u.length - 1);
-  return (n < 10 ? n.toFixed(1) : Math.round(n)) + ' ' + u[i];
+  var v = n < 10 ? n.toFixed(1) : Math.round(n);
+  return (I18N.lang() === 'en' ? v : I18N.num(+v)) + ' ' + t(u[i]);
 }
-function ago(t) {
-  t = +t || 0; if (t > 1e12) t /= 1000;
-  var d = Date.now() / 1000 - t;
-  if (d < 45) return 'Just now';
-  if (d < 90) return '1 min ago';
-  if (d < 3600) return Math.round(d / 60) + ' min ago';
-  if (d < 86400) { var h = Math.round(d / 3600); return h + (h === 1 ? ' hour ago' : ' hours ago'); }
-  var dt = new Date(t * 1000), y = new Date(); y.setDate(y.getDate() - 1);
-  if (dt.toDateString() === y.toDateString()) return 'Yesterday';
+function ago(ts) {
+  ts = +ts || 0; if (ts > 1e12) ts /= 1000;
+  var d = Date.now() / 1000 - ts;
+  if (d < 45) return t('v.justNow');
+  if (d < 90) return t('v.minAgo', { n: 1 });
+  if (d < 3600) return t('v.minAgo', { n: Math.round(d / 60) });
+  if (d < 86400) return t('v.hoursAgo', { n: Math.round(d / 3600) });
+  var dt = new Date(ts * 1000), y = new Date(); y.setDate(y.getDate() - 1);
+  if (dt.toDateString() === y.toDateString()) return t('v.yesterday');
   var o = { month: 'short', day: 'numeric' }; if (dt.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
-  try { return dt.toLocaleDateString(undefined, o); } catch (e) { return dt.toDateString(); }
+  try { return dt.toLocaleDateString(I18N.lang() === 'en' ? undefined : 'ru-RU', o); } catch (e) { return dt.toDateString(); }
 }
 function urlHost(u) { return String(u || '').replace(/^[a-z]+:\/\//i, '').replace(/\/.*$/, ''); }
 
@@ -717,7 +770,7 @@ function hostOs() { return (hello && hello.os) || (hostInfo && hostInfo.os) || '
 var controlOff = false; // set when the host refuses an upload with 403 mid-session
 function canControl() { return !!hello && hello.control !== false && !controlOff; }
 function hasFeature(f) { return !!(hello && Array.isArray(hello.features) && hello.features.indexOf(f) >= 0); }
-function hostName() { return (hello && hello.name) || (hostInfo && hostInfo.name) || 'the host'; }
+function hostName() { return (hello && hello.name) || (hostInfo && hostInfo.name) || t('v.theHost'); }
 function swapDefault() { return isMacClient !== (hostOs() === 'mac'); }
 function swapOn() { return !!LS.get('swap.' + (hostOs() || 'x'), swapDefault()); }
 var swap = false;
@@ -753,7 +806,7 @@ function applyTheme() {
   if (light) root.setAttribute('data-mode', 'light'); else root.removeAttribute('data-mode');
   var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', light ? '#F3F3F5' : '#0A0A0B');
   palette = null; bgColor = null;
-  var tb = $('#bTheme'); tb.innerHTML = light ? MOON_SVG : SUN_SVG; tb.title = light ? 'Switch to dark' : 'Switch to light';
+  var tb = $('#bTheme'); tb.innerHTML = light ? MOON_SVG : SUN_SVG; say(tb, light ? 'v.toDark' : 'v.toLight', null, 'title');
   setSeg($('#themeSeg'), themePref);
   requestDraw(); kickSignal();
 }
@@ -928,11 +981,13 @@ function drawSignal(s, ts) {
   x.globalAlpha = 1;
   return true;
 }
+/* badge: an i18n key */
 function setHero(tone, badge, sig) {
-  hero.dataset.tone = tone; $('#badgeText').textContent = badge;
+  hero.dataset.tone = tone; say('#badgeText', badge);
   setSignal(heroSig, sig, sig === 'idle' ? 0.42 : null);
 }
-function errBadge(msg) { return /locked/i.test(msg) ? 'Locked out' : /directly|reach/i.test(msg) ? 'Unreachable' : /pin/i.test(msg) ? 'Wrong PIN' : /password/i.test(msg) && !/many/i.test(msg) ? 'Wrong password' : /confirmed/i.test(msg) ? 'Not confirmed' : /many|paused/i.test(msg) ? 'Paused' : /offline|turned off/i.test(msg) ? 'Offline' : /could not|connect/i.test(msg) ? 'Unreachable' : 'Error'; }
+// msg is the English message (from the host, the server or msg.*): its wording picks the badge
+function errBadge(msg) { return /locked/i.test(msg) ? 'v.badge.locked' : /directly|reach/i.test(msg) ? 'v.badge.unreachable' : /pin/i.test(msg) ? 'v.badge.wrongPin' : /password/i.test(msg) && !/many/i.test(msg) ? 'v.badge.wrongPassword' : /confirmed/i.test(msg) ? 'v.badge.notConfirmed' : /many|paused/i.test(msg) ? 'c.paused' : /offline|turned off/i.test(msg) ? 'v.badge.offline' : /could not|connect/i.test(msg) ? 'v.badge.unreachable' : 'c.error'; }
 
 /* ================= PIN boxes ================= */
 function renderPin() {
@@ -953,7 +1008,7 @@ function renderPin() {
   pinWrap.classList.toggle('sel', sel);
 }
 function setPinValue(v) { pinInput.value = v; renderPin(); }
-pinInput.addEventListener('input', function () { pinWrap.classList.remove('err'); connectErr.textContent = ''; renderPin(); });
+pinInput.addEventListener('input', function () { pinWrap.classList.remove('err'); sayMsg(connectErr, ''); renderPin(); });
 ['focus', 'blur', 'select', 'keyup', 'click'].forEach(function (ev) { pinInput.addEventListener(ev, function () { setTimeout(renderPin, 0); }); });
 document.addEventListener('selectionchange', function () { if (document.activeElement === pinInput) renderPin(); });
 
@@ -965,20 +1020,20 @@ function loadInfo() {
     return fetch('/api/remote-config', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !j.base || !j.key) throw new Error('no server');
       CLOUD_BASE = j.base; CLOUD_KEY = j.key; enterCloudMode();
-    }).catch(function () { enterCloudMode(); cloudError('Turn on Internet access in Hop on this computer first.'); });
+    }).catch(function () { enterCloudMode(); cloudError(M('msg.turnOnInternet')); });
   }
   return fetch('/api/info', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
     if (j && j.cloud) { enterCloudMode(); return; }
     hostInfo = j;
-    $('#headline').textContent = j.name || location.hostname;
+    plain('#headline', j.name || location.hostname);
     renderSummary();
     document.title = 'Hop · ' + (j.name || location.hostname);
-    if (hero.dataset.tone === 'preview') setHero('armed', 'Ready', 'idle');
+    if (hero.dataset.tone === 'preview') setHero('armed', 'v.ready', 'idle');
     swap = swapOn(); updateSwapUI(); updateKeyLabels(); setHostNames();
   }).catch(function () {
-    $('#headline').textContent = location.hostname || 'Host';
-    $('#summary').textContent = location.host;
-    if (hero.dataset.tone === 'preview') setHero('armed', 'Ready', 'idle');
+    if (location.hostname) plain('#headline', location.hostname); else say('#headline', 'v.host');
+    plain('#summary', location.host);
+    if (hero.dataset.tone === 'preview') setHero('armed', 'v.ready', 'idle');
   });
 }
 
@@ -991,12 +1046,18 @@ function hostAddress() {
 }
 function renderSummary() {
   var j = hostInfo || {}, sm = $('#summary'), addr = hostAddress();
-  sm.textContent = '';
+  plain(sm, '');
   if (j.os) { sm.appendChild(document.createTextNode(OS_NAMES[j.os] || j.os)); var sp = document.createElement('span'); sp.className = 'sep'; sp.textContent = ' · '; sm.appendChild(sp); }
   sm.appendChild(document.createTextNode(addr));
-  sm.title = addr !== location.host ? 'Also at ' + location.host : '';
+  if (addr !== location.host) say(sm, 'v.alsoAt', { host: location.host }, 'title'); else { if (sm.__say) delete sm.__say.title; sm.title = ''; }
 }
-function setHostNames() { var n = hostName(); $$('.hn').forEach(function (e) { e.textContent = n; }); }
+// Everything that names the host computer
+function setHostNames() {
+  var h = { host: hostName() };
+  say('#clipOutLabel', 'v.sendTextTo', h); say('#clipFromHead', 'v.clipFrom', h); say('#clipFoot', 'v.clipFoot', h);
+  say('#filesOnHost', 'v.onHost', h); say('#filesFoot', coarse ? 'v.filesFootTap' : 'v.filesFootClick', h);
+  if (clipOut) updateClipSend();
+}
 
 function currentPin() { return (connectEl.hidden ? pin : pinInput.value.trim()) || pin; }
 
@@ -1008,16 +1069,16 @@ var CHEV = '<svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6
 function peerHref(d, p) { return 'http://' + d.ip + ':' + d.port + '/' + (p ? '#pin=' + encodeURIComponent(p) : ''); }
 function renderPeers() {
   var p = currentPin();
-  var key = JSON.stringify(peers && peers.map(function (d) { return [d.name, d.os, d.ip, d.port, !!d.self, d.short || '']; }));
+  var key = I18N.lang() + JSON.stringify(peers && peers.map(function (d) { return [d.name, d.os, d.ip, d.port, !!d.self, d.short || '']; }));
   ['#peers1', '#peers2'].forEach(function (sel) {
     var el = $(sel);
     if (el.dataset.key !== key) {
       el.dataset.key = key; el.textContent = '';
       if (!peers || !peers.length) {
         var li0 = document.createElement('li'); li0.className = 'empty';
-        var st = document.createElement('strong'); st.textContent = !peers ? 'Looking for devices…' : 'No devices found';
+        var st = document.createElement('strong'); st.textContent = t(!peers ? 'v.lookingDevices' : 'v.noDevices');
         li0.appendChild(st);
-        if (peers) { var sm = document.createElement('span'); sm.textContent = 'Computers running Hop show up here.'; li0.appendChild(sm); }
+        if (peers) { var sm = document.createElement('span'); sm.textContent = t('v.noDevicesHint'); li0.appendChild(sm); }
         el.appendChild(li0);
       } else peers.forEach(function (d) {
         var li = document.createElement('li'); li.className = 'peer' + (d.self ? ' self' : '');
@@ -1032,14 +1093,14 @@ function renderPeers() {
         if (d.os) { var c = document.createElement('span'); c.className = 'oschip'; c.textContent = OS_NAMES[d.os] || d.os; a.appendChild(c); }
         var g0 = document.createElement('span'); g0.className = 'grow'; a.appendChild(g0);
         var ip = document.createElement('span'); ip.className = 'time'; ip.textContent = d.short ? (d.name || ipTxt) : ipTxt; a.appendChild(ip);
-        if (d.self) { var h = document.createElement('span'); h.className = 'here'; h.textContent = 'This host'; a.appendChild(h); }
-        else { var lv = document.createElement('i'); lv.className = 'live'; lv.title = 'Reachable'; a.appendChild(lv); a.insertAdjacentHTML('beforeend', CHEV); }
+        if (d.self) { var h = document.createElement('span'); h.className = 'here'; h.textContent = t('v.thisHost'); a.appendChild(h); }
+        else { var lv = document.createElement('i'); lv.className = 'live'; lv.title = t('v.reachable'); a.appendChild(lv); a.insertAdjacentHTML('beforeend', CHEV); }
         li.appendChild(a); el.appendChild(li);
       });
     }
     Array.prototype.forEach.call(el.querySelectorAll('a.pl'), function (a) { a.href = peerHref({ ip: a.dataset.ip, port: a.dataset.port }, p); });
   });
-  $$('.peer-note').forEach(function (nt) { nt.textContent = peers && peers.length ? peers.length + (peers.length === 1 ? ' device' : ' devices') : ''; });
+  $$('.peer-note').forEach(function (nt) { nt.textContent = peers && peers.length ? t('c.deviceCount', { n: peers.length }) : ''; });
 }
 function fetchPeers() {
   if (CLOUD) return;
@@ -1058,7 +1119,7 @@ $$('[data-addip]').forEach(function (f) {
   f.addEventListener('submit', function (e) {
     e.preventDefault();
     var addr = parseAddr(f.querySelector('input').value);
-    if (!addr) { toast('Enter an address like mac, mac.local or 192.168.1.20'); return; }
+    if (!addr) { toast(t('v.enterAddress')); return; }
     var p = currentPin();
     location.href = 'http://' + addr + '/' + (p ? '#pin=' + encodeURIComponent(p) : '');
   });
@@ -1081,22 +1142,23 @@ function parseAddr(raw) {
 pinInput.addEventListener('input', renderPeers);
 
 /* ================= screens ================= */
-function setCta(label, busy) { $('#ctaText').textContent = label; connectBtn.disabled = !!busy; }
+/* label: an i18n key, or (msg) an English message from the host */
+function setCta(label, busy, msg) { if (msg) sayMsg('#ctaText', label); else say('#ctaText', label); connectBtn.disabled = !!busy; }
 function showConnect(err) {
   closeSheets();
   viewer.hidden = true; connectEl.hidden = false; overlay.hidden = true;
-  setCta('Connect', false);
-  if (err) setHero('error', errBadge(err), 'error'); else setHero('armed', 'Ready', 'idle');
+  setCta('c.connect', false);
+  if (err) setHero('error', errBadge(err), 'error'); else setHero('armed', 'v.ready', 'idle');
   hero.classList.remove('pairing');
   if (CLOUD) {
-    $('#headline').textContent = 'Your computers, anywhere';
-    $('#summary').textContent = 'Enter the ID and password shown in Hop';
-    $('#cloudErr').textContent = err || '';
+    say('#headline', 'v.cloudHeadline');
+    say('#summary', 'v.cloudSummary');
+    sayMsg('#cloudErr', err || '');
     document.title = 'Hop';
     renderRecents();
     if (err && !isTouch) { var f = /password/i.test(err) ? $('#cpw') : $('#cid'); f.focus(); f.select(); }
   } else {
-    connectErr.textContent = err || '';
+    sayMsg(connectErr, err || '');
     pinWrap.classList.toggle('err', !!err);
     if (pin) setPinValue(pin);
     if (err && !isTouch) { pinInput.focus(); pinInput.select(); renderPin(); }
@@ -1116,10 +1178,10 @@ function showViewer() {
 /* ================= connection ================= */
 function startConnect(p) {
   pin = String(p || '').trim();
-  if (!pin) { connectErr.textContent = 'Enter the PIN shown on the host'; pinWrap.classList.add('err'); return; }
-  connectErr.textContent = ''; pinWrap.classList.remove('err');
-  setCta('Connecting…', true);
-  setHero('countdown', 'Connecting', 'connecting');
+  if (!pin) { say(connectErr, 'v.enterPin'); pinWrap.classList.add('err'); return; }
+  sayMsg(connectErr, ''); pinWrap.classList.remove('err');
+  setCta('c.connecting', true);
+  setHero('countdown', 'v.connectingBadge', 'connecting');
   everHello = false; retry = 0;
   connect();
 }
@@ -1158,7 +1220,7 @@ function handleMsg(m, st) {
     hello.control = m.allowed === true; controlOff = !hello.control;
     if (!hello.control) resetInputState(true);
     applyCaps(); updateExtendUI();
-    toast(hello.control ? 'Control enabled by the host' : 'The host switched to view only', 2500);
+    toast(t(hello.control ? 'v.controlEnabled' : 'v.switchedViewOnly'), 2500);
   }
   else if (m.t === 'cursor') onCursor(m);
   else if (m.t === 'clip') onClip(m);
@@ -1168,16 +1230,16 @@ function handleMsg(m, st) {
   else if (/^down\./.test(m.t)) onDown(m);
   else if (/^up\./.test(m.t)) onUp(m);
   else if (/^extend\./.test(m.t)) onExtendMsg(m);
-  else if (m.t === 'error') onServerError(String(m.msg || 'Error'), st.gotHello);
+  else if (m.t === 'error') onServerError(String(m.msg || M('msg.error')), st.gotHello);
   else if (m.t === 'pending' && !st.gotHello) {
     // Host asks its user to approve us (or, for a new internet device, to type the code shown here):
     // keep waiting instead of timing out.
     clearTimeout(connectTimer);
     connectTimer = setTimeout(function () { if (ws === st.sock && !st.gotHello) { try { st.sock.close(); } catch (e) {} } }, ((+m.timeout || 30) + 5) * 1000);
     if (m.code) { showPairCode(m.code, m.msg); return; }
-    var wait = String(m.msg || 'Waiting for approval on the host…');
-    setHero('countdown', 'Waiting', 'connecting'); setCta(wait, true);
-    if (!overlay.hidden) ovText.textContent = wait;
+    var wait = String(m.msg || M('msg.waitingApproval'));
+    setHero('countdown', 'v.waiting', 'connecting'); setCta(wait, true, true);
+    if (!overlay.hidden) sayMsg(ovText, wait);
   }
 }
 
@@ -1195,9 +1257,8 @@ function onHello(m) {
   var cur = mons.filter(function (mo) { return mo.index === +settings.monitor; })[0];
   if (!bmp && cur) { imgW = cur.width; imgH = cur.height; }
   send({ t: 'settings', monitor: +settings.monitor, quality: +settings.quality, maxw: +settings.maxw, fps: +settings.fps });
-  document.title = (m.name || 'Host') + ' · Hop';
-  $('#statName').textContent = m.name || 'Host';
-  setHero('armed', 'Connected', 'ok');
+  document.title = (m.name || t('v.host')) + ' · Hop';
+  setHero('armed', 'v.connected', 'ok');
   hero.classList.remove('pairing');
   overlay.hidden = true;
   showViewer();
@@ -1222,16 +1283,16 @@ function onServerError(msg, gotHello) {
     if (/pin/i.test(msg)) LS.del('pin');
     if (CLOUD && /password/i.test(msg)) forgetPassword(cloudId);
     showConnect(msg);
-  } else toast(msg, 3500, true);
+  } else toast(I18N.message(msg), 3500, true);
 }
 
 function onClosed(hadHello) {
   resetInputState(false);
   if (!wantConnected || authFailed) return;
-  if (!everHello) { wantConnected = false; showConnect('Could not connect to the host'); return; }
+  if (!everHello) { wantConnected = false; showConnect(M('msg.couldNotConnect')); return; }
   var delay = Math.min(10000, 500 * Math.pow(2, retry)); retry++;
   overlay.hidden = false;
-  ovText.textContent = 'Reconnecting' + (retry > 1 ? ' — attempt ' + retry : '') + '…';
+  if (retry > 1) say(ovText, 'v.reconnectingAttempt', { n: retry }); else say(ovText, 'v.reconnecting');
   kickSignal();
   retryTimer = setTimeout(connect, delay);
 }
@@ -1345,10 +1406,11 @@ setInterval(function () {
   var fps = stats.frames, kb = stats.bytes / 1024;
   stats.frames = 0; stats.bytes = 0;
   var ok = !!(wsOpen() && hello);
-  var txt = ok ? fps + ' fps' : '…';
-  $('#statTxt').textContent = txt; $('#pillTxt').textContent = ok ? ((hello.name || 'Host') + ' · ' + fps + ' fps') : 'Reconnecting…';
+  var txt = ok ? t('u.fps', { n: fps }) : '…';
+  $('#statTxt').textContent = txt; $('#pillTxt').textContent = ok ? ((hello.name || t('v.host')) + ' · ' + t('u.fps', { n: fps })) : t('v.reconnecting');
   $('#statDot').classList.toggle('bad', !ok); $('#pillDot').classList.toggle('bad', !ok);
-  $('#stat').title = ok ? fps + ' frames/s · ' + (kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB/s' : Math.round(kb) + ' KB/s') : 'Disconnected';
+  var rate = kb >= 1024 ? t('v.rateMB', { n: I18N.lang() === 'en' ? (kb / 1024).toFixed(1) : I18N.num(+(kb / 1024).toFixed(1)) }) : t('v.rateKB', { n: Math.round(kb) });
+  $('#stat').title = ok ? t('v.statTitle', { n: fps, rate: rate }) : t('v.disconnected');
 }, 1000);
 
 /* ================= viewport ================= */
@@ -1467,13 +1529,13 @@ function applyMode() {
   b.innerHTML = mode === 'trackpad'
     ? '<svg viewBox="0 0 16 16"><rect x="2.3" y="2.8" width="11.4" height="10.4" rx="2"/><path d="M2.3 9.6h11.4M8 9.6v3.6"/></svg>'
     : '<svg viewBox="0 0 16 16"><path d="M6.4 8.6V3.4a1.1 1.1 0 0 1 2.2 0v4.2M8.6 6.9a1.1 1.1 0 0 1 2.2 0v1M10.8 7.4a1.1 1.1 0 0 1 2.2 0v2.6a4 4 0 0 1-4 4H8.3a3.8 3.8 0 0 1-3-1.5L3.1 9.7a1.05 1.05 0 0 1 1.6-1.3l1.7 1.7"/></svg>';
-  b.title = mode === 'trackpad' ? 'Trackpad mode (tap to switch to Touch)' : 'Touch mode (tap to switch to Trackpad)';
-  b.setAttribute('aria-label', mode === 'trackpad' ? 'Switch to Touch mode' : 'Switch to Trackpad mode');
+  say(b, mode === 'trackpad' ? 'v.trackpadModeTitle' : 'v.touchModeTitle', null, 'title');
+  say(b, mode === 'trackpad' ? 'v.toTouch' : 'v.toTrackpad', null, 'aria-label');
   requestDraw();
 }
 $('#bMode').addEventListener('click', function () {
   mode = mode === 'trackpad' ? 'touch' : 'trackpad'; LS.set('mode', mode); applyMode();
-  toast(mode === 'trackpad' ? 'Trackpad mode' : 'Touch mode — tap where you want to click', 1600);
+  toast(t(mode === 'trackpad' ? 'v.trackpadMode' : 'v.touchModeToast'), 1600);
 });
 var ZMAX = 5, ZOOMS = [1, 1.5, 2, 3, 4, 5];
 var followCursor = true;
@@ -1548,51 +1610,51 @@ function applyCaps() {
 function setControlOff() {
   if (controlOff) return;
   controlOff = true; applyCaps();
-  toast('Control is off on the host — view only', 3500, true);
+  toast(t('v.controlOffViewOnly'), 3500, true);
 }
 
 /* ================= shortcuts (host-native combos, sent as-is: no Ctrl↔Cmd swap) ================= */
 var SHORTCUTS = {
   mac: [
-    { head: 'System' },
-    { label: 'Spotlight', keys: ['Meta', ' '], hint: '⌘Space' },
-    { label: 'App switcher', keys: ['Meta', 'Tab'], hint: '⌘Tab' },
-    { label: 'Mission Control', keys: ['Control', 'ArrowUp'], hint: '⌃↑' },
+    { head: 1 },
+    { label: 'v.sc.spotlight', keys: ['Meta', ' '], hint: '⌘Space' },
+    { label: 'v.sc.appSwitcher', keys: ['Meta', 'Tab'], hint: '⌘Tab' },
+    { label: 'v.sc.missionControl', keys: ['Control', 'ArrowUp'], hint: '⌃↑' },
     { sep: 1 },
-    { label: 'Copy', keys: ['Meta', 'c'], hint: '⌘C' },
-    { label: 'Paste', keys: ['Meta', 'v'], hint: '⌘V' },
-    { label: 'Undo', keys: ['Meta', 'z'], hint: '⌘Z' },
+    { label: 'v.sc.copy', keys: ['Meta', 'c'], hint: '⌘C' },
+    { label: 'v.sc.paste', keys: ['Meta', 'v'], hint: '⌘V' },
+    { label: 'v.sc.undo', keys: ['Meta', 'z'], hint: '⌘Z' },
     { sep: 1 },
-    { label: 'Close window', keys: ['Meta', 'w'], hint: '⌘W' },
-    { label: 'Quit app', keys: ['Meta', 'q'], hint: '⌘Q' },
-    { label: 'Screenshot', keys: ['Meta', 'Shift', '4'], hint: '⇧⌘4' },
-    { label: 'Lock screen', keys: ['Control', 'Meta', 'q'], hint: '⌃⌘Q' }
+    { label: 'v.sc.closeWindow', keys: ['Meta', 'w'], hint: '⌘W' },
+    { label: 'v.sc.quitApp', keys: ['Meta', 'q'], hint: '⌘Q' },
+    { label: 'v.sc.screenshot', keys: ['Meta', 'Shift', '4'], hint: '⇧⌘4' },
+    { label: 'v.sc.lockScreen', keys: ['Control', 'Meta', 'q'], hint: '⌃⌘Q' }
   ],
   windows: [
-    { head: 'System' },
-    { label: 'Start', keys: ['Meta'], hint: 'Win' },
-    { label: 'Task view', keys: ['Meta', 'Tab'], hint: 'Win+Tab' },
-    { label: 'Switch apps', keys: ['Alt', 'Tab'], hint: 'Alt+Tab' },
+    { head: 1 },
+    { label: 'v.sc.start', keys: ['Meta'], hint: 'Win' },
+    { label: 'v.sc.taskView', keys: ['Meta', 'Tab'], hint: 'Win+Tab' },
+    { label: 'v.sc.switchApps', keys: ['Alt', 'Tab'], hint: 'Alt+Tab' },
     { sep: 1 },
-    { label: 'Copy', keys: ['Control', 'c'], hint: 'Ctrl+C' },
-    { label: 'Paste', keys: ['Control', 'v'], hint: 'Ctrl+V' },
-    { label: 'Undo', keys: ['Control', 'z'], hint: 'Ctrl+Z' },
+    { label: 'v.sc.copy', keys: ['Control', 'c'], hint: 'Ctrl+C' },
+    { label: 'v.sc.paste', keys: ['Control', 'v'], hint: 'Ctrl+V' },
+    { label: 'v.sc.undo', keys: ['Control', 'z'], hint: 'Ctrl+Z' },
     { sep: 1 },
-    { label: 'Close window', keys: ['Alt', 'F4'], hint: 'Alt+F4' },
-    { label: 'Show desktop', keys: ['Meta', 'd'], hint: 'Win+D' },
-    { label: 'Task Manager', keys: ['Control', 'Shift', 'Escape'], hint: 'Ctrl+Shift+Esc' },
-    { label: 'Lock', keys: ['Meta', 'l'], hint: 'Win+L' }
+    { label: 'v.sc.closeWindow', keys: ['Alt', 'F4'], hint: 'Alt+F4' },
+    { label: 'v.sc.showDesktop', keys: ['Meta', 'd'], hint: 'Win+D' },
+    { label: 'v.sc.taskManager', keys: ['Control', 'Shift', 'Escape'], hint: 'Ctrl+Shift+Esc' },
+    { label: 'v.sc.lock', keys: ['Meta', 'l'], hint: 'Win+L' }
   ],
   linux: [
-    { head: 'System' },
-    { label: 'Activities', keys: ['Meta'], hint: 'Super' },
-    { label: 'Switch apps', keys: ['Alt', 'Tab'], hint: 'Alt+Tab' },
+    { head: 1 },
+    { label: 'v.sc.activities', keys: ['Meta'], hint: 'Super' },
+    { label: 'v.sc.switchApps', keys: ['Alt', 'Tab'], hint: 'Alt+Tab' },
     { sep: 1 },
-    { label: 'Copy', keys: ['Control', 'c'], hint: 'Ctrl+C' },
-    { label: 'Paste', keys: ['Control', 'v'], hint: 'Ctrl+V' },
-    { label: 'Undo', keys: ['Control', 'z'], hint: 'Ctrl+Z' },
+    { label: 'v.sc.copy', keys: ['Control', 'c'], hint: 'Ctrl+C' },
+    { label: 'v.sc.paste', keys: ['Control', 'v'], hint: 'Ctrl+V' },
+    { label: 'v.sc.undo', keys: ['Control', 'z'], hint: 'Ctrl+Z' },
     { sep: 1 },
-    { label: 'Close window', keys: ['Alt', 'F4'], hint: 'Alt+F4' }
+    { label: 'v.sc.closeWindow', keys: ['Alt', 'F4'], hint: 'Alt+F4' }
   ]
 };
 var comboBusy = false;
@@ -1610,11 +1672,11 @@ function sendCombo(keys) {
 function showShortcuts(anchor) {
   var os = SHORTCUTS[hostOs()] ? hostOs() : 'windows';
   var items = SHORTCUTS[os].map(function (s) {
-    if (s.head) return { head: 'Shortcuts on ' + hostName() };
+    if (s.head) return { head: t('v.shortcutsOn', { host: hostName() }) };
     if (s.sep) return s;
-    return { label: s.label, hint: s.hint, disabled: !canControl(), fn: function () { sendCombo(s.keys); } };
+    return { label: t(s.label), hint: s.hint, disabled: !canControl(), fn: function () { sendCombo(s.keys); } };
   });
-  if (!canControl()) items.push({ note: 'View only — control is turned off on the host.' });
+  if (!canControl()) items.push({ note: t('v.viewOnlyNote') });
   showActions(anchor, items);
 }
 $('#bKeys').addEventListener('click', function (e) { e.stopPropagation(); showShortcuts(this); });
@@ -1630,7 +1692,7 @@ $('#bMore').addEventListener('click', function (e) {
     items.push({ label: label, icon: svg ? svg.outerHTML : '', checked: b.classList.contains('on') && (b.id === 'bFull' || b.id === 'bExtend'), fn: function () { b.click(); } });
   });
   if (canControl() && !$('#bKeys').hidden && getComputedStyle($('#bKeys')).display === 'none') {
-    items.unshift({ label: 'Shortcuts…', icon: $('#bKeys').querySelector('svg').outerHTML, fn: function () { setTimeout(function () { showShortcuts(more); }, 0); } });
+    items.unshift({ label: t('v.shortcutsMore'), icon: $('#bKeys').querySelector('svg').outerHTML, fn: function () { setTimeout(function () { showShortcuts(more); }, 0); } });
   }
   showActions(more, items);
 });
@@ -1644,52 +1706,53 @@ function updateClipSend() {
   if (clipSetTimer) return;
   clipSendBtn.disabled = !canControl() || !clipOut.value;
   var n = clipOut.value.length;
-  $('#clipOutNote').textContent = n ? n.toLocaleString() + (n === 1 ? ' character' : ' characters') : 'Goes to the clipboard on ' + hostName();
+  if (n) say('#clipOutNote', 'v.chars', { n: n, nf: n.toLocaleString(I18N.lang() === 'en' ? undefined : 'ru-RU') }); else say('#clipOutNote', 'v.clipGoesTo', { host: hostName() });
 }
+/* label: an i18n key */
 function setBtn(btn, label, done) {
-  btn.querySelector('span').textContent = label; btn.classList.toggle('done', !!done);
+  say(btn.querySelector('span'), label); btn.classList.toggle('done', !!done);
 }
 function renderClipIn() {
   clearTimeout(clipGetTimer); clipGetTimer = null;
   var has = !!hostClip;
   clipIn.classList.toggle('empty', !has);
-  clipIn.textContent = has ? (hostClip.length > 200000 ? hostClip.slice(0, 200000) + '\n…' : hostClip) : 'No text on the clipboard of ' + hostName();
+  if (has) plain(clipIn, hostClip.length > 200000 ? hostClip.slice(0, 200000) + '\n…' : hostClip); else say(clipIn, 'v.clipEmpty', { host: hostName() });
   clipCopyBtn.disabled = !has;
-  $('#clipInNote').textContent = has ? hostClip.length.toLocaleString() + (hostClip.length === 1 ? ' character' : ' characters') : '';
+  if (has) say('#clipInNote', 'v.chars', { n: hostClip.length, nf: hostClip.length.toLocaleString(I18N.lang() === 'en' ? undefined : 'ru-RU') }); else plain('#clipInNote', '');
 }
 function requestClip() {
   if (!hello) return;
-  if (hostClip == null) { clipIn.classList.add('empty'); clipIn.textContent = 'Loading…'; clipCopyBtn.disabled = true; }
+  if (hostClip == null) { clipIn.classList.add('empty'); say(clipIn, 'c.loading'); clipCopyBtn.disabled = true; }
   send({ t: 'clip.get' });
   clearTimeout(clipGetTimer);
   clipGetTimer = setTimeout(function () {
     clipGetTimer = null;
-    if (hostClip == null) { clipIn.textContent = 'No answer from ' + hostName(); $('#clipInNote').textContent = ''; }
+    if (hostClip == null) { say(clipIn, 'v.noAnswerFrom', { host: hostName() }); plain('#clipInNote', ''); }
   }, 5000);
 }
 function onClip(m) {
   var s = typeof m.s === 'string' ? m.s : '';
   hostClip = s; renderClipIn();
   if (m.auto && s && sheetClip.hidden && !viewer.hidden) {
-    toast(hostName() + ' copied text', 9000, false, { label: 'Copy', fn: function () { doCopy(s); } });
+    toast(t('v.copiedText', { host: hostName() }), 9000, false, { label: t('c.copy'), fn: function () { doCopy(s); } });
   }
 }
 function doCopy(s, btn) {
   copyText(s).then(function (ok) {
-    if (!ok) { toast('Couldn’t copy — select the text and copy it yourself', 3500, true); return; }
-    if (btn) { setBtn(btn, 'Copied', true); clearTimeout(clipDoneTimer); clipDoneTimer = setTimeout(function () { setBtn(btn, 'Copy', false); }, 1600); }
-    else toast('Copied', 1500);
+    if (!ok) { toast(t('v.copyFailed'), 3500, true); return; }
+    if (btn) { setBtn(btn, 'c.copied', true); clearTimeout(clipDoneTimer); clipDoneTimer = setTimeout(function () { setBtn(btn, 'c.copy', false); }, 1600); }
+    else toast(t('c.copied'), 1500);
   });
 }
 function sendClip() {
   var v = clipOut.value;
   if (!v || !canControl() || clipSetTimer) return;
-  if (utf8Len(v) > CLIP_MAX) { toast('Too long — 1 MB of text at most', 3000, true); return; }
+  if (utf8Len(v) > CLIP_MAX) { toast(t('v.clipTooLong'), 3000, true); return; }
   send({ t: 'clip.set', s: v });
-  clipSendBtn.disabled = true; setBtn(clipSendBtn, 'Sending…', false);
+  clipSendBtn.disabled = true; setBtn(clipSendBtn, 'v.sending', false);
   clipSetTimer = setTimeout(function () {
-    clipSetTimer = null; clipPending = null; setBtn(clipSendBtn, 'Send', false); updateClipSend();
-    toast('No answer from ' + hostName() + ' — try again', 3000, true);
+    clipSetTimer = null; clipPending = null; setBtn(clipSendBtn, 'v.send', false); updateClipSend();
+    toast(t('v.noAnswerRetry', { host: hostName() }), 3000, true);
   }, 6000);
   clipPending = v;
 }
@@ -1697,9 +1760,9 @@ function onClipOk() {
   if (!clipSetTimer) return;
   var v = clipPending; clipPending = null; clearTimeout(clipSetTimer); clipSetTimer = null;
   if (typeof v === 'string') { hostClip = v; renderClipIn(); }
-  setBtn(clipSendBtn, 'Sent', true); clipSendBtn.disabled = true;
-  toast('On the clipboard of ' + hostName(), 2000);
-  setTimeout(function () { if (!clipSetTimer) { setBtn(clipSendBtn, 'Send', false); updateClipSend(); } }, 1600);
+  setBtn(clipSendBtn, 'v.sent', true); clipSendBtn.disabled = true;
+  toast(t('v.onClipboardOf', { host: hostName() }), 2000);
+  setTimeout(function () { if (!clipSetTimer) { setBtn(clipSendBtn, 'v.send', false); updateClipSend(); } }, 1600);
 }
 clipOut.addEventListener('input', updateClipSend);
 clipOut.addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendClip(); } });
@@ -1728,9 +1791,9 @@ function fetchFiles() {
     renderFiles();
   }).catch(function (st) {
     if (seq !== filesSeq) return;
-    filesState.err = st === 401 ? 'Session expired — reconnecting should fix it.'
-      : st === 403 ? 'Files are turned off on the host.'
-      : typeof st === 'number' ? 'The host answered with an error (' + st + ').' : 'Couldn’t reach the host.';
+    filesState.err = st === 401 ? ['v.filesErrSession']
+      : st === 403 ? ['v.filesErrOff']
+      : typeof st === 'number' ? ['v.filesErrStatus', { status: st }] : ['v.filesErrReach'];
     renderFiles();
   });
 }
@@ -1739,18 +1802,18 @@ function renderFiles() {
   var ul = $('#filesList'), st = filesState;
   if (st.folder) $('#filesFolder').textContent = st.folder;
   ul.textContent = '';
-  $('#filesCount').textContent = st.list && st.list.length ? st.list.length + (st.list.length === 1 ? ' file' : ' files') : '';
+  $('#filesCount').textContent = st.list && st.list.length ? I18N.t('v.fileCount', { n: st.list.length }) : '';
   if (st.err) {
     var e = document.createElement('li'); e.className = 'empty';
-    var s1 = document.createElement('strong'); s1.textContent = 'Couldn’t load files'; e.appendChild(s1);
-    var s2 = document.createElement('span'); s2.textContent = st.err; e.appendChild(s2);
+    var s1 = document.createElement('strong'); s1.textContent = I18N.t('v.filesLoadFailed'); e.appendChild(s1);
+    var s2 = document.createElement('span'); s2.textContent = typeof st.err === 'string' ? I18N.message(st.err) : I18N.t(st.err[0], st.err[1]); e.appendChild(s2);
     ul.appendChild(e); return;
   }
-  if (!st.list) { var l0 = document.createElement('li'); l0.className = 'empty'; l0.innerHTML = '<strong>Loading…</strong>'; ul.appendChild(l0); return; }
+  if (!st.list) { var l0 = document.createElement('li'); l0.className = 'empty'; l0.innerHTML = '<strong></strong>'; l0.firstChild.textContent = I18N.t('c.loading'); ul.appendChild(l0); return; }
   if (!st.list.length) {
     var em = document.createElement('li'); em.className = 'empty';
-    var a1 = document.createElement('strong'); a1.textContent = 'No files yet'; em.appendChild(a1);
-    var a2 = document.createElement('span'); a2.textContent = canControl() ? 'Upload something, or drop files into the folder on ' + hostName() + '.' : 'Files put in the folder on ' + hostName() + ' appear here.';
+    var a1 = document.createElement('strong'); a1.textContent = I18N.t('v.noFiles'); em.appendChild(a1);
+    var a2 = document.createElement('span'); a2.textContent = I18N.t(canControl() ? 'v.noFilesUpload' : 'v.noFilesView', { host: hostName() });
     em.appendChild(a2); ul.appendChild(em); return;
   }
   var tok = hello && hello.token;
@@ -1758,11 +1821,11 @@ function renderFiles() {
     var li = document.createElement('li'); li.className = 'file' + (st.fresh[f.name] ? ' fresh' : '');
     var a = document.createElement('a'); a.className = 'fl';
     if (CLOUD) {
-      a.href = '#'; a.title = 'Download ' + f.name;
+      a.href = '#'; a.title = I18N.t('v.download', { name: f.name });
       a.addEventListener('click', function (e) { e.preventDefault(); cloudDownload(f); });
     } else {
       a.href = '/api/files/download?name=' + encodeURIComponent(f.name) + '&s=' + encodeURIComponent(tok || '');
-      a.setAttribute('download', f.name); a.title = 'Download ' + f.name;
+      a.setAttribute('download', f.name); a.title = I18N.t('v.download', { name: f.name });
     }
     var ic = document.createElement('span'); ic.className = 'ficon'; ic.textContent = fileExt(f.name) || '•'; a.appendChild(ic);
     var meta = document.createElement('span'); meta.className = 'fmeta';
@@ -1780,7 +1843,7 @@ function showUpl(name, pct, state) {
   var box = $('#upl'); clearTimeout(uplHideTimer);
   box.hidden = false; box.classList.toggle('err', state === 'err'); box.classList.toggle('ok', state === 'ok');
   $('#uplName').textContent = name;
-  $('#uplPct').textContent = pct == null ? '' : Math.round(pct) + '%';
+  $('#uplPct').textContent = pct == null ? '' : Math.round(pct) + (I18N.lang() === 'ru' ? '\u00a0%' : '%');
   $('#uplBar').style.width = (pct == null ? 100 : pct) + '%';
   box.querySelector('.prog').setAttribute('aria-valuenow', String(Math.round(pct || 0)));
   $('#uplCancel').hidden = !!state;
@@ -1789,32 +1852,32 @@ function showUpl(name, pct, state) {
 function uploadFiles(list) {
   var files = Array.prototype.slice.call(list || []);
   if (!files.length || !hello) return;
-  if (!canControl()) { toast('Control is off on the host', 3000, true); return; }
-  if (upl) { toast('Wait for the current upload to finish', 2500); return; }
+  if (!canControl()) { toast(t('v.controlOffHost'), 3000, true); return; }
+  if (upl) { toast(t('v.waitUpload'), 2500); return; }
   if (sheetFiles.hidden) openFiles();
-  var label = files.length === 1 ? files[0].name : files.length + ' files';
+  var label = files.length === 1 ? files[0].name : t('v.fileCount', { n: files.length });
   var total = files.reduce(function (s, f) { return s + (f.size || 0); }, 0);
   if (CLOUD) { cloudUpload(files, label, total); return; }
   var fd = new FormData(); files.forEach(function (f) { fd.append('file', f, f.name); });
   var xhr = new XMLHttpRequest(); upl = xhr;
   xhr.open('POST', '/api/files/upload');
   xhr.setRequestHeader('X-LV-Session', hello.token || '');
-  showUpl('Sending ' + label + ' · ' + fmtSize(total), 0);
-  xhr.upload.onprogress = function (e) { if (e.lengthComputable && upl === xhr) showUpl('Sending ' + label + ' · ' + fmtSize(total), e.loaded / e.total * 99); };
+  showUpl(t('v.sendingWhat', { what: label, size: fmtSize(total) }), 0);
+  xhr.upload.onprogress = function (e) { if (e.lengthComputable && upl === xhr) showUpl(t('v.sendingWhat', { what: label, size: fmtSize(total) }), e.loaded / e.total * 99); };
   xhr.onload = function () {
     upl = null;
     if (xhr.status >= 200 && xhr.status < 300) {
       var saved = []; try { saved = JSON.parse(xhr.responseText).saved || []; } catch (e) {}
       filesState.fresh = {}; saved.forEach(function (n) { filesState.fresh[n] = 1; });
-      showUpl((saved.length > 1 ? saved.length + ' files' : (saved[0] || label)) + ' sent to ' + hostName(), 100, 'ok');
+      showUpl(t('v.sentTo', { what: saved.length > 1 ? t('v.fileCount', { n: saved.length }) : (saved[0] || label), host: hostName() }), 100, 'ok');
       fetchFiles();
-    } else if (xhr.status === 403) { showUpl('Control is off on the host', 100, 'err'); setControlOff(); }
-    else if (xhr.status === 401) showUpl('Session expired — reconnect and try again', 100, 'err');
-    else if (xhr.status === 413) showUpl('Too large for the host (4 GB max per file)', 100, 'err');
-    else showUpl('Upload failed' + (xhr.status ? ' (' + xhr.status + ')' : ''), 100, 'err');
+    } else if (xhr.status === 403) { showUpl(t('v.controlOffHost'), 100, 'err'); setControlOff(); }
+    else if (xhr.status === 401) showUpl(t('v.sessionExpiredRetry'), 100, 'err');
+    else if (xhr.status === 413) showUpl(t('v.tooLarge'), 100, 'err');
+    else showUpl(xhr.status ? t('v.uploadFailedStatus', { status: xhr.status }) : I18N.message(M('msg.uploadFailed')), 100, 'err');
   };
-  xhr.onerror = function () { upl = null; showUpl('Upload failed — connection lost', 100, 'err'); };
-  xhr.onabort = function () { upl = null; showUpl('Upload cancelled', 0, 'err'); };
+  xhr.onerror = function () { upl = null; showUpl(t('v.uploadLost'), 100, 'err'); };
+  xhr.onabort = function () { upl = null; showUpl(t('v.uploadCancelled'), 0, 'err'); };
   xhr.send(fd);
 }
 
@@ -1827,10 +1890,10 @@ function onFilesList(m) {
 var cdl = null; // download in progress
 function b64ToBytes(s) { var bin = atob(s), a = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a; }
 function cloudDownload(f) {
-  if (upl) { toast('Wait for the current transfer to finish', 2500); return; }
+  if (upl) { toast(t('v.waitTransfer'), 2500); return; }
   var d = cdl = { id: rid(), name: f.name, size: f.size || 0, parts: [], got: 0 };
-  upl = { abort: function () { send({ t: 'down.abort', id: d.id }); if (cdl === d) cdl = null; upl = null; showUpl('Download cancelled', 0, 'err'); } };
-  showUpl('Receiving ' + d.name + ' · ' + fmtSize(d.size), 0);
+  upl = { abort: function () { send({ t: 'down.abort', id: d.id }); if (cdl === d) cdl = null; upl = null; showUpl(t('v.downloadCancelled'), 0, 'err'); } };
+  showUpl(t('v.receivingWhat', { name: d.name, size: fmtSize(d.size) }), 0);
   send({ t: 'down', id: d.id, name: f.name });
 }
 function onDown(m) {
@@ -1839,26 +1902,26 @@ function onDown(m) {
   if (m.t === 'down.start') { d.size = m.size || d.size; d.name = m.name || d.name; }
   else if (m.t === 'down.data') {
     var b = b64ToBytes(m.d || ''); d.parts.push(b); d.got += b.length;
-    showUpl('Receiving ' + d.name + ' · ' + fmtSize(d.size), d.size ? Math.min(99, d.got / d.size * 99) : 50);
+    showUpl(t('v.receivingWhat', { name: d.name, size: fmtSize(d.size) }), d.size ? Math.min(99, d.got / d.size * 99) : 50);
   } else if (m.t === 'down.end') {
     cdl = null; upl = null;
     var url = URL.createObjectURL(new Blob(d.parts)), a = document.createElement('a');
     a.href = url; a.download = d.name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
-    showUpl(d.name + ' downloaded', 100, 'ok');
-  } else if (m.t === 'down.err') { cdl = null; upl = null; showUpl(m.msg || 'Download failed', 100, 'err'); }
+    showUpl(t('v.downloaded', { name: d.name }), 100, 'ok');
+  } else if (m.t === 'down.err') { cdl = null; upl = null; showUpl(I18N.message(m.msg || M('msg.downloadFailed')), 100, 'err'); }
 }
 var cup = null; // upload in progress {id, file, pos, ctx}
 function cloudUpload(files, label, total) {
   var idx = 0, sent = 0, saved = [], cancelled = false;
   var ctx = {
-    fail: function (msg) { cup = null; upl = null; showUpl(msg, 100, 'err'); if (/only allows viewing/i.test(msg)) setControlOff(); },
+    fail: function (msg) { cup = null; upl = null; showUpl(I18N.message(msg), 100, 'err'); if (/only allows viewing/i.test(msg)) setControlOff(); },
     next: function () {
       if (cancelled) return;
       if (idx >= files.length) {
         cup = null; upl = null;
         filesState.fresh = {}; saved.forEach(function (n) { filesState.fresh[n] = 1; });
-        showUpl((saved.length > 1 ? saved.length + ' files' : (saved[0] || label)) + ' sent to ' + hostName(), 100, 'ok');
+        showUpl(t('v.sentTo', { what: saved.length > 1 ? t('v.fileCount', { n: saved.length }) : (saved[0] || label), host: hostName() }), 100, 'ok');
         fetchFiles(); return;
       }
       var f = files[idx++];
@@ -1869,23 +1932,23 @@ function cloudUpload(files, label, total) {
       var u = cup;
       if (cancelled || !u) return;
       var dc = ws;
-      if (!dc || dc.readyState !== 'open') { ctx.fail('Upload failed — connection lost'); return; }
+      if (!dc || dc.readyState !== 'open') { ctx.fail(t('v.uploadLost')); return; }
       if (dc.bufferedAmount > 1048576) { setTimeout(ctx.pump, 30); return; }   // let the network catch up
       if (u.pos >= u.file.size) { send({ t: 'up.end', id: u.id }); return; }
       u.file.slice(u.pos, u.pos + 36000).arrayBuffer().then(function (buf) {
         if (cup !== u || cancelled) return;
         var bytes = new Uint8Array(buf), bin = '';
         for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-        try { dc.send(JSON.stringify({ t: 'up.data', id: u.id, d: btoa(bin) })); } catch (e) { ctx.fail('Upload failed — connection lost'); return; }
+        try { dc.send(JSON.stringify({ t: 'up.data', id: u.id, d: btoa(bin) })); } catch (e) { ctx.fail(t('v.uploadLost')); return; }
         u.pos += bytes.length; sent += bytes.length;
-        showUpl('Sending ' + label + ' · ' + fmtSize(total), total ? Math.min(99, sent / total * 99) : 50);
+        showUpl(t('v.sendingWhat', { what: label, size: fmtSize(total) }), total ? Math.min(99, sent / total * 99) : 50);
         ctx.pump();
-      }, function () { ctx.fail('Couldn’t read ' + u.file.name); });
+      }, function () { ctx.fail(t('v.cantRead', { name: u.file.name })); });
     },
     done: function (name) { saved.push(name); ctx.next(); }
   };
-  upl = { abort: function () { cancelled = true; if (cup) send({ t: 'up.abort', id: cup.id }); cup = null; upl = null; showUpl('Upload cancelled', 0, 'err'); } };
-  showUpl('Sending ' + label + ' · ' + fmtSize(total), 0);
+  upl = { abort: function () { cancelled = true; if (cup) send({ t: 'up.abort', id: cup.id }); cup = null; upl = null; showUpl(t('v.uploadCancelled'), 0, 'err'); } };
+  showUpl(t('v.sendingWhat', { what: label, size: fmtSize(total) }), 0);
   ctx.next();
 }
 function onUp(m) {
@@ -1893,14 +1956,13 @@ function onUp(m) {
   if (!u || m.id !== u.id) return;
   if (m.t === 'up.ready') u.ctx.pump();
   else if (m.t === 'up.done') u.ctx.done(m.name || u.file.name);
-  else if (m.t === 'up.err') u.ctx.fail(m.msg || 'Upload failed');
+  else if (m.t === 'up.err') u.ctx.fail(m.msg || M('msg.uploadFailed'));
 }
 $('#uplCancel').addEventListener('click', function () { if (upl) upl.abort(); });
 $('#filesUpload').addEventListener('click', function () { if (canControl()) $('#filesInput').click(); });
 $('#filesInput').addEventListener('change', function () { var fs = this.files; uploadFiles(fs); this.value = ''; });
 function openFiles() {
   openSheet(sheetFiles);
-  $('#filesHow').textContent = coarse ? 'Tap' : 'Click';
   if (!filesState.list || filesState.stale || filesState.err) { if (!filesState.list) renderFiles(); fetchFiles(); } else renderFiles();
 }
 $('#bFiles').addEventListener('click', openFiles);
@@ -1917,8 +1979,8 @@ document.addEventListener('dragenter', function (e) {
   if (dragDepth++ === 0) {
     var ctl = canControl();
     drop.classList.toggle('off', !ctl);
-    $('#dropTitle').textContent = ctl ? 'Drop to send to ' + hostName() : 'View only';
-    $('#dropSub').textContent = ctl ? 'Saved to ' + (filesState.folder || 'Downloads/Hop') : 'Uploading is turned off on the host';
+    $('#dropTitle').textContent = ctl ? t('v.dropToSendTo', { host: hostName() }) : t('c.viewOnly');
+    $('#dropSub').textContent = ctl ? t('v.savedTo', { folder: filesState.folder || 'Downloads/Hop' }) : t('v.uploadingOff');
     drop.hidden = false;
   }
 });
@@ -1953,14 +2015,17 @@ var selMonitor = makeSelect($('#sMonitor'), function (v) {
   setZoom(1);
 });
 setSelectOptions(selMonitor, []);
+var lastMons = null;
 function renderMonitors(mons) {
+  lastMons = mons;
   setSelectOptions(selMonitor, mons.map(function (mo, i) {
-    return { value: mo.index, label: (mo.virtual ? 'Second screen' : 'Display ' + (i + 1)) + ' · ' + mo.width + '×' + mo.height };
+    return { value: mo.index, label: (mo.virtual ? t('c.secondScreen') : t('v.displayN', { n: i + 1 })) + ' · ' + mo.width + '×' + mo.height };
   }));
-  $('#monHint').textContent = mons.length > 1 ? mons.length + ' displays on ' + hostName() : 'Screen to show';
+  if (mons.length > 1) say('#monHint', 'v.displaysOn', { n: mons.length, host: hostName() }); else say('#monHint', 'v.screenToShow');
 }
 var selMaxw = makeSelect($('#sMaxw'), function (v) { settings.maxw = +v; saveSettings(); send({ t: 'settings', maxw: settings.maxw }); });
-setSelectOptions(selMaxw, MAXWS.map(function (v) { return { value: v, label: v + ' px' }; }));
+function renderMaxw() { setSelectOptions(selMaxw, MAXWS.map(function (v) { return { value: v, label: t('u.px', { n: v }) }; })); }
+renderMaxw();
 setSelect(selMaxw, +settings.maxw);
 segInit($('#sFps'), function (v) { settings.fps = +v; saveSettings(); send({ t: 'settings', fps: settings.fps }); });
 setSeg($('#sFps'), +settings.fps);
@@ -1979,26 +2044,27 @@ function updateExtendUI() {
   var on = extendState !== 'off';
   $('#bExtend').hidden = !hello || !canControl();
   $('#bExtend').classList.toggle('on', on);
-  $('#bExtend').title = on ? 'Stop being a second screen' : 'Use as a second screen';
+  say('#bExtend', on ? 'v.stopSecond' : 'v.useAsSecond', null, 'title');
   setSeg($('#sView'), on ? 'extend' : 'control');
   var hint = $('#modeHint');
-  if (!hello) hint.textContent = 'Control shows the other computer’s screen. Second screen turns this screen into an extra display for it.';
-  else if (!canControl()) hint.textContent = 'Second screen needs control, which is turned off on ' + hostName() + '.';
-  else if (!hasFeature('extend')) hint.textContent = hostName() + ' can’t add a display by itself. On Windows, install a virtual display driver (or plug in an HDMI dummy plug), then choose that display under Display.';
-  else hint.textContent = on ? 'This screen is an extra display for ' + hostName() + '. Move its mouse past the edge of its main screen.' : 'Control shows ' + hostName() + '’s screen. Second screen turns this screen into an extra display for it.';
-  $('#statName').textContent = (hello && hello.name ? hello.name : 'Host') + (extendState === 'on' ? ' · second screen' : '');
+  var h = { host: hostName() };
+  if (!hello) say(hint, 'v.modeHint');
+  else if (!canControl()) say(hint, 'v.modeHintNoControl', h);
+  else if (!hasFeature('extend')) say(hint, 'v.modeHintNoExtend', h);
+  else say(hint, on ? 'v.modeHintOn' : 'v.modeHintOff', h);
+  $('#statName').textContent = (hello && hello.name ? hello.name : t('v.host')) + (extendState === 'on' ? t('v.secondScreenSuffix') : '');
 }
 function startExtend() {
   if (!hello) { wantExtend = true; return; }
-  if (!canControl()) { toast('Second screen needs control, which is off on ' + hostName(), 3500, true); updateExtendUI(); return; }
-  if (!hasFeature('extend')) { toast(hostName() + ' can’t add a display by itself — see Settings → Mode', 4500, true); openSheet(sheetSettings); updateExtendUI(); return; }
+  if (!canControl()) { toast(t('v.needControlExtend', { host: hostName() }), 3500, true); updateExtendUI(); return; }
+  if (!hasFeature('extend')) { toast(t('v.cantExtend', { host: hostName() }), 4500, true); openSheet(sheetSettings); updateExtendUI(); return; }
   var z = extendSize();
   wantExtend = true; extendState = 'starting'; updateExtendUI();
   enterFull(); // works right away in Hop windows and after a click in browsers
   send({ t: 'extend', w: z.w, h: z.h, hidpi: z.hidpi, side: 'right' });
   // a sharp, smooth stream of the whole new display (not saved: Control mode keeps your settings)
   send({ t: 'settings', maxw: Math.min(3840, Math.round(z.w * (z.hidpi ? 2 : 1))), fps: 30, quality: 70 });
-  toast('Adding a display to ' + hostName() + '…', 2000);
+  toast(t('v.addingDisplay', { host: hostName() }), 2000);
 }
 function stopExtend(silent) {
   wantExtend = false;
@@ -2006,7 +2072,7 @@ function stopExtend(silent) {
   extendState = 'off'; updateExtendUI();
   send({ t: 'extend.stop' });
   send({ t: 'settings', maxw: +settings.maxw, fps: +settings.fps, quality: +settings.quality });
-  if (!silent) toast(hostName() + ' is back to one screen here', 2200);
+  if (!silent) toast(t('v.backToOne', { host: hostName() }), 2200);
 }
 function onExtendMsg(m) {
   if (m.t === 'extend.ok') {
@@ -2015,12 +2081,12 @@ function onExtendMsg(m) {
     renderMonitors(m.monitors || []); setSelect(selMonitor, m.monitor);
     if (m.width && m.height && !bmp) { imgW = m.width; imgH = m.height; }
     setZoom(1); collapseToolbar(); updateExtendUI();
-    toast('This screen is now a second display for ' + hostName() + '. Move its mouse past the right edge of its screen.', 5000);
-    if (!appApi() && !isFull() && fsSupported) toast('Tip: click ⛶ in the toolbar for full screen', 4000);
+    toast(t('v.nowSecond', { host: hostName() }), 5000);
+    if (!appApi() && !isFull() && fsSupported) toast(t('v.fullTip'), 4000);
   } else if (m.t === 'extend.err') {
     wantExtend = false; extendState = 'off'; updateExtendUI();
     send({ t: 'settings', maxw: +settings.maxw, fps: +settings.fps, quality: +settings.quality });
-    toast(String(m.msg || 'Couldn’t add a display'), 6000, true);
+    toast(I18N.message(String(m.msg || M('msg.cantAddDisplay'))), 6000, true);
   } else if (m.t === 'extend.off') {
     renderMonitors(m.monitors || []); setSelect(selMonitor, m.monitor);
     settings.monitor = m.monitor;
@@ -2029,6 +2095,7 @@ function onExtendMsg(m) {
 segInit($('#sView'), function (v) { if (v === 'extend') startExtend(); else stopExtend(); });
 $('#bExtend').addEventListener('click', function () { if (extendState === 'off') startExtend(); else stopExtend(); });
 segInit($('#themeSeg'), setTheme);
+segInit($('#langSeg'), setLanguage);
 sQ.addEventListener('input', paintQuality);
 sQ.addEventListener('change', function () { settings.quality = +sQ.value; saveSettings(); send({ t: 'settings', quality: settings.quality }); });
 $('#sSwap').addEventListener('change', function (e) {
@@ -2037,7 +2104,7 @@ $('#sSwap').addEventListener('change', function (e) {
 });
 function updateSwapUI() {
   $('#sSwap').checked = swap;
-  $('#swapHint').textContent = (isMacClient ? 'This device: Apple' : 'This device: PC') + ' · Host: ' + (OS_NAMES[hostOs()] || '?');
+  say('#swapHint', isMacClient ? 'v.swapHintApple' : 'v.swapHintPc', { os: OS_NAMES[hostOs()] || '?' });
 }
 function updateKeyLabels() {
   var mac = hostOs() === 'mac';
@@ -2557,13 +2624,13 @@ var XS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5
 function renderRecents() {
   var list = recents(), ul = $('#recentList');
   $('#recentBlock').hidden = !list.length;
-  $('#recentNote').textContent = list.length ? list.length + (list.length === 1 ? ' computer' : ' computers') : '';
+  $('#recentNote').textContent = list.length ? t('v.computerCount', { n: list.length }) : '';
   ul.textContent = '';
   list.forEach(function (x) {
     var li = document.createElement('li'); li.className = 'peer';
     var a = document.createElement('a'); a.className = 'pl'; a.href = '#id=' + x.id;
     a.innerHTML = OS_ICON[x.os] || OS_ICON.windows;
-    var n = document.createElement('span'); n.className = 'title'; n.textContent = x.name || ('Computer ' + fmtId(x.id)); a.appendChild(n);
+    var n = document.createElement('span'); n.className = 'title'; n.textContent = x.name || t('v.computerN', { id: fmtId(x.id) }); a.appendChild(n);
     var gr = document.createElement('span'); gr.className = 'grow'; a.appendChild(gr);
     var idt = document.createElement('span'); idt.className = 'time'; idt.textContent = fmtId(x.id); a.appendChild(idt);
     a.insertAdjacentHTML('beforeend', CHEV);
@@ -2572,8 +2639,8 @@ function renderRecents() {
       $('#cid').value = fmtId(x.id); $('#cpw').value = x.pw || '';
       if (x.pw) startCloudConnect(x.id, x.pw); else $('#cpw').focus();
     });
-    var f = document.createElement('button'); f.type = 'button'; f.className = 'forget'; f.title = 'Forget this computer';
-    f.setAttribute('aria-label', 'Forget ' + (x.name || fmtId(x.id))); f.innerHTML = XS;
+    var f = document.createElement('button'); f.type = 'button'; f.className = 'forget'; f.title = t('v.forgetComputer');
+    f.setAttribute('aria-label', t('v.forgetName', { name: x.name || fmtId(x.id) })); f.innerHTML = XS;
     f.addEventListener('click', function () { saveRecents(recents().filter(function (y) { return y.id !== x.id; })); renderRecents(); });
     li.appendChild(a); li.appendChild(f); ul.appendChild(li);
   });
@@ -2583,15 +2650,15 @@ function enterCloudMode() {
   $('#cloudForm').hidden = false;
   connectBtn.setAttribute('form', 'cloudForm');
   var chip = $('#hero .chip');
-  if (chip) { chip.title = 'Video and control go directly between your devices, encrypted'; chip.lastChild.textContent = 'Encrypted'; }
-  $('#headline').textContent = 'Your computers, anywhere';
-  $('#summary').textContent = 'Enter the ID and password shown in Hop';
-  var foot = $('#connect .footer .foot'); if (foot) foot.textContent = 'Turn on Internet access in Hop on the computer you want to reach.';
+  if (chip) { chip.setAttribute('data-i18n-title', 'v.encryptedTitle'); chip.lastChild.setAttribute('data-i18n', 'v.encrypted'); I18N.apply(chip.parentNode); }
+  say('#headline', 'v.cloudHeadline');
+  say('#summary', 'v.cloudSummary');
+  var foot = $('#connectFoot'); foot.setAttribute('data-i18n', 'v.footCloud'); I18N.apply(foot.parentNode);
   $('#bDevices').hidden = true;
-  $('#aboutText').textContent = 'Sees and controls your computers from anywhere. This page only introduces your devices; the picture, control, clipboard, files and password go directly between them, encrypted.';
+  var about = $('#aboutText'); about.setAttribute('data-i18n', 'v.aboutCloud'); I18N.apply(about.parentNode);
   var q = $('#sQuality'); if (q && q.closest('.srow')) q.closest('.srow').hidden = true; // video bitrate adapts by itself
   document.title = 'Hop';
-  setHero('armed', 'Ready', 'idle');
+  setHero('armed', 'v.ready', 'idle');
   renderRecents();
 }
 // This browser's pairing key: the computer remembers it after the first connection is confirmed there.
@@ -2605,23 +2672,24 @@ function deviceIdentity() {
   return { id: d.id, token: d.token };
 }
 function showPairCode(code, msg) {
-  setHero('countdown', 'Confirm on the computer', 'connecting');
+  setHero('countdown', 'v.confirmOnComputer', 'connecting');
   hero.classList.add('pairing');
-  $('#headline').textContent = String(code).replace(/(\d{3})(\d{3})/, '$1 $2');
-  $('#summary').textContent = msg || 'Type this code into Hop on the computer to trust this device.';
-  setCta('Waiting for the code to be typed…', true);
-  $('#cloudErr').textContent = '';
-  if (!overlay.hidden) ovText.textContent = 'Code ' + code + ' — type it into Hop on the computer';
+  plain('#headline', String(code).replace(/(\d{3})(\d{3})/, '$1 $2'));
+  if (msg) sayMsg('#summary', msg); else say('#summary', 'v.pairSummary');
+  setCta('v.waitingCode', true);
+  sayMsg('#cloudErr', '');
+  if (!overlay.hidden) say(ovText, 'v.codeOverlay', { code: code });
 }
-function cloudError(msg) { $('#cloudErr').textContent = msg; setHero('error', 'Check the details', 'error'); }
+/* msg: English (msg.*), or key: our own i18n key */
+function cloudError(msg, key) { if (key) say('#cloudErr', key); else sayMsg('#cloudErr', msg); setHero('error', 'v.checkDetails', 'error'); }
 function startCloudConnect(id, pw) {
   id = String(id || '').replace(/\D/g, ''); pw = String(pw || '').trim();
-  if (id.length !== 9) { cloudError('The computer ID has 9 digits'); $('#cid').focus(); return; }
-  if (!pw) { cloudError('Enter the password shown in Hop on that computer'); $('#cpw').focus(); return; }
+  if (id.length !== 9) { cloudError(null, 'c.computerId9'); $('#cid').focus(); return; }
+  if (!pw) { cloudError(null, 'v.enterPassword'); $('#cpw').focus(); return; }
   cloudId = id; cloudPw = pw; cloudRetry = 0;
-  $('#cloudErr').textContent = '';
-  setCta('Connecting…', true);
-  setHero('countdown', 'Connecting', 'connecting');
+  sayMsg('#cloudErr', '');
+  setCta('c.connecting', true);
+  setHero('countdown', 'v.connectingBadge', 'connecting');
   everHello = false; retry = 0;
   connect();
 }
@@ -2631,10 +2699,10 @@ $('#cid').addEventListener('input', function () {
   var pos = 0, seen = 0; // keep the caret after the same digit
   while (pos < el.value.length && seen < digitsBefore) { if (/\d/.test(el.value[pos])) seen++; pos++; }
   try { el.setSelectionRange(pos, pos); } catch (e) {}
-  $('#cloudErr').textContent = '';
+  sayMsg('#cloudErr', '');
   if (el.value.replace(/\D/g, '').length === 9 && document.activeElement === el && !$('#cpw').value) $('#cpw').focus();
 });
-$('#cpw').addEventListener('input', function () { $('#cloudErr').textContent = ''; });
+$('#cpw').addEventListener('input', function () { sayMsg('#cloudErr', ''); });
 $('#cloudForm').addEventListener('submit', function (e) { e.preventDefault(); startCloudConnect($('#cid').value, $('#cpw').value); });
 
 function teardownRtc() {
@@ -2658,7 +2726,7 @@ function connectCloud() {
   clearTimeout(retryTimer); clearTimeout(connectTimer);
   if (ws) { var old = ws; ws = null; try { old.onclose = null; old.close(); } catch (e) {} }
   teardownRtc();
-  if (!window.RTCPeerConnection) { onServerError('This browser can’t make internet connections (WebRTC is missing)', false); return; }
+  if (!window.RTCPeerConnection) { onServerError(M('msg.noWebrtc'), false); return; }
   wantConnected = true; authFailed = false;
   var r = { pc: null, dc: null, sig: null, answered: false }; rtc = r;
   var st = { gotHello: false, sock: null }, ended = false;
@@ -2671,18 +2739,18 @@ function connectCloud() {
     // switching networks): keep retrying. Refusals (wrong password, lockout, declined…) still stop.
     if (msg && !had && everHello && /offline|too many|reach|answer|directly/i.test(msg)) msg = null;
     if (msg && !had) { onServerError(msg, false); return; }
-    if (msg) toast(msg, 3500, true);
+    if (msg) toast(I18N.message(msg), 3500, true);
     onClosed(had);
   }
   connectTimer = setTimeout(function () {
-    if (!st.gotHello) end(everHello ? null : 'The computer didn’t answer. Check that it’s online, then try again.');
+    if (!st.gotHello) end(everHello ? null : M('msg.noAnswer'));
   }, 30000);
   fetch(cloudApi('/api/ice'), { cache: 'no-store' }).then(function (x) { return x.json(); }).catch(function () { return {}; }).then(function (ice) {
     if (rtc !== r) return;
     var servers = (ice && ice.iceServers && ice.iceServers.length) ? ice.iceServers : [{ urls: 'stun:stun.cloudflare.com:3478' }];
     var sig;
     try { sig = new WebSocket(CLOUD_BASE.replace(/^http/, 'ws') + '/ws/view?id=' + cloudId + '&k=' + encodeURIComponent(CLOUD_KEY)); }
-    catch (e) { end(everHello ? null : 'Can’t reach the connection server'); return; }
+    catch (e) { end(everHello ? null : M('msg.cantReachServer')); return; }
     r.sig = sig;
     sig.onmessage = function (ev) {
       if (rtc !== r) return;
@@ -2691,10 +2759,10 @@ function connectCloud() {
       else if (m.t === 'answer' && r.pc) {
         r.answered = true;
         r.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp }).catch(function () { end(null); });
-      } else if (m.t === 'error') end(String(m.msg || 'Error'));
+      } else if (m.t === 'error') end(String(m.msg || M('msg.error')));
     };
     sig.onclose = function () {
-      if (rtc === r && !r.answered) end(everHello ? null : 'Can’t reach that computer right now. Check the ID and try again in a minute.');
+      if (rtc === r && !r.answered) end(everHello ? null : M('msg.cantReachNow'));
     };
   });
   function startPeer(servers) {
@@ -2713,7 +2781,7 @@ function connectCloud() {
         return;
       }
       if (rtc === r && (pc.connectionState === 'failed' || pc.connectionState === 'closed')) {
-        end(st.gotHello || everHello ? null : 'Couldn’t reach that computer directly. Its network may block it — try another network, or set up the relay (see README).');
+        end(st.gotHello || everHello ? null : M('msg.notDirect'));
       }
     };
     dc.onopen = function () {
@@ -2741,7 +2809,7 @@ function connectCloud() {
       .then(function () {
         if (rtc !== r) return;
         if (r.sig && r.sig.readyState === 1) r.sig.send(JSON.stringify({ t: 'offer', sdp: pc.localDescription.sdp }));
-        else end(everHello ? null : 'Can’t reach the connection server');
+        else end(everHello ? null : M('msg.cantReachServer'));
       })
       .catch(function () { end(null); });
   }
@@ -2775,7 +2843,23 @@ setInterval(function () {
 }, 1000);
 
 /* ================= boot ================= */
-applyTheme(); renderPin(); setHero('preview', 'Looking…', 'idle');
+// Text that starts out in the page but is changed at run time
+say('#headline', 'v.findingHost'); say('#ctaText', 'c.connect'); say(ovText, 'c.connecting');
+say('#monHint', 'v.chooseDisplay'); say('#modeHint', 'v.modeHintStart'); say(clipIn, 'c.loading');
+setBtn(clipSendBtn, 'v.send'); setBtn(clipCopyBtn, 'c.copy'); setHostNames();
+$('#statName').textContent = t('v.host');
+onLanguage(function () {
+  closeMenu(); setHostNames(); renderPeers(); updateSwapUI(); renderMaxw();
+  if (CLOUD) renderRecents();
+  if (hello) updateExtendUI(); else $('#statName').textContent = t('v.host');
+  if (lastMons) renderMonitors(lastMons);
+  if (hostInfo) renderSummary();
+  if (hostClip != null) renderClipIn();
+  updateClipSend();
+  if (!sheetFiles.hidden) renderFiles();
+});
+setLanguage(I18N.lang());
+applyTheme(); renderPin(); setHero('preview', 'v.looking', 'idle');
 swap = swapOn(); updateSwapUI(); updateKeyLabels(); applyMode(); setZoom(1);
 if (!coarse) collapseToolbar();
 

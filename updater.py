@@ -21,6 +21,8 @@ import time
 import urllib.request
 import zipfile
 
+from i18n import Text  # English text that the host window shows in its own language
+
 REPO = "Nikita-Shulga/Hop"
 FROZEN = bool(getattr(sys, "frozen", False))
 OS = "mac" if sys.platform == "darwin" else "win" if sys.platform.startswith("win") else "other"
@@ -48,26 +50,25 @@ def _get(url, accept="application/octet-stream", timeout=30):
 def installation():
     """Where the running app lives: {'kind','path'} or {'problem': why it can't update itself}."""
     if not FROZEN:
-        return {"problem": "You're running Hop from source: update with git pull instead."}
+        return {"problem": Text("update.fromSource")}
     exe = os.path.realpath(sys.executable)
     if OS == "mac":
         bundle = os.path.dirname(os.path.dirname(os.path.dirname(exe)))  # Hop.app/Contents/MacOS/Hop
         if not bundle.endswith(".app"):
-            return {"problem": "This copy of Hop isn't running from an app bundle."}
+            return {"problem": Text("update.noBundle")}
         if "/AppTranslocation/" in bundle:
-            return {"problem": "Move Hop to the Applications folder, open it from there, then update."}
+            return {"problem": Text("update.translocated")}
         if not (_writable(os.path.dirname(bundle)) and _writable(bundle)):
-            return {"problem": "Hop can't replace itself where it is. Move it to Applications, then update."}
+            return {"problem": Text("update.cantReplaceMac")}
         return {"kind": "mac", "path": bundle}
     if OS == "win":
         folder = os.path.dirname(exe)
         if not os.path.isdir(os.path.join(folder, "_internal")):
-            return {"problem": "This copy of Hop isn't running from its packaged folder."}
+            return {"problem": Text("update.notPackaged")}
         if not _writable(folder):
-            return {"problem": "Hop can't write to its folder. Move the Hop folder somewhere you own "
-                               "(like Documents), then update."}
+            return {"problem": Text("update.cantWriteWin")}
         return {"kind": "win", "path": folder}
-    return {"problem": "Updates are available on Windows and macOS."}
+    return {"problem": Text("update.platforms")}
 
 
 def _writable(folder):
@@ -107,16 +108,16 @@ def _work_dir(place):
 def prepare(info, place, progress=None):
     """Download + verify + unpack. Returns {'work', 'new'}: 'new' is the unpacked Hop.app / Hop folder."""
     if not info.get("asset"):
-        raise RuntimeError("This release has no download for your computer (%s)." % target())
+        raise RuntimeError(Text("update.noAsset", target=target()))
     if not info.get("sums"):
-        raise RuntimeError("The release has no SHA256SUMS.txt, so the download can't be verified.")
+        raise RuntimeError(Text("update.noSums"))
     expected = None
     for line in _get(info["sums"]).read().decode("utf-8", "replace").splitlines():
         parts = line.strip().split()
         if len(parts) == 2 and parts[1].lstrip("*") == info["asset"]["name"]:
             expected = parts[0].lower()
     if not expected:
-        raise RuntimeError("SHA256SUMS.txt doesn't list %s." % info["asset"]["name"])
+        raise RuntimeError(Text("update.notListed", name=info["asset"]["name"]))
     work = _work_dir(place)
     zpath = os.path.join(work, info["asset"]["name"])
     h = hashlib.sha256()
@@ -134,7 +135,7 @@ def prepare(info, place, progress=None):
                 progress(min(0.99, got / float(total)))
     if h.hexdigest().lower() != expected:
         shutil.rmtree(work, ignore_errors=True)
-        raise RuntimeError("The download didn't match its checksum. Nothing was changed; try again.")
+        raise RuntimeError(Text("update.checksum"))
     return unpack(zpath, work, place)
 
 
@@ -150,10 +151,10 @@ def unpack(zpath, work, place):
             z.extractall(out)
         new = os.path.join(out, "Hop")
     if not os.path.isdir(new):
-        raise RuntimeError("The download doesn't contain Hop.")
+        raise RuntimeError(Text("update.noHop"))
     if place["kind"] == "win" and not (os.path.isfile(os.path.join(new, "Hop.exe")) and
                                         os.path.isdir(os.path.join(new, "_internal"))):
-        raise RuntimeError("The download doesn't contain a complete Windows app.")
+        raise RuntimeError(Text("update.incompleteWin"))
     return {"work": work, "new": new}
 
 
@@ -307,7 +308,7 @@ def apply(prepared, place, log_path):
                         "-Log", log_path, "-Work", work],
                        capture_output=True, text=True, timeout=60, creationflags=NO_WINDOW)
     if r.returncode != 0:
-        raise RuntimeError("The update couldn't be started: %s" % ((r.stdout or r.stderr or "").strip() or r.returncode))
+        raise RuntimeError(Text("update.notStarted", detail=(r.stdout or r.stderr or "").strip() or r.returncode))
 
 
 def cleanup(place):

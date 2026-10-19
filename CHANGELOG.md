@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Русский язык:** Hop can now be used in Russian. Pick **English** or **Русский** under **Settings → Appearance → Language** in the Hop window (it also covers notifications, update and error messages, and the viewer windows Hop opens) or in a viewer's Settings on any device. English stays the default; the choice applies instantly and is remembered.
+
 ## 2.0.2
 
 - Windows keyboard shortcuts now use native virtual keys, so Ctrl+A/C/V and other shortcuts work when the host keyboard layout is not English. Ordinary Unicode typing is preserved.

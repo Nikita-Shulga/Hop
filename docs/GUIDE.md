@@ -28,7 +28,7 @@ Everything in detail. For the overview, see the [README](../README.md).
 | | **Shortcuts** | Common key combos for the host's OS (copy, paste, undo, switch apps…) |
 | | **Clipboard** | Send text to the host, or copy the host's clipboard |
 | | **Files** | Upload to / download from `~/Downloads/Hop` on the host |
-| | **Settings** | Monitor, quality, resolution, frame rate; lower them for smoother video on weak Wi-Fi |
+| | **Settings** | Monitor, quality, resolution, frame rate; lower them for smoother video on weak Wi-Fi. Also theme and language (English / Русский) |
 
 ## Your devices
 
