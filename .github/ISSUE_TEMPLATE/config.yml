@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Nikita-Shulga/Hop/security/advisories/new
+    about: Please report security problems privately, not as a public issue.
+  - name: Hop guide
+    url: https://github.com/Nikita-Shulga/Hop/blob/main/docs/GUIDE.md
+    about: Controls, second screen, the iPhone and troubleshooting. Worth a look before reporting a problem.

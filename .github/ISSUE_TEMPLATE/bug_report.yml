@@ -1,0 +1,67 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this! Please leave out your computer ID, password, PIN and addresses.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of Hop?
+      multiple: true
+      options:
+        - Sharing a computer (the Hop app)
+        - Connecting on the same Wi-Fi
+        - Connecting over the internet
+        - Controlling (mouse, keyboard, touch)
+        - Second screen
+        - Clipboard / files
+        - Updates
+        - Installation / first launch
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: For example, "the phone shows a black screen" or "clicks land in the wrong place on my second monitor".
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start sharing on the Mac
+        2. Open the address on the iPhone
+        3. …
+  - type: input
+    id: version
+    attributes:
+      label: Hop version
+      placeholder: "2.0.2"
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Computer being shared
+      placeholder: macOS 15.6 (Apple silicon) / Windows 11 25H2
+    validations:
+      required: true
+  - type: input
+    id: viewer
+    attributes:
+      label: Device you connected from
+      placeholder: iPhone 15, Safari / Windows 11, Chrome
+    validations:
+      required: true
