@@ -14,7 +14,7 @@
 // (it generates one); after that only that key works. Only /static/ (styles, fonts, icons) is public.
 import { DurableObject } from 'cloudflare:workers';
 
-const VERSION = '2.0.2';
+const VERSION = '2.1.0';
 const ID_RE = /^\d{9}$/;
 const MSG_OFFLINE = 'That computer is offline. Make sure Hop is running on it with Internet access turned on.';
 const MAX_SDP = 20000;
