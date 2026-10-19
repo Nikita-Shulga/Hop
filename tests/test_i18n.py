@@ -252,7 +252,9 @@ async def test_language_setting_is_saved_by_the_host(app):
     assert (await bad.json())["error"] == "PIN-код должен состоять ровно из 6 цифр"
 
     # Viewer windows this app opens speak its language; viewers' protocol messages stay English.
-    srv.peers["p"] = {"id": "p", "name": "Studio", "os": "mac", "ip": "192.168.1.30", "port": 8765, "seen": time.time()}
+    def add_peer():  # re-added before each connect: the wrong-PIN delay can outlast PEER_TTL on slow runners
+        srv.peers["p"] = {"id": "p", "name": "Studio", "os": "mac", "ip": "192.168.1.30", "port": 8765, "seen": time.time()}
+    add_peer()
     assert (await client.post("/api/host/connect", headers=headers, json={"peer": "p"})).status == 200
     assert srv.last_open[0].endswith("#pin=731926&lang=ru")
     ws = await client.ws_connect("/ws")
@@ -262,6 +264,6 @@ async def test_language_setting_is_saved_by_the_host(app):
     await ws.close()
 
     await client.post("/api/host/settings", headers=headers, json={"language": "en"})
-    srv.peers["p"]["seen"] = time.time()  # the wrong-PIN delay can outlast PEER_TTL on slow runners
+    add_peer()
     assert (await client.post("/api/host/connect", headers=headers, json={"peer": "p"})).status == 200
     assert srv.last_open[0].endswith("#pin=731926")

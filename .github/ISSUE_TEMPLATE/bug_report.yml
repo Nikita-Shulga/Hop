@@ -48,7 +48,7 @@ body:
     id: version
     attributes:
       label: Hop version
-      placeholder: "2.1.1"
+      placeholder: "2.1.2"
     validations:
       required: true
   - type: input
