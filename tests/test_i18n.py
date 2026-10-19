@@ -262,5 +262,6 @@ async def test_language_setting_is_saved_by_the_host(app):
     await ws.close()
 
     await client.post("/api/host/settings", headers=headers, json={"language": "en"})
+    srv.peers["p"]["seen"] = time.time()  # the wrong-PIN delay can outlast PEER_TTL on slow runners
     assert (await client.post("/api/host/connect", headers=headers, json={"peer": "p"})).status == 200
     assert srv.last_open[0].endswith("#pin=731926")
