@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.2.0
 
 - **One-click Connect over the internet:** computers you've connected to from Hop's connection window now stay under **Your devices** in the Hop window with a **Connect** button. If the window remembers the password (the default), one click opens the computer and signs in. Remove one with **×**. Computers you connected to before this update appear the next time the connection window opens.
 
