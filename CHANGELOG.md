@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+- Add a managed browser entry at hop.nikitashulga.com: connect with the computer ID and password,
+  with setup instructions and the existing encrypted session and first-device pairing.
+- Isolate managed-service signaling from existing private server rooms, reject cross-origin socket
+  requests and rate-limit connection attempts. Private deployments keep their existing access gate.
+
 ## 2.1.2
 
 - **Русский язык:** Hop can now be used in Russian. Pick **English** or **Русский** under **Settings → Appearance → Language** in the Hop window (it also covers notifications, update and error messages, and the viewer windows Hop opens) or in a viewer's Settings on any device. English stays the default; the choice applies instantly and is remembered.
@@ -33,9 +39,3 @@
 - See and control your Mac or PC from any browser, on Wi-Fi or over the internet (WebRTC, end to end encrypted).
 - Private connection server on Cloudflare; device pairing with a code; strong passwords; lockouts.
 - Second screen, clipboard, files, gestures, iPhone Home Screen app, Windows and Mac apps.
-# Unreleased
-
-- Add a managed browser entry at hop.nikitashulga.com: connect with the computer ID and password,
-  with setup instructions and the existing encrypted session and first-device pairing.
-- Isolate managed-service signaling from existing private server rooms, reject cross-origin socket
-  requests and rate-limit connection attempts. Private deployments keep their existing access gate.

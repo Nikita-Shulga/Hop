@@ -369,7 +369,7 @@ which copies the picked file in) to offer them to viewers.
 - Computer to computer: `POST /api/host/connect {"cloud": id}` opens `http://127.0.0.1:<port>/remote#id=…` —
   `index.html` served by this computer (loopback only), which reads `{base, key}` from `GET /api/remote-config`
   (loopback only) and talks to the server cross-origin (CORS on `/api/*`).
-# Managed browser service
+## Managed browser service
 
 `https://hop.nikitashulga.com/` is a public browser entry point. A visitor enters the computer's
 9-digit ID and internet password. A computer opts in by using that hostname as its connection
