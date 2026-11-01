@@ -388,7 +388,20 @@ The public gateway rejects cross-origin browser socket requests and limits conne
 source IP; source IPs are hashed before selecting the rate-limit object. Existing host-side password
 lockouts and paired-device revocation remain in force.
 
-Public ICE configuration contains STUN only. Paid TURN credentials from a private deployment are
-never published by the public service. A managed relay must be provisioned separately before claiming
-support for networks that prevent direct connections. Computers must remain powered, online and awake;
-new browsers must be paired before unattended use overseas.
+Public ICE defaults to STUN only. Paid TURN credentials from a private deployment are never published
+anonymously. The optional managed relay requires separate owner-approved provisioning:
+
+- `GET /api/ice?id=<ID>` with `Authorization: Bearer <relay capability>` returns TURN only if
+  `RELAY_ENABLED=true`, the capability's SHA-256 hash, browser role, exact target and expiry are in
+  the owner's `RELAY_ADMISSIONS`, and the target is online. A host uses `role=host` and its existing
+  host secret instead; the room also verifies that secret against the actual registered computer.
+- `POST /api/relay/enroll` accepts `{tokenHash, hostId}` and returns a ten-minute six-digit code.
+  `GET /api/relay/enroll?code=...` returns its hash/target for owner review. Neither operation grants
+  relay access. Only the authenticated Cloudflare owner may update the admissions Worker secret.
+- TURN credentials are issued server-side with one-hour TTL, cached per capability/target and subject
+  to a global daily issuance limit. Provider secrets never leave the Worker. Issuance limits are not
+  byte or spending caps. Revocation/expiry of funding admission does not replace device-password,
+  pairing, or optional host-approval checks.
+
+See `docs/MANAGED_RELAY.md` for provisioning, shutoff limitations and validation scope. Computers
+must remain powered, online and awake; new browsers must be paired before unattended use overseas.
