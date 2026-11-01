@@ -20,7 +20,8 @@ import secrets
 import time
 from urllib.parse import quote
 
-from aiohttp import ClientSession, ClientTimeout, WSMsgType, WSServerHandshakeError
+from aiohttp import ClientSession, ClientTimeout, TCPConnector, WSMsgType, WSServerHandshakeError
+from hop_tls import client_context
 
 from aiortc import (MediaStreamTrack, RTCConfiguration, RTCIceServer, RTCPeerConnection,
                     RTCSessionDescription)
@@ -32,6 +33,21 @@ from PIL import Image
 from i18n import Text  # status text the host window shows in its own language
 
 log = logging.getLogger("hop.remote")
+
+
+def prefer_tls_turn(servers):
+    """aiortc consumes only the first TURN URL: put verified TLS/443 ahead of UDP."""
+    ordered = []
+    for server in servers:
+        urls = server.urls if isinstance(server.urls, list) else [server.urls]
+        for url in urls:
+            if not isinstance(url, str) or not url.startswith(('stun:', 'turn:', 'turns:')):
+                continue
+            ordered.append(RTCIceServer(urls=[url], username=server.username,
+                                        credential=server.credential))
+    ordered.sort(key=lambda s: 0 if s.urls[0].startswith('turns:') and
+                 ':443?transport=tcp' in s.urls[0] else 1)
+    return ordered
 
 # aiortc's defaults are tuned for webcams (VP8 at most 1.5 Mbit/s). Screen text needs more; the
 # congestion controller still lowers the rate on slow connections.
@@ -297,7 +313,7 @@ class CloudLink(object):
         while not self._stopped:
             try:
                 self._set("connecting", self.error)
-                async with ClientSession(timeout=timeout) as http:
+                async with ClientSession(timeout=timeout, connector=TCPConnector(ssl=client_context())) as http:
                     self._http = http
                     async with http.ws_connect(self.ws_url(), heartbeat=None, autoping=True,
                                                max_msg_size=1 << 20) as ws:
@@ -380,7 +396,9 @@ class CloudLink(object):
 
     async def _ice_servers(self):
         try:
-            async with self._http.get(self.base + "/api/ice", params={"k": self.site_key},
+            async with self._http.get(self.base + "/api/ice",
+                                      params={"k": self.site_key, "id": self.host_id, "role": "host"},
+                                      headers={"Authorization": "Bearer " + self.key},
                                       timeout=ClientTimeout(total=8)) as r:
                 j = await r.json(content_type=None)
             out = []
@@ -392,7 +410,7 @@ class CloudLink(object):
                     continue
                 out.append(RTCIceServer(urls=urls, username=s.get("username"),
                                         credential=s.get("credential")))
-            return out
+            return prefer_tls_turn(out)
         except Exception as e:
             log.info("ICE server list unavailable (%s); using public STUN", e)
             return [RTCIceServer(urls=["stun:stun.cloudflare.com:3478"])]

@@ -24,3 +24,5 @@ static/cloud.json
 # Connection server build output (cloud/public/ is committed: one-click deploys need it)
 cloud/node_modules/
 cloud/.wrangler/
+.relay-admissions.json
+.relay-admissions.json.pending

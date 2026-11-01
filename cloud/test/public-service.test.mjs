@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { SourceTextModule, SyntheticModule, createContext } from 'node:vm';
 import { webcrypto } from 'node:crypto';
 import { isPublicService, publicServiceRequest } from '../src/public-service.mjs';
+import { relayRegistry, cleanRelayRegistry } from '../src/public-relay.mjs';
 
 function environment() {
   const calls = [];
@@ -107,6 +108,10 @@ test('legacy origins still reject unkeyed requests and never use public rooms', 
     if (specifier === 'cloudflare:workers') return new SyntheticModule(['DurableObject'], function () {
       this.setExport('DurableObject', class {});
     }, { context });
+    if (specifier === './public-relay.mjs') return new SyntheticModule(['relayRegistry', 'cleanRelayRegistry'], function () {
+      this.setExport('relayRegistry', relayRegistry);
+      this.setExport('cleanRelayRegistry', cleanRelayRegistry);
+    }, { context });
     return new SyntheticModule(['isPublicService', 'publicServiceRequest'], function () {
       this.setExport('isPublicService', isPublicService);
       this.setExport('publicServiceRequest', publicServiceRequest);
@@ -119,4 +124,33 @@ test('legacy origins still reject unkeyed requests and never use public rooms', 
     assert.equal(r.status, 404, path);
   }
   assert.ok(calls.every(c => !c.name.startsWith('public:')));
+});
+
+test('actual Room relay gate requires online host and its matching stored secret hash', async () => {
+  let online = true;
+  const stored = new Map([['keyHash', 'owner-host-hash']]);
+  const ctx = { setWebSocketAutoResponse() {}, getWebSockets: () => online ? [{}] : [],
+    storage: { get: async k => stored.get(k), put: async (k, v) => stored.set(k, v) } };
+  const context = createContext({ Response, Request, URL, TextEncoder, crypto: webcrypto,
+    WebSocketRequestResponsePair: class {} });
+  const source = new SourceTextModule(readFileSync(new URL('../src/index.js', import.meta.url), 'utf8'), { context });
+  await source.link(async specifier => {
+    if (specifier === 'cloudflare:workers') return new SyntheticModule(['DurableObject'], function () {
+      this.setExport('DurableObject', class { constructor(ctx) { this.ctx = ctx; } });
+    }, { context });
+    const values = specifier === './public-relay.mjs' ? { relayRegistry, cleanRelayRegistry } : { isPublicService, publicServiceRequest };
+    return new SyntheticModule(Object.keys(values), function () {
+      Object.entries(values).forEach(([k, v]) => this.setExport(k, v));
+    }, { context });
+  });
+  await source.evaluate();
+  const room = new source.namespace.Room(ctx, {});
+  const check = hostHash => room.fetch(new Request('https://public-service/relay-host', {
+    method: 'POST', body: JSON.stringify({ hostHash }) }));
+  assert.equal((await check('attacker-hash')).status, 403);
+  assert.equal((await check('owner-host-hash')).status, 200);
+  assert.equal((await check(null)).status, 200, 'owner-approved browser still needs an online target');
+  online = false;
+  assert.equal((await check(null)).status, 403);
+  assert.equal((await check('owner-host-hash')).status, 403);
 });

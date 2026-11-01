@@ -406,6 +406,14 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
         </details>
       </section>
 
+      <section class="block" id="relaySetup" hidden>
+        <div class="panel service-setup">
+          <p data-i18n="v.relayApproval">For networks that need a relay, ask the service owner to approve this browser once, then connect again. Your computer password and pairing are still required.</p>
+          <button class="button sm" id="relayEnroll" type="button" data-i18n="v.relayCode">Get browser approval code</button>
+          <p id="relayCode" aria-live="polite"></p>
+        </div>
+      </section>
+
       <section class="block" id="recentBlock" hidden>
         <div class="block-head"><h2 data-i18n="v.yourComputers">Your computers</h2><span class="note" id="recentNote"></span></div>
         <div class="panel list-panel"><ul class="chat-list" id="recentList" aria-label="Recent computers" data-i18n-aria="v.recentComputers"></ul></div>
@@ -1035,6 +1043,7 @@ pinInput.addEventListener('input', function () { pinWrap.classList.remove('err')
 document.addEventListener('selectionchange', function () { if (document.activeElement === pinInput) renderPin(); });
 
 /* ================= host info / peers ================= */
+var PUBLIC_SERVICE = false;
 function loadInfo() {
   var km = location.pathname.match(/^\/k\/([A-Za-z0-9_-]{16,64})\/?/);
   if (km) { CLOUD_KEY = km[1]; enterCloudMode(); return Promise.resolve(); }
@@ -1048,6 +1057,7 @@ function loadInfo() {
     if (j && j.cloud) {
       enterCloudMode();
       if (j.publicService) {
+        PUBLIC_SERVICE = true;
         $('#serviceSetup').hidden = false;
         $('#serviceOrigin').textContent = location.origin;
         $('#manifestLink').href = '/manifest.webmanifest';
@@ -2706,6 +2716,27 @@ function deviceIdentity() {
   }
   return { id: d.id, token: d.token };
 }
+// Independent owner-funded relay capability; never reuse the computer-pairing token.
+function relayIdentity() {
+  var token = LS.get('relayCapability', '');
+  if (!/^[a-f0-9]{64}$/.test(token)) {
+    var b = new Uint8Array(32); crypto.getRandomValues(b);
+    token = Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    LS.set('relayCapability', token);
+  }
+  return token;
+}
+$('#relayEnroll').addEventListener('click', function () {
+  if (!cloudId || !PUBLIC_SERVICE) return;
+  var button = this; button.disabled = true;
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode(relayIdentity())).then(function (hash) {
+    var hex = Array.prototype.map.call(new Uint8Array(hash), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    return fetch('/api/relay/enroll', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tokenHash: hex, hostId: cloudId }) });
+  }).then(function (r) { if (!r.ok) throw new Error(); return r.json(); }).then(function (j) {
+    plain('#relayCode', t('v.relayCodeLabel') + ' ' + j.code.replace(/(\d{3})(\d{3})/, '$1 $2'));
+  }).catch(function () { say('#relayCode', 'v.relayCodeFailed'); }).then(function () { button.disabled = false; });
+});
 function showPairCode(code, msg) {
   setHero('countdown', 'v.confirmOnComputer', 'connecting');
   hero.classList.add('pairing');
@@ -2780,8 +2811,15 @@ function connectCloud() {
   connectTimer = setTimeout(function () {
     if (!st.gotHello) end(everHello ? null : M('msg.noAnswer'));
   }, 30000);
-  fetch(cloudApi('/api/ice'), { cache: 'no-store' }).then(function (x) { return x.json(); }).catch(function () { return {}; }).then(function (ice) {
+  var iceUrl = cloudApi('/api/ice');
+  var iceOptions = { cache: 'no-store' };
+  if (PUBLIC_SERVICE) {
+    iceUrl += (iceUrl.indexOf('?') < 0 ? '?' : '&') + 'id=' + cloudId;
+    iceOptions.headers = { Authorization: 'Bearer ' + relayIdentity() };
+  }
+  fetch(iceUrl, iceOptions).then(function (x) { return x.json(); }).catch(function () { return {}; }).then(function (ice) {
     if (rtc !== r) return;
+    $('#relaySetup').hidden = !(PUBLIC_SERVICE && ice.relayAvailable && !ice.relayAuthorized);
     var servers = (ice && ice.iceServers && ice.iceServers.length) ? ice.iceServers : [{ urls: 'stun:stun.cloudflare.com:3478' }];
     var sig;
     try { sig = new WebSocket(CLOUD_BASE.replace(/^http/, 'ws') + '/ws/view?id=' + cloudId + '&k=' + encodeURIComponent(CLOUD_KEY)); }

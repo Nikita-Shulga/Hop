@@ -14,6 +14,7 @@
 // (it generates one); after that only that key works. Only /static/ (styles, fonts, icons) is public.
 import { DurableObject } from 'cloudflare:workers';
 import { isPublicService, publicServiceRequest } from './public-service.mjs';
+import { relayRegistry, cleanRelayRegistry } from './public-relay.mjs';
 
 const VERSION = '2.1.2';
 const ID_RE = /^\d{9}$/;
@@ -160,6 +161,7 @@ export default {
 export class Room extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
+    this.relayEnv = env;
     // Host keep-alives are answered without waking the object.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     this.joins = []; // timestamps of recent viewer joins (in memory; resets on hibernation)
@@ -171,6 +173,15 @@ export class Room extends DurableObject {
 
   async fetch(request) {
     const url = new URL(request.url);
+    if (url.hostname === 'relay') {
+      await this.ctx.storage.put('isRelayRegistry', true);
+      return relayRegistry(request, this.ctx, this.relayEnv);
+    }
+    if (url.hostname === 'public-service' && url.pathname === '/relay-host') {
+      const { hostHash } = await request.json();
+      const stored = await this.ctx.storage.get('keyHash');
+      return json({ online: !!this.host() }, this.host() && (!hostHash || hostHash === stored) ? 200 : 403);
+    }
     if (url.hostname === 'public-service' && url.pathname === '/rate') {
       const now = Date.now();
       const hits = (await this.ctx.storage.get('publicJoins') || []).filter(t => now - t < 60000);
@@ -231,6 +242,7 @@ export class Room extends DurableObject {
   }
 
   async alarm() {
+    if (await this.ctx.storage.get('isRelayRegistry')) return cleanRelayRegistry(this.ctx);
     await this.ctx.storage.delete('publicJoins');
   }
 

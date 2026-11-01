@@ -22,6 +22,7 @@ import urllib.request
 import zipfile
 
 from i18n import Text  # English text that the host window shows in its own language
+from hop_tls import client_context
 
 REPO = "Nikita-Shulga/Hop"
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -44,7 +45,7 @@ def newer(a, b):
 
 def _get(url, accept="application/octet-stream", timeout=30):
     req = urllib.request.Request(url, headers={"User-Agent": "Hop-updater", "Accept": accept})
-    return urllib.request.urlopen(req, timeout=timeout)
+    return urllib.request.urlopen(req, timeout=timeout, context=client_context())
 
 
 def installation():

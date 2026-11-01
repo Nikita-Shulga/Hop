@@ -1,6 +1,15 @@
 # Changelog
 
+## Managed relay preparation
+- Owner-approved browser/computer relay admission, expiring credentials and bounded issuance;
+  no anonymous funded TURN endpoint. Relay remains disabled until account provisioning is approved.
+- Prefer verified TURN TLS/TCP 443 on desktop because aiortc consumes only one TURN URL.
+- Keep bundled CA trust for HTTPS, updates and asyncio TURN TLS without weakening verification.
+
 ## Unreleased
+
+- Bundle trusted HTTPS certificate roots and use them for the connection server and updater, so
+  packaged apps connect without relying on the developer machine's Python certificate paths.
 - Add a managed browser entry at hop.nikitashulga.com: connect with the computer ID and password,
   with setup instructions and the existing encrypted session and first-device pairing.
 - Isolate managed-service signaling from existing private server rooms, reject cross-origin socket

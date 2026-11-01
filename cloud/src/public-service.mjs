@@ -3,7 +3,7 @@
 const ID_RE = /^\d{9}$/;
 const METHODS = new Set(['GET', 'HEAD']);
 const PUBLIC_HOST = 'hop.nikitashulga.com';
-const STUN = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
+import { relayIce, relayEnrollment } from './public-relay.mjs';
 
 export function isPublicService(url, env) {
   return url.hostname === (env.PUBLIC_SERVICE_HOST || PUBLIC_HOST);
@@ -34,6 +34,11 @@ export async function publicServiceRequest(request, env, version) {
   const url = new URL(request.url), path = url.pathname;
   const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
   if (url.protocol === 'http:' && !loopback) return response(null, 308, { location: 'https://' + url.host + url.pathname + url.search });
+  if (path === '/api/relay/enroll' && ['POST', 'GET'].includes(request.method)) {
+    if (request.headers.get('Origin') && request.headers.get('Origin') !== url.origin) return json({ error: 'Wrong origin' }, 403);
+    if (!(await allowJoin(request, env))) return json({ error: 'Too many attempts' }, 429);
+    return relayEnrollment(request, env);
+  }
   if (!METHODS.has(request.method)) return json({ error: 'Method not allowed' }, 405, { allow: 'GET, HEAD' });
 
   if (path === '/' || path === '/index.html') {
@@ -57,9 +62,8 @@ export async function publicServiceRequest(request, env, version) {
     return json({ cloud: true, app: 'hop', version, publicService: true, server: url.origin });
   }
   if (path === '/api/ice') {
-    // The managed entry point never publishes paid relay credentials to anonymous visitors.
-    // A host's existing private relay configuration remains available at its private origin.
-    return json({ iceServers: STUN });
+    if (request.headers.get('Origin') && request.headers.get('Origin') !== url.origin) return json({ error: 'Wrong origin' }, 403);
+    return relayIce(request, env);
   }
   if (path !== '/ws/host' && path !== '/ws/view') return response('Not found', 404);
   const origin = request.headers.get('Origin');

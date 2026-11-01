@@ -4,7 +4,7 @@
 import os
 import sys
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 ROOT = os.path.dirname(SPECPATH)  # noqa: F821  (SPECPATH is set by PyInstaller)
 PKG = SPECPATH                    # noqa: F821
@@ -35,7 +35,7 @@ hiddenimports += collect_submodules("webview", filter=_webview_platform)
 hiddenimports += collect_submodules("zeroconf")
 hiddenimports += collect_submodules("aiohttp")
 # Internet access (remote.py): WebRTC stack. av (FFmpeg) ships its own hook in pyinstaller-hooks-contrib.
-hiddenimports += ["remote", "updater", "i18n"] + collect_submodules("aiortc") + collect_submodules("aioice")
+hiddenimports += ["remote", "updater", "i18n", "hop_tls", "certifi"] + collect_submodules("aiortc") + collect_submodules("aioice")
 hiddenimports += ["pylibsrtp", "google_crc32c", "pyee", "OpenSSL", "av.video.frame", "av.codec"]
 hiddenimports += ["pyperclip", "ifaddr", "qrcode", "qrcode.image.svg", "PIL.Image", "PIL.JpegImagePlugin",
                   "mss"]
@@ -57,7 +57,7 @@ a = Analysis(  # noqa: F821
     [os.path.join(ROOT, "host.py")],
     pathex=[ROOT],
     binaries=[],
-    datas=[(os.path.join(ROOT, "static"), "static")],
+    datas=[(os.path.join(ROOT, "static"), "static")] + collect_data_files("certifi"),
     hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=[],
