@@ -369,3 +369,16 @@ which copies the picked file in) to offer them to viewers.
 - Computer to computer: `POST /api/host/connect {"cloud": id}` opens `http://127.0.0.1:<port>/remote#id=…` —
   `index.html` served by this computer (loopback only), which reads `{base, key}` from `GET /api/remote-config`
   (loopback only) and talks to the server cross-origin (CORS on `/api/*`).
+
+---------------------------------------------------------------------------------------------------
+# v2.2: one-click Connect for computers reached over the internet
+- The connection window (`/remote`, opened by this computer's Hop) reports each computer it signs in to:
+  `POST /api/remote-seen {"id", "name", "os"}` — loopback, main port, and an `Origin` header naming this
+  computer's own origin (no host token; other pages are refused). On start it also syncs the computers it
+  already remembers: `{"computers": [{"id", "name", "os", "sync": true}]}` (a sync never renames or reorders
+  a listed computer). Passwords never leave the window's own storage.
+- Host config `remoteComputers`: `[{id, name, os, last}]`, newest first, at most 8; this computer's own ID is
+  never listed. `devices()` adds them to "Your devices" (`key "remote:<id>"`, `cloud: "<id>"`) unless a computer
+  of the same name is already listed (e.g. on this Wi-Fi).
+- Host window: such rows show **Connect** → `POST /api/host/connect {"cloud": id}` (the window opens at `#id=…`
+  and signs in by itself when it remembers the password) and **×** → `POST /api/host/device/forget {"cloud": id}`.

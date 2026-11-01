@@ -69,6 +69,35 @@ async def test_host_api_requires_loopback_token_and_origin(app):
 
 
 @pytest.mark.asyncio
+async def test_remote_computers_get_one_click_connect(app, monkeypatch):
+    srv, client = app
+    srv.cfg["cloudId"] = "111222333"
+    monkeypatch.setattr(srv.nearby, "current", lambda: [])
+    origin = {"Origin": "http://127.0.0.1:%d" % srv.port}
+    seen = {"id": "473 552 480", "name": "NikitaPC", "os": "windows"}
+    # Only the connection window on this computer's own origin may add computers.
+    assert (await client.post("/api/remote-seen", json=seen)).status == 403
+    assert (await client.post("/api/remote-seen", json=seen, headers={"Origin": "https://evil.example"})).status == 403
+    assert (await client.post("/api/remote-seen", json=seen, headers=origin)).status == 200
+    # This computer's own ID and malformed IDs are ignored; a start-up sync never renames a listed one.
+    await client.post("/api/remote-seen", headers=origin, json={"computers": [
+        {"id": "111222333", "name": "Me"}, {"id": "12", "name": "Bad"},
+        {"id": "473552480", "name": "Renamed", "sync": True}, {"id": "999888777", "name": "Mac mini", "os": "mac", "sync": True}]})
+    devs = {d["key"]: d for d in srv.devices()}
+    assert devs["remote:473552480"]["name"] == "NikitaPC" and devs["remote:473552480"]["cloud"] == "473552480"
+    assert devs["remote:999888777"]["os"] == "mac"
+    assert "remote:111222333" not in devs and not any("Bad" == d["name"] for d in devs.values())
+    # Connect opens this computer's connection window for that ID (it signs in if it remembers the password).
+    headers = dict(origin, **{"X-Hop-Token": srv.token})
+    monkeypatch.setenv("HOP_DRY_OPEN", "1")
+    srv.cfg.update(cloudUrl="https://hop.example", siteKey="k" * 24)
+    assert (await client.post("/api/host/connect", json={"cloud": "473552480"}, headers=headers)).status == 200
+    assert srv.last_open[0].startswith("http://127.0.0.1:%d/remote#id=473552480" % srv.port)
+    r = await client.post("/api/host/device/forget", json={"cloud": "473552480"}, headers=headers)
+    assert r.status == 200 and "remote:473552480" not in {d["key"] for d in (await r.json())["devices"]}
+
+
+@pytest.mark.asyncio
 async def test_wrong_pin_pause_resume_and_session_expiry(app):
     srv, client = app
     ws = await connect(client, "000000")

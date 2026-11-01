@@ -73,6 +73,8 @@ EN = {
     "dev.installHop": "Install Hop on it to connect",
     "dev.lastInternet": "Connected over the internet · {date}",
     "dev.lastWifi": "Connected on Wi-Fi · {date}",
+    "dev.viaInternet": "Over the internet · last {date}",
+    "dev.computerId": "Computer {id}",
     "dev.generic": "Device",
     # device kinds guessed from the browser (device_from_ua) as shown to people
     "kind.Windows PC": "Windows PC",
@@ -173,6 +175,8 @@ RU = {
     "dev.installHop": "Установите на него Hop, чтобы подключаться",
     "dev.lastInternet": "Подключалось через интернет · {date}",
     "dev.lastWifi": "Подключалось по Wi-Fi · {date}",
+    "dev.viaInternet": "Через интернет · последний раз {date}",
+    "dev.computerId": "Компьютер {id}",
     "dev.generic": "Устройство",
     "kind.Windows PC": "ПК с Windows",
     "kind.Android tablet": "Планшет Android",

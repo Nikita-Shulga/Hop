@@ -773,7 +773,7 @@ function renderDevices(ul,devs,s,isMine){
     const li=document.createElement('li');li.className='dev '+(d.online?'on':'off');
     const kind=d.kind==='phone'?'phone':d.kind==='tablet'?'tablet':(d.os==='mac'||/mac/i.test(d.name)?'laptop':'desktop');
     const ti=document.createElement('div');ti.className='stext';
-    const st=document.createElement('strong');st.textContent=d.hasHop?d.name:devLabel(d.name);
+    const st=document.createElement('strong');st.textContent=d.hasHop||d.cloud?d.name:devLabel(d.name);
     const sm=document.createElement('small');sm.textContent=d.hasHop?t('h.hop',{detail:d.detail||''}):(d.detail||'');ti.append(st,sm);
     const acts=document.createElement('div');acts.className='acts';
     if(d.hasHop){
@@ -783,6 +783,14 @@ function renderDevices(ul,devs,s,isMine){
       const b=document.createElement('button');b.className='button sm';b.textContent=t('c.connect');
       b.addEventListener('click',()=>connectTo({peer:d.peer},t('h.openingName',{name:d.name}),b));
       acts.append(x,b);
+    }else if(d.cloud){
+      // A computer you connected to over the internet: the connection window signs in by itself when it
+      // remembers the password, so this is one click.
+      const b=document.createElement('button');b.className='button sm';b.textContent=t('c.connect');
+      b.addEventListener('click',()=>connectTo({cloud:d.cloud},t('h.openingName',{name:d.name}),b));
+      const f=document.createElement('button');f.className='hide-btn';f.title=t('v.forgetName',{name:d.name});f.setAttribute('aria-label',f.title);f.innerHTML=XSVG;
+      f.addEventListener('click',()=>act('device/forget',{cloud:d.cloud},t('h.forgotten',{name:d.name})));
+      acts.append(b,f);
     }else{
       if(d.mirror){
         const m=document.createElement('button');m.className='link';m.textContent=t('h.mirror');

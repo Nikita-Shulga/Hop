@@ -1019,7 +1019,9 @@ function loadInfo() {
   if (location.pathname === '/remote') { // computer to computer: this computer's own Hop serves the page
     return fetch('/api/remote-config', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !j.base || !j.key) throw new Error('no server');
-      CLOUD_BASE = j.base; CLOUD_KEY = j.key; enterCloudMode();
+      CLOUD_BASE = j.base; CLOUD_KEY = j.key; LOCAL_HOP = true; enterCloudMode();
+      // Computers this window already remembers also belong under "Your devices" in the Hop window.
+      tellHop({ computers: recents().map(function (x) { return { id: x.id, name: x.name, os: x.os, sync: true }; }) });
     }).catch(function () { enterCloudMode(); cloudError(M('msg.turnOnInternet')); });
   }
   return fetch('/api/info', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
@@ -2608,6 +2610,13 @@ var CLOUD = false, cloudId = '', cloudPw = '', rtc = null, cloudRetry = 0;
 // Where the connection server is and its private key: from the private address (/k/<key>/) when the
 // page comes from the server, or from this computer's Hop when opened at http://127.0.0.1/remote.
 var CLOUD_BASE = location.origin, CLOUD_KEY = '';
+// Opened by this computer's Hop (/remote): computers reached here are listed in its "Your devices"
+// with a Connect button. Only the ID, name and system go there — never the password.
+var LOCAL_HOP = false;
+function tellHop(body) {
+  if (!LOCAL_HOP) return;
+  fetch('/api/remote-seen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(function () {});
+}
 function cloudApi(path) { return CLOUD_BASE + path + '?k=' + encodeURIComponent(CLOUD_KEY); }
 var rv = $('#rv');
 function fmtId(v) { return String(v || '').replace(/\D/g, '').slice(0, 9).replace(/(\d{3})(?=\d)/g, '$1 '); }
@@ -2618,6 +2627,7 @@ function saveRecent(m) {
   var list = recents().filter(function (x) { return x && x.id !== cloudId; });
   list.unshift({ id: cloudId, name: m.name || '', os: m.os || '', pw: remember ? cloudPw : '', at: Date.now() });
   saveRecents(list);
+  tellHop({ id: cloudId, name: m.name || '', os: m.os || '' });
 }
 function forgetPassword(id) { saveRecents(recents().map(function (x) { if (x.id === id) x.pw = ''; return x; })); }
 var XS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';

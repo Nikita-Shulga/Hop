@@ -1823,6 +1823,24 @@ class HopServer(object):
         self.cfg["knownDevices"] = lst[:8]
         self.save()
 
+    def remote_computers(self):
+        """Computers this one connected to over the internet (newest first), for one-click Connect."""
+        own = str(self.cfg.get("cloudId") or "")
+        return [c for c in (self.cfg.get("remoteComputers") or [])
+                if isinstance(c, dict) and re.fullmatch(r"\d{9}", str(c.get("id") or "")) and c["id"] != own]
+
+    def remember_remote(self, cid, name, os_name):
+        name = re.sub(r"[\x00-\x1f\x7f]", "", str(name or "")).strip()[:64]
+        lst = [c for c in self.remote_computers() if c["id"] != cid]
+        lst.insert(0, {"id": cid, "name": name, "os": os_name if os_name in ("mac", "windows") else "",
+                       "last": int(time.time())})
+        self.cfg["remoteComputers"] = lst[:8]
+        self.save()
+
+    def forget_remote(self, cid):
+        self.cfg["remoteComputers"] = [c for c in self.remote_computers() if c["id"] != cid]
+        self.save()
+
     def devices(self):
         """Everything worth showing under 'Your devices', most useful first."""
         out, names = [], set()
@@ -1857,6 +1875,16 @@ class HopServer(object):
             else:
                 item["detail"] = i18n.t("dev.installHop")
             out.append(item)
+        # Computers you connected to over the internet: one click opens them again (the connection window
+        # signs in by itself when it remembers the password). One that is also on this Wi-Fi is listed above.
+        for c in self.remote_computers():
+            label = c["name"] or i18n.t("dev.computerId", id=re.sub(r"(\d{3})(?=\d)", r"\1 ", c["id"]))
+            if label.lower() in names:
+                continue
+            names.add(label.lower())
+            out.append({"key": "remote:" + c["id"], "section": "mine", "kind": "computer", "os": c["os"],
+                        "name": label, "online": False, "hasHop": False, "cloud": c["id"],
+                        "detail": i18n.t("dev.viaInternet", date=i18n.day_month(c.get("last", 0)))})
         near_kinds = {d["kind"] for d in nearby}
         for k in (self.cfg.get("knownDevices") or [])[:6]:
             kind = "phone" if "iPhone" in k.get("name", "") or "Android" in k.get("name", "") else \
@@ -2041,6 +2069,23 @@ class HopServer(object):
         return web.json_response({"base": self.cloud_url, "key": self.site_key, "name": self.name},
                                  headers={"Cache-Control": "no-store"})
 
+    async def api_remote_seen(self, request):
+        """The connection window reached (or remembers) a computer: list it under 'Your devices'."""
+        d = await self._json_body(request)
+        items = d.get("computers") if isinstance(d.get("computers"), list) else [d]
+        changed = False
+        for c in reversed(items[:12]):  # oldest first, so the newest ends up on top
+            if not isinstance(c, dict):
+                continue
+            cid = re.sub(r"\D", "", str(c.get("id") or ""))
+            if len(cid) != 9 or cid == str(self.cfg.get("cloudId") or ""):
+                continue
+            if c.get("sync") and any(x["id"] == cid for x in self.remote_computers()):
+                continue  # start-up sync: never reorder or rename what is already listed
+            self.remember_remote(cid, c.get("name"), str(c.get("os") or ""))
+            changed = True
+        return web.json_response({"ok": True, "changed": changed})
+
     async def handle_info(self, request):
         return web.json_response(self.info())
 
@@ -2095,10 +2140,14 @@ class HopServer(object):
         async def guard(request, handler):
             p = request.path
             if p == "/host" or p.startswith("/api/host/") or p == "/static/host.html" or \
-                    p == "/remote" or p == "/api/remote-config":
+                    p == "/remote" or p == "/api/remote-config" or p == "/api/remote-seen":
                 # The host window API only exists on the main port (never on the easy port 80).
                 if self._local_port(request) != self.port or not self.is_local_request(request):
                     log.info("Refused host-window request from %s (%s)", request.remote, p)
+                    return web.json_response({"error": "forbidden"}, status=403)
+                # The connection window (/remote, same origin) has no host token; other pages may not write.
+                if p == "/api/remote-seen" and not (request.headers.get("Origin") and
+                                                    self.origin_ok(request.headers.get("Origin"))):
                     return web.json_response({"error": "forbidden"}, status=403)
                 if p == "/api/host/activate" and request.method == "POST" and \
                         not request.headers.get("Origin"):
@@ -2394,6 +2443,14 @@ class HopServer(object):
             lst.append(name)
         self.cfg["hiddenNearby"] = lst[-100:]
         self.save()
+        return web.json_response(self.status())
+
+    async def api_device_forget(self, request):
+        d = await self._json_body(request)
+        cid = re.sub(r"\D", "", str(d.get("cloud") or ""))
+        if len(cid) != 9:
+            return self._err(i18n.t("err.id9"))
+        self.forget_remote(cid)
         return web.json_response(self.status())
 
     async def api_device_mirror(self, request):
@@ -3849,6 +3906,7 @@ def build_app(server):
     app.router.add_get("/host", server.handle_host_page)
     app.router.add_get("/remote", server.handle_remote_page)
     app.router.add_get("/api/remote-config", server.api_remote_config)
+    app.router.add_post("/api/remote-seen", server.api_remote_seen)
     app.router.add_get("/api/host/status", server.api_status)
     app.router.add_post("/api/host/pause", server.api_pause)
     app.router.add_post("/api/host/resume", server.api_resume)
@@ -3869,6 +3927,7 @@ def build_app(server):
     app.router.add_post("/api/host/device/send", server.api_device_send)
     app.router.add_post("/api/host/device/mirror", server.api_device_mirror)
     app.router.add_post("/api/host/device/hide", server.api_device_hide)
+    app.router.add_post("/api/host/device/forget", server.api_device_forget)
     app.router.add_post("/api/host/update/check", server.api_update_check)
     app.router.add_post("/api/host/update/install", server.api_update_install)
     app.router.add_post("/api/host/restart", server.api_restart)

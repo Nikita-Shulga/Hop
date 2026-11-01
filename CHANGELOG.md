@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **One-click Connect over the internet:** computers you've connected to from Hop's connection window now stay under **Your devices** in the Hop window with a **Connect** button. If the window remembers the password (the default), one click opens the computer and signs in. Remove one with **×**. Computers you connected to before this update appear the next time the connection window opens.
+
 ## 2.1.2
 
 - **Русский язык:** Hop can now be used in Russian. Pick **English** or **Русский** under **Settings → Appearance → Language** in the Hop window (it also covers notifications, update and error messages, and the viewer windows Hop opens) or in a viewer's Settings on any device. English stays the default; the choice applies instantly and is remembered.
