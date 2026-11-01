@@ -13,6 +13,8 @@
 // stranger who finds the address sees nothing. The first Hop computer to connect claims the key
 // (it generates one); after that only that key works. Only /static/ (styles, fonts, icons) is public.
 import { DurableObject } from 'cloudflare:workers';
+import { isPublicService, publicServiceRequest } from './public-service.mjs';
+import { relayRegistry, cleanRelayRegistry } from './public-relay.mjs';
 
 const VERSION = '2.1.2';
 const ID_RE = /^\d{9}$/;
@@ -39,7 +41,7 @@ async function sha256(text) {
 // offered when the TURN_KEY_ID / TURN_KEY_API_TOKEN secrets are set on this Worker.
 async function iceServers(env) {
   const servers = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
-  if (env.TURN_KEY_ID && env.TURN_KEY_API_TOKEN) {
+  if (env.RELAY_USE_LEGACY_KEY !== 'true' && env.TURN_KEY_ID && env.TURN_KEY_API_TOKEN) {
     try {
       const r = await fetch(
         `https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`,
@@ -108,6 +110,11 @@ export default {
     // Styles, fonts and icons only: nothing in them identifies you or your computers.
     if (path.startsWith('/static/') && !path.endsWith('.html')) return env.ASSETS.fetch(request);
 
+    // The managed hostname is an opt-in public meeting point. Its hosts use a separate namespace
+    // and still require the device password, first-device pairing and any host approval setting.
+    // Existing private origins, links, host keys and rooms retain their original authorization.
+    if (isPublicService(url, env)) return publicServiceRequest(request, env, VERSION);
+
     // The private page: /k/<key>/  (and its manifest for "Add to Home Screen")
     const m = path.match(/^\/k\/([A-Za-z0-9_-]{16,64})(\/.*)?$/);
     if (m) {
@@ -145,7 +152,10 @@ export default {
       if ((request.headers.get('Upgrade') || '').toLowerCase() !== 'websocket') {
         return json({ error: 'Expected a WebSocket' }, 426);
       }
-      return env.ROOMS.get(env.ROOMS.idFromName(id)).fetch(request);
+      const headers = new Headers(request.headers);
+      headers.delete('X-Hop-Relay-Admission');
+      headers.delete('X-Hop-Managed-Service');
+      return env.ROOMS.get(env.ROOMS.idFromName(id)).fetch(new Request(request, { headers }));
     }
     return notFound();
   },
@@ -154,17 +164,68 @@ export default {
 export class Room extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
+    this.relayEnv = env;
     // Host keep-alives are answered without waking the object.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     this.joins = []; // timestamps of recent viewer joins (in memory; resets on hibernation)
+    this.ownerJoins = [];
   }
 
   host() {
     return this.ctx.getWebSockets('host')[0] || null;
   }
 
+  pendingViewers(now = Date.now()) {
+    return this.ctx.getWebSockets('view').filter(ws => {
+      if (ws.readyState === 2 || ws.readyState === 3) return false;
+      const a = ws.deserializeAttachment() || {};
+      if (!Number.isFinite(a.expiresAt) || a.expiresAt <= now) {
+        try { ws.close(4008, 'Connection setup timed out. Please retry.'); } catch {}
+        return false;
+      }
+      return true;
+    });
+  }
+
+  canAcceptViewer(admitted, now = Date.now()) {
+    const pending = this.pendingViewers(now);
+    if (pending.length < 4) return true;
+    // An enrolled owner may replace an unapproved pending negotiation, never an owner session.
+    const replace = admitted && pending.find(ws => !(ws.deserializeAttachment() || {}).relayAdmissionHash);
+    if (!replace) return false;
+    try { replace.close(4009, 'An approved browser is connecting. Please retry.'); } catch {}
+    return true;
+  }
+
+  async armViewerDeadline(deadline) {
+    const alarm = await this.ctx.storage.getAlarm();
+    if (!Number.isFinite(alarm) || alarm > deadline) await this.ctx.storage.setAlarm(deadline);
+  }
+
   async fetch(request) {
     const url = new URL(request.url);
+    if (url.hostname === 'relay') {
+      await this.ctx.storage.put('isRelayRegistry', true);
+      return relayRegistry(request, this.ctx, this.relayEnv);
+    }
+    if (url.hostname === 'public-service' && url.pathname === '/relay-host') {
+      const { hostHash, sid } = await request.json();
+      const stored = await this.ctx.storage.get('keyHash');
+      const viewer = sid && this.ctx.getWebSockets('v:' + sid)[0];
+      const admission = viewer && viewer.deserializeAttachment();
+      const allowed = this.host() && (!hostHash || (hostHash === stored && admission && admission.offered &&
+        admission.expiresAt > Date.now() && admission.relayAdmissionHash));
+      return json({ online: !!this.host(), viewerHash: admission && admission.relayAdmissionHash }, allowed ? 200 : 403);
+    }
+    if (url.hostname === 'public-service' && url.pathname === '/rate') {
+      const now = Date.now();
+      const hits = (await this.ctx.storage.get('publicJoins') || []).filter(t => now - t < 60000);
+      if (hits.length >= JOINS_PER_MINUTE) return json({ error: 'Too many connection attempts' }, 429);
+      hits.push(now);
+      await this.ctx.storage.put('publicJoins', hits);
+      await this.ctx.storage.setAlarm(now + 60000);
+      return json({ ok: true });
+    }
     if (url.hostname === 'site' && url.pathname === '/check') {
       const { hash, claim } = await request.json();
       const stored = await this.ctx.storage.get('siteHash');
@@ -195,9 +256,12 @@ export class Room extends DurableObject {
 
     // Viewer
     const now = Date.now();
-    this.joins = this.joins.filter((t) => now - t < 60000);
-    if (this.joins.length >= JOINS_PER_MINUTE) return json({ error: 'Too many attempts. Wait a minute.' }, 429);
-    this.joins.push(now);
+    const relayAdmissionHash = request.headers.get('X-Hop-Relay-Admission') || null;
+    if (!this.canAcceptViewer(!!relayAdmissionHash, now)) return json({ error: 'Too many connection attempts. Try again shortly.' }, 429);
+    const rateKey = relayAdmissionHash ? 'ownerJoins' : 'joins';
+    this[rateKey] = this[rateKey].filter((t) => now - t < 60000);
+    if (this[rateKey].length >= JOINS_PER_MINUTE) return json({ error: 'Too many attempts. Wait a minute.' }, 429);
+    this[rateKey].push(now);
 
     const sid = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
     this.ctx.acceptWebSocket(server, ['view', 'v:' + sid]);
@@ -206,13 +270,28 @@ export class Room extends DurableObject {
       sid,
       ip: request.headers.get('CF-Connecting-IP') || '',
       ua: (request.headers.get('User-Agent') || '').slice(0, 400),
+      relayAdmissionHash,
+      managedService: request.headers.get('X-Hop-Managed-Service') === '1',
+      offered: false,
+      expiresAt: now + 60000,
+      hardDeadline: now + 90000,
     });
+    await this.armViewerDeadline(now + 60000);
     if (this.host()) server.send(JSON.stringify({ t: 'ready' }));
     else {
       server.send(JSON.stringify({ t: 'error', msg: MSG_OFFLINE }));
       server.close(4004, 'offline');
     }
-    return new Response(null, { status: 101, webSocket: client });
+    const protocol = (request.headers.get('Sec-WebSocket-Protocol') || '').split(',').map(x => x.trim());
+    return new Response(null, { status: 101, webSocket: client,
+      headers: protocol.includes('hop') ? { 'Sec-WebSocket-Protocol': 'hop' } : {} });
+  }
+
+  async alarm() {
+    if (await this.ctx.storage.get('isRelayRegistry')) return cleanRelayRegistry(this.ctx);
+    await this.ctx.storage.delete('publicJoins');
+    const pending = this.pendingViewers();
+    if (pending.length) await this.ctx.storage.setAlarm(Math.min(...pending.map(ws => ws.deserializeAttachment().expiresAt)));
   }
 
   async webSocketMessage(ws, message) {
@@ -223,13 +302,23 @@ export class Room extends DurableObject {
     const a = ws.deserializeAttachment() || {};
 
     if (a.role === 'view') {
+      if (!Number.isFinite(a.expiresAt) || a.expiresAt <= Date.now()) {
+        try { ws.close(4008, 'Connection setup timed out. Please retry.'); } catch {}
+        return;
+      }
       if (d.t !== 'offer' || typeof d.sdp !== 'string' || d.sdp.length > MAX_SDP) return;
+      if (a.offered) return;
       const host = this.host();
       if (!host) {
         ws.send(JSON.stringify({ t: 'error', msg: MSG_OFFLINE }));
         return;
       }
-      host.send(JSON.stringify({ t: 'offer', sid: a.sid, sdp: d.sdp, ip: a.ip, ua: a.ua }));
+      a.offered = true;
+      a.expiresAt = a.hardDeadline;
+      ws.serializeAttachment(a);
+      await this.armViewerDeadline(a.expiresAt);
+      host.send(JSON.stringify({ t: 'offer', sid: a.sid, sdp: d.sdp, ip: a.ip, ua: a.ua,
+        relayAllowed: a.managedService ? !!a.relayAdmissionHash : undefined }));
       return;
     }
 

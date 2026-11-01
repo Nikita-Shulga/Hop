@@ -31,6 +31,7 @@ if (/^\/k\/[A-Za-z0-9_-]{16,64}\//.test(location.pathname)) document.getElementB
 })();
 </script>
 <script src="/static/i18n.js"></script>
+<script src="/static/ice-gather.js"></script>
 <script>
 /* the saved language: English unless chosen in Settings (or passed as #lang=ru by the Hop app that opened this) */
 (function () {
@@ -333,6 +334,14 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
 #hero.pairing .summary{white-space:normal;overflow:visible}
 #rv{position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none}
 .mark.hop{width:27px;height:19px;color:var(--text)}
+.service-setup{padding:16px;color:var(--text-2);font-size:13px;line-height:1.6}
+.service-setup summary{cursor:pointer;color:var(--text);font-weight:600}
+.service-setup ol{padding-left:20px;margin:12px 0}
+.service-setup li+li{margin-top:12px}
+.service-setup a{color:var(--amber);text-decoration:underline}
+.service-address{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.service-address code{overflow-wrap:anywhere;user-select:text;font-size:12px}
+.service-note{margin:12px 0 0;color:var(--text-3);font-size:12px}
 </style>
 </head>
 <body>
@@ -383,6 +392,28 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
         <label class="remember"><input type="checkbox" id="cRemember" checked><span data-i18n="v.remember">Remember on this device</span></label>
         <div class="perr" id="cloudErr" role="alert"></div>
       </form>
+
+      <section class="block" id="serviceSetup" hidden>
+        <details class="panel service-setup">
+          <summary data-i18n="v.serviceSetup">Set up a computer for access anywhere</summary>
+          <ol>
+            <li><a href="https://github.com/Nikita-Shulga/Hop/releases/latest" target="_blank" rel="noopener noreferrer" data-i18n="v.serviceDownload">Download Hop for Mac or Windows</a><span data-i18n="v.serviceInstall"> and open it on each computer you want to reach.</span></li>
+            <li><span data-i18n="v.serviceEnable">In Hop, turn on Internet access and enter this connection server:</span>
+              <div class="service-address"><code id="serviceOrigin"></code><button id="copyServiceOrigin" class="button sm" type="button" data-i18n="c.copy">Copy</button></div>
+              <span data-i18n="v.serviceCredentials">Use the computer ID and password shown in that app to connect here.</span></li>
+            <li data-i18n="v.servicePair">Before travelling, connect once from each browser you will use and enter its pairing code in Hop on the computer. Keep that browser’s saved data.</li>
+          </ol>
+          <p class="service-note" data-i18n="v.serviceAwake">Leave the computer powered on, connected to the internet and awake. On a Mac, allow Hop in Screen Recording and Accessibility. You can turn Internet access off at any time.</p>
+        </details>
+      </section>
+
+      <section class="block" id="relaySetup" hidden>
+        <div class="panel service-setup">
+          <p data-i18n="v.relayApproval">For networks that need a relay, ask the service owner to approve this browser once, then connect again. Your computer password and pairing are still required.</p>
+          <button class="button sm" id="relayEnroll" type="button" data-i18n="v.relayCode">Get browser approval code</button>
+          <p id="relayCode" aria-live="polite"></p>
+        </div>
+      </section>
 
       <section class="block" id="recentBlock" hidden>
         <div class="block-head"><h2 data-i18n="v.yourComputers">Your computers</h2><span class="note" id="recentNote"></span></div>
@@ -1013,6 +1044,7 @@ pinInput.addEventListener('input', function () { pinWrap.classList.remove('err')
 document.addEventListener('selectionchange', function () { if (document.activeElement === pinInput) renderPin(); });
 
 /* ================= host info / peers ================= */
+var PUBLIC_SERVICE = false;
 function loadInfo() {
   var km = location.pathname.match(/^\/k\/([A-Za-z0-9_-]{16,64})\/?/);
   if (km) { CLOUD_KEY = km[1]; enterCloudMode(); return Promise.resolve(); }
@@ -1023,7 +1055,16 @@ function loadInfo() {
     }).catch(function () { enterCloudMode(); cloudError(M('msg.turnOnInternet')); });
   }
   return fetch('/api/info', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
-    if (j && j.cloud) { enterCloudMode(); return; }
+    if (j && j.cloud) {
+      enterCloudMode();
+      if (j.publicService) {
+        PUBLIC_SERVICE = true;
+        $('#serviceSetup').hidden = false;
+        $('#serviceOrigin').textContent = location.origin;
+        $('#manifestLink').href = '/manifest.webmanifest';
+      }
+      return;
+    }
     hostInfo = j;
     plain('#headline', j.name || location.hostname);
     renderSummary();
@@ -2609,6 +2650,11 @@ var CLOUD = false, cloudId = '', cloudPw = '', rtc = null, cloudRetry = 0;
 // page comes from the server, or from this computer's Hop when opened at http://127.0.0.1/remote.
 var CLOUD_BASE = location.origin, CLOUD_KEY = '';
 function cloudApi(path) { return CLOUD_BASE + path + '?k=' + encodeURIComponent(CLOUD_KEY); }
+$('#copyServiceOrigin').addEventListener('click', function () {
+  if (!navigator.clipboard || !navigator.clipboard.writeText) { toast(location.origin); return; }
+  navigator.clipboard.writeText(location.origin).then(function () { toast(t('v.serviceCopied')); })
+    .catch(function () { toast(location.origin); });
+});
 var rv = $('#rv');
 function fmtId(v) { return String(v || '').replace(/\D/g, '').slice(0, 9).replace(/(\d{3})(?=\d)/g, '$1 '); }
 function recents() { var r = LS.get('recent', []); return Array.isArray(r) ? r : []; }
@@ -2671,6 +2717,27 @@ function deviceIdentity() {
   }
   return { id: d.id, token: d.token };
 }
+// Independent owner-funded relay capability; never reuse the computer-pairing token.
+function relayIdentity() {
+  var token = LS.get('relayCapability', '');
+  if (!/^[a-f0-9]{64}$/.test(token)) {
+    var b = new Uint8Array(32); crypto.getRandomValues(b);
+    token = Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    LS.set('relayCapability', token);
+  }
+  return token;
+}
+$('#relayEnroll').addEventListener('click', function () {
+  if (!cloudId || !PUBLIC_SERVICE) return;
+  var button = this; button.disabled = true;
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode(relayIdentity())).then(function (hash) {
+    var hex = Array.prototype.map.call(new Uint8Array(hash), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    return fetch('/api/relay/enroll', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tokenHash: hex, hostId: cloudId }) });
+  }).then(function (r) { if (!r.ok) throw new Error(); return r.json(); }).then(function (j) {
+    plain('#relayCode', t('v.relayCodeLabel') + ' ' + j.code.replace(/(\d{3})(\d{3})/, '$1 $2'));
+  }).catch(function () { say('#relayCode', 'v.relayCodeFailed'); }).then(function () { button.disabled = false; });
+});
 function showPairCode(code, msg) {
   setHero('countdown', 'v.confirmOnComputer', 'connecting');
   hero.classList.add('pairing');
@@ -2715,13 +2782,6 @@ function teardownRtc() {
   try { rv.srcObject = null; } catch (e) {}
   if (bmp === rv) bmp = null;
 }
-function waitIce(pc, ms) {
-  return new Promise(function (res) {
-    if (pc.iceGatheringState === 'complete') { res(); return; }
-    var t = setTimeout(res, ms);
-    pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } });
-  });
-}
 function connectCloud() {
   clearTimeout(retryTimer); clearTimeout(connectTimer);
   if (ws) { var old = ws; ws = null; try { old.onclose = null; old.close(); } catch (e) {} }
@@ -2743,13 +2803,24 @@ function connectCloud() {
     onClosed(had);
   }
   connectTimer = setTimeout(function () {
-    if (!st.gotHello) end(everHello ? null : M('msg.noAnswer'));
-  }, 30000);
-  fetch(cloudApi('/api/ice'), { cache: 'no-store' }).then(function (x) { return x.json(); }).catch(function () { return {}; }).then(function (ice) {
+    if (!st.gotHello) end(everHello ? null : (r.relayError || M('msg.noAnswer')));
+  }, 90000);
+  var iceUrl = cloudApi('/api/ice');
+  var iceOptions = { cache: 'no-store' };
+  if (PUBLIC_SERVICE) {
+    iceUrl += (iceUrl.indexOf('?') < 0 ? '?' : '&') + 'id=' + cloudId;
+    iceOptions.headers = { Authorization: 'Bearer ' + relayIdentity() };
+  }
+  fetch(iceUrl, iceOptions).then(function (x) { return x.json(); }).catch(function () { return {}; }).then(function (ice) {
     if (rtc !== r) return;
+    r.relayError = ice.relayError || null;
+    $('#relaySetup').hidden = !(PUBLIC_SERVICE && ice.relayAvailable && !ice.relayAuthorized);
     var servers = (ice && ice.iceServers && ice.iceServers.length) ? ice.iceServers : [{ urls: 'stun:stun.cloudflare.com:3478' }];
     var sig;
-    try { sig = new WebSocket(CLOUD_BASE.replace(/^http/, 'ws') + '/ws/view?id=' + cloudId + '&k=' + encodeURIComponent(CLOUD_KEY)); }
+    try {
+      var sigUrl = CLOUD_BASE.replace(/^http/, 'ws') + '/ws/view?id=' + cloudId + '&k=' + encodeURIComponent(CLOUD_KEY);
+      sig = PUBLIC_SERVICE && ice.relayAuthorized ? new WebSocket(sigUrl, ['hop', 'hop-relay.' + relayIdentity()]) : new WebSocket(sigUrl);
+    }
     catch (e) { end(everHello ? null : M('msg.cantReachServer')); return; }
     r.sig = sig;
     sig.onmessage = function (ev) {
@@ -2781,7 +2852,7 @@ function connectCloud() {
         return;
       }
       if (rtc === r && (pc.connectionState === 'failed' || pc.connectionState === 'closed')) {
-        end(st.gotHello || everHello ? null : M('msg.notDirect'));
+        end(st.gotHello || everHello ? null : (r.relayError || M('msg.notDirect')));
       }
     };
     dc.onopen = function () {
@@ -2805,13 +2876,13 @@ function connectCloud() {
     };
     dc.onclose = function () { end(null); };
     pc.createOffer().then(function (o) { return pc.setLocalDescription(o); })
-      .then(function () { return waitIce(pc, 3000); })
+      .then(function () { return HopIce.waitForGathering(pc, 45000); })
       .then(function () {
         if (rtc !== r) return;
         if (r.sig && r.sig.readyState === 1) r.sig.send(JSON.stringify({ t: 'offer', sdp: pc.localDescription.sdp }));
         else end(everHello ? null : M('msg.cantReachServer'));
       })
-      .catch(function () { end(null); });
+      .catch(function (e) { end(e && e.code === 'ICE_GATHERING_TIMEOUT' ? M('msg.routeTimeout') : null); });
   }
 }
 // Video frames → the same canvas the Wi-Fi JPEG frames use (zoom, gestures and cursor work unchanged)

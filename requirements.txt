@@ -1,4 +1,5 @@
 aiohttp>=3.8
+certifi>=2025.1.31
 mss>=9
 Pillow>=9
 pynput>=1.7

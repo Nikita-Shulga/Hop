@@ -369,3 +369,56 @@ which copies the picked file in) to offer them to viewers.
 - Computer to computer: `POST /api/host/connect {"cloud": id}` opens `http://127.0.0.1:<port>/remote#id=…` —
   `index.html` served by this computer (loopback only), which reads `{base, key}` from `GET /api/remote-config`
   (loopback only) and talks to the server cross-origin (CORS on `/api/*`).
+## Managed browser service
+
+`https://hop.nikitashulga.com/` is a public browser entry point. A visitor enters the computer's
+9-digit ID and internet password. A computer opts in by using that hostname as its connection
+server and enabling Internet access in Hop. The existing desktop protocol is unchanged.
+
+The managed hostname routes signaling into `public:<ID>` Durable Object rooms. Other hostnames
+continue to require their existing `/k/<key>/` address and use their original room names. Private
+hosts are never silently enrolled into the managed service. On the managed hostname, old generated
+`/k/.../` links redirect to the root entry point; the browser keeps the device-ID fragment.
+
+The server still checks each host's persistent secret before registering or replacing it. It never
+checks, stores or receives the computer password. That password, the mandatory first-browser pairing
+and any optional connection approval are enforced by the host over the encrypted WebRTC channel.
+Video remains black and input/file operations unavailable until that authentication completes.
+The public gateway rejects cross-origin browser socket requests and limits connection attempts per
+source IP; source IPs are hashed before selecting the rate-limit object. Existing host-side password
+lockouts and paired-device revocation remain in force.
+
+Public ICE defaults to STUN only. Paid TURN credentials from a private deployment are never published
+anonymously. The optional managed relay requires separate owner-approved provisioning:
+
+- `GET /api/ice?id=<ID>` with `Authorization: Bearer <relay capability>` returns TURN only if
+  `RELAY_ENABLED=true`, the capability's SHA-256 hash, browser role, exact target and expiry are in
+  the owner's `RELAY_ADMISSIONS`, and the target is online. A host uses `role=host` and its existing
+  host secret plus `sid=<server-generated viewer sid>`; the room verifies that secret and an active
+  offered viewer session. The session's browser capability must still have current target admission.
+- A funded browser presents its independent relay capability in the WebSocket subprotocol header
+  (`hop, hop-relay.<capability>`), never in the URL. The gateway validates it for this exact target,
+  strips any caller-supplied admission header and attaches only the validated hash internally. The
+  room accepts protocol `hop`, stores that admission on the viewer socket and forwards one offer per
+  sid. Unadmitted public viewers can negotiate STUN sessions but cannot cause host-funded TURN.
+  New hosts reserve a pending slot before any awaited ICE fetch and reject duplicate sids; the
+  room also caps pending viewer sockets to four for compatibility with older desktop clients.
+  Pending sockets expire after 60 seconds without an offer (allowing 45-second ICE gathering), or
+  90 seconds from joining after an offer. Alarms and join-time cleanup enforce fixed deadlines;
+  keepalives/repeated offers never extend them. A validated owner may preempt an unadmitted pending
+  socket when full. Owner and anonymous join-rate budgets are separate at both IP and room levels.
+- `POST /api/relay/enroll` accepts `{tokenHash, hostId}` and returns a ten-minute six-digit code.
+  `GET /api/relay/enroll?code=...` returns its hash/target for owner review. Neither operation grants
+  relay access. Only the authenticated Cloudflare owner may update the admissions Worker secret.
+- TURN credentials are issued server-side with one-hour TTL, cached per capability/target and subject
+  to a global daily issuance limit. Provider secrets never leave the Worker. Issuance limits are not
+  byte or spending caps. Revocation/expiry of funding admission does not replace device-password,
+  pairing, or optional host-approval checks.
+
+See `docs/MANAGED_RELAY.md` for provisioning, shutoff limitations and validation scope. Computers
+must remain powered, online and awake; new browsers must be paired before unattended use overseas.
+
+The browser waits for complete ICE gathering before its single SDP offer, with an explicit 45-second
+failure instead of silently sending a partial list after three seconds. The full connection deadline
+is 90 seconds to leave time for host gathering/authentication. Provider outages and issuance limits
+are preserved as the actual connection error if STUN fallback cannot connect.
