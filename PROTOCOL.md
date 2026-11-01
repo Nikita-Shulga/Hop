@@ -403,6 +403,10 @@ anonymously. The optional managed relay requires separate owner-approved provisi
   sid. Unadmitted public viewers can negotiate STUN sessions but cannot cause host-funded TURN.
   New hosts reserve a pending slot before any awaited ICE fetch and reject duplicate sids; the
   room also caps pending viewer sockets to four for compatibility with older desktop clients.
+  Pending sockets expire after 60 seconds without an offer (allowing 45-second ICE gathering), or
+  90 seconds from joining after an offer. Alarms and join-time cleanup enforce fixed deadlines;
+  keepalives/repeated offers never extend them. A validated owner may preempt an unadmitted pending
+  socket when full. Owner and anonymous join-rate budgets are separate at both IP and room levels.
 - `POST /api/relay/enroll` accepts `{tokenHash, hostId}` and returns a ten-minute six-digit code.
   `GET /api/relay/enroll?code=...` returns its hash/target for owner review. Neither operation grants
   relay access. Only the authenticated Cloudflare owner may update the admissions Worker secret.

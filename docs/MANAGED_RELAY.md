@@ -75,6 +75,10 @@ admission. The viewer capability is carried in a WebSocket subprotocol header, n
 admission headers are discarded and replaced only after owner-admission validation. Each sid may
 forward one offer. Desktop hosts reserve pending capacity before awaiting ICE, reject duplicate
 sids and bypass funded ICE entirely for unadmitted public viewers.
+Pending sockets have fixed 60-second offer / 90-second total negotiation deadlines, cleaned by
+alarms and before quota counting. Keepalives cannot reset them. Validated owner browsers may
+replace unadmitted pending sockets and have separate IP/room rate budgets, so anonymous idle
+connections cannot indefinitely occupy all owner capacity.
 Issued credentials expire after one hour and are cached per capability/target, with a global daily
 issuance ceiling. Failed provider requests consume an issuance slot to bound repeated attempts.
 New sessions refresh credentials when the cached credentials approach expiry. Long sessions may

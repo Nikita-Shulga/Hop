@@ -20,12 +20,12 @@ function json(value, status = 200, headers = {}) {
   return response(JSON.stringify(value), status, { 'content-type': 'application/json; charset=utf-8', ...headers });
 }
 
-async function allowJoin(request, env) {
+async function allowJoin(request, env, admitted = false) {
   // Cloudflare supplies this header; clients cannot choose it at the edge. Do not retain raw IPs.
   const ip = request.headers.get('CF-Connecting-IP') || 'local-test';
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip));
   const hash = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('');
-  const gate = env.ROOMS.get(env.ROOMS.idFromName('public-rate:' + hash));
+  const gate = env.ROOMS.get(env.ROOMS.idFromName((admitted ? 'public-owner-rate:' : 'public-rate:') + hash));
   const result = await gate.fetch('https://public-service/rate', { method: 'POST' });
   return result.status !== 429;
 }
@@ -77,7 +77,8 @@ export async function publicServiceRequest(request, env, version) {
   if ((request.headers.get('Upgrade') || '').toLowerCase() !== 'websocket') {
     return json({ error: 'Expected a WebSocket' }, 426);
   }
-  if (!(await allowJoin(request, env))) {
+  const admission = path === '/ws/view' ? await relayViewerAdmission(request, env) : null;
+  if (!(await allowJoin(request, env, !!admission))) {
     return json({ error: 'Too many connection attempts. Wait a minute and try again.' }, 429, { 'retry-after': '60' });
   }
   const room = env.ROOMS.get(env.ROOMS.idFromName('public:' + id));
@@ -85,7 +86,6 @@ export async function publicServiceRequest(request, env, version) {
   // Public clients cannot assert this trust boundary themselves.
   headers.delete('X-Hop-Relay-Admission');
   headers.set('X-Hop-Managed-Service', '1');
-  const admission = path === '/ws/view' ? await relayViewerAdmission(request, env) : null;
   if (admission) headers.set('X-Hop-Relay-Admission', admission);
   return room.fetch(new Request(request, { headers }));
 }

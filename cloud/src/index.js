@@ -168,10 +168,38 @@ export class Room extends DurableObject {
     // Host keep-alives are answered without waking the object.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     this.joins = []; // timestamps of recent viewer joins (in memory; resets on hibernation)
+    this.ownerJoins = [];
   }
 
   host() {
     return this.ctx.getWebSockets('host')[0] || null;
+  }
+
+  pendingViewers(now = Date.now()) {
+    return this.ctx.getWebSockets('view').filter(ws => {
+      if (ws.readyState === 2 || ws.readyState === 3) return false;
+      const a = ws.deserializeAttachment() || {};
+      if (!Number.isFinite(a.expiresAt) || a.expiresAt <= now) {
+        try { ws.close(4008, 'Connection setup timed out. Please retry.'); } catch {}
+        return false;
+      }
+      return true;
+    });
+  }
+
+  canAcceptViewer(admitted, now = Date.now()) {
+    const pending = this.pendingViewers(now);
+    if (pending.length < 4) return true;
+    // An enrolled owner may replace an unapproved pending negotiation, never an owner session.
+    const replace = admitted && pending.find(ws => !(ws.deserializeAttachment() || {}).relayAdmissionHash);
+    if (!replace) return false;
+    try { replace.close(4009, 'An approved browser is connecting. Please retry.'); } catch {}
+    return true;
+  }
+
+  async armViewerDeadline(deadline) {
+    const alarm = await this.ctx.storage.getAlarm();
+    if (!Number.isFinite(alarm) || alarm > deadline) await this.ctx.storage.setAlarm(deadline);
   }
 
   async fetch(request) {
@@ -185,7 +213,8 @@ export class Room extends DurableObject {
       const stored = await this.ctx.storage.get('keyHash');
       const viewer = sid && this.ctx.getWebSockets('v:' + sid)[0];
       const admission = viewer && viewer.deserializeAttachment();
-      const allowed = this.host() && (!hostHash || (hostHash === stored && admission && admission.offered && admission.relayAdmissionHash));
+      const allowed = this.host() && (!hostHash || (hostHash === stored && admission && admission.offered &&
+        admission.expiresAt > Date.now() && admission.relayAdmissionHash));
       return json({ online: !!this.host(), viewerHash: admission && admission.relayAdmissionHash }, allowed ? 200 : 403);
     }
     if (url.hostname === 'public-service' && url.pathname === '/rate') {
@@ -226,11 +255,13 @@ export class Room extends DurableObject {
     }
 
     // Viewer
-    if (this.ctx.getWebSockets('view').length >= 4) return json({ error: 'Too many connection attempts. Try again shortly.' }, 429);
     const now = Date.now();
-    this.joins = this.joins.filter((t) => now - t < 60000);
-    if (this.joins.length >= JOINS_PER_MINUTE) return json({ error: 'Too many attempts. Wait a minute.' }, 429);
-    this.joins.push(now);
+    const relayAdmissionHash = request.headers.get('X-Hop-Relay-Admission') || null;
+    if (!this.canAcceptViewer(!!relayAdmissionHash, now)) return json({ error: 'Too many connection attempts. Try again shortly.' }, 429);
+    const rateKey = relayAdmissionHash ? 'ownerJoins' : 'joins';
+    this[rateKey] = this[rateKey].filter((t) => now - t < 60000);
+    if (this[rateKey].length >= JOINS_PER_MINUTE) return json({ error: 'Too many attempts. Wait a minute.' }, 429);
+    this[rateKey].push(now);
 
     const sid = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
     this.ctx.acceptWebSocket(server, ['view', 'v:' + sid]);
@@ -239,10 +270,13 @@ export class Room extends DurableObject {
       sid,
       ip: request.headers.get('CF-Connecting-IP') || '',
       ua: (request.headers.get('User-Agent') || '').slice(0, 400),
-      relayAdmissionHash: request.headers.get('X-Hop-Relay-Admission') || null,
+      relayAdmissionHash,
       managedService: request.headers.get('X-Hop-Managed-Service') === '1',
       offered: false,
+      expiresAt: now + 60000,
+      hardDeadline: now + 90000,
     });
+    await this.armViewerDeadline(now + 60000);
     if (this.host()) server.send(JSON.stringify({ t: 'ready' }));
     else {
       server.send(JSON.stringify({ t: 'error', msg: MSG_OFFLINE }));
@@ -256,6 +290,8 @@ export class Room extends DurableObject {
   async alarm() {
     if (await this.ctx.storage.get('isRelayRegistry')) return cleanRelayRegistry(this.ctx);
     await this.ctx.storage.delete('publicJoins');
+    const pending = this.pendingViewers();
+    if (pending.length) await this.ctx.storage.setAlarm(Math.min(...pending.map(ws => ws.deserializeAttachment().expiresAt)));
   }
 
   async webSocketMessage(ws, message) {
@@ -266,6 +302,10 @@ export class Room extends DurableObject {
     const a = ws.deserializeAttachment() || {};
 
     if (a.role === 'view') {
+      if (!Number.isFinite(a.expiresAt) || a.expiresAt <= Date.now()) {
+        try { ws.close(4008, 'Connection setup timed out. Please retry.'); } catch {}
+        return;
+      }
       if (d.t !== 'offer' || typeof d.sdp !== 'string' || d.sdp.length > MAX_SDP) return;
       if (a.offered) return;
       const host = this.host();
@@ -274,7 +314,9 @@ export class Room extends DurableObject {
         return;
       }
       a.offered = true;
+      a.expiresAt = a.hardDeadline;
       ws.serializeAttachment(a);
+      await this.armViewerDeadline(a.expiresAt);
       host.send(JSON.stringify({ t: 'offer', sid: a.sid, sdp: d.sdp, ip: a.ip, ua: a.ua,
         relayAllowed: a.managedService ? !!a.relayAdmissionHash : undefined }));
       return;

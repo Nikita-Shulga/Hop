@@ -15,6 +15,7 @@ function environment() {
       get: name => ({ fetch: async (request, options) => {
         calls.push({ name, request, options });
         if (name.startsWith('public-rate:')) return new Response('{}', { status: env.limited ? 429 : 200 });
+        if (name.startsWith('public-owner-rate:')) return new Response('{}', { status: env.ownerLimited ? 429 : 200 });
         if (name === '__site__') return Response.json({ ok: false });
         return new Response(name);
       } }),
@@ -129,7 +130,7 @@ test('legacy origins still reject unkeyed requests and never use public rooms', 
 
 test('actual Room relay gate requires online host and its matching stored secret hash', async () => {
   let online = true;
-  let viewerAdmission = { offered: true, relayAdmissionHash: 'approved-browser-hash' };
+  let viewerAdmission = { offered: true, relayAdmissionHash: 'approved-browser-hash', expiresAt: Date.now() + 90000 };
   const stored = new Map([['keyHash', 'owner-host-hash']]);
   const ctx = { setWebSocketAutoResponse() {}, getWebSockets: tag => tag === 'host' ? (online ? [{}] : []) :
     tag === 'v:0123456789abcdef' ? [{ deserializeAttachment: () => viewerAdmission }] : [],
@@ -167,9 +168,12 @@ test('public signaling authenticates relay subprotocol capability and strips for
     RELAY_ADMISSIONS: JSON.stringify([{ role: 'browser', tokenHash: hash, hostIds: ['123456789'], expiresAt: Date.now() + 10000 }]) });
   await publicServiceRequest(request('/ws/view?id=123456789', { Upgrade: 'websocket', 'X-Hop-Relay-Admission': hash }), env, 'test');
   assert.equal(calls.at(-1).request.headers.get('X-Hop-Relay-Admission'), null);
+  env.limited = true;
   await publicServiceRequest(request('/ws/view?id=123456789', { Upgrade: 'websocket', 'Sec-WebSocket-Protocol': 'hop, hop-relay.' + token }), env, 'test');
   assert.equal(calls.at(-1).request.headers.get('X-Hop-Relay-Admission'), hash);
+  assert.ok(calls.at(-2).name.startsWith('public-owner-rate:'));
   assert.equal(calls.at(-1).request.url.includes(token), false);
+  env.limited = false;
   await publicServiceRequest(request('/ws/view?id=987654321', { Upgrade: 'websocket', 'Sec-WebSocket-Protocol': 'hop, hop-relay.' + token }), env, 'test');
   assert.equal(calls.at(-1).request.headers.get('X-Hop-Relay-Admission'), null);
 });
@@ -177,7 +181,8 @@ test('public signaling authenticates relay subprotocol capability and strips for
 test('actual Room forwards only one offer per sid, without trusting viewer-supplied relay flags', async () => {
   const forwarded = [];
   let pending = [];
-  const ctx = { setWebSocketAutoResponse() {}, getWebSockets: tag => tag === 'host' ? [{ send: x => forwarded.push(JSON.parse(x)) }] : tag === 'view' ? pending : [] };
+  const ctx = { setWebSocketAutoResponse() {}, getWebSockets: tag => tag === 'host' ? [{ send: x => forwarded.push(JSON.parse(x)) }] : tag === 'view' ? pending : [],
+    storage: { getAlarm: async () => null, setAlarm: async () => {} } };
   const context = createContext({ Response, Request, URL, TextEncoder, crypto: webcrypto,
     WebSocketRequestResponsePair: class {}, WebSocketPair: class { constructor() { return { 0: {}, 1: {} }; } } });
   const source = new SourceTextModule(readFileSync(new URL('../src/index.js', import.meta.url), 'utf8'), { context });
@@ -188,14 +193,14 @@ test('actual Room forwards only one offer per sid, without trusting viewer-suppl
   });
   await source.evaluate();
   const room = new source.namespace.Room(ctx, {});
-  let attachment = { role: 'view', sid: '0123456789abcdef', managedService: true, relayAdmissionHash: null };
+  let attachment = { role: 'view', sid: '0123456789abcdef', managedService: true, relayAdmissionHash: null, expiresAt: Date.now() + 60000, hardDeadline: Date.now() + 90000 };
   const ws = { deserializeAttachment: () => attachment, serializeAttachment: a => { attachment = a; }, send() {} };
   for (let i = 0; i < 12; i++) await room.webSocketMessage(ws, JSON.stringify({ t: 'offer', sdp: 'test-sdp', relayAllowed: true }));
   assert.equal(forwarded.length, 1);
   assert.equal(forwarded[0].relayAllowed, false);
-  attachment = { role: 'view', sid: 'fedcba9876543210', managedService: true, relayAdmissionHash: 'approved-hash' };
+  attachment = { role: 'view', sid: 'fedcba9876543210', managedService: true, relayAdmissionHash: 'approved-hash', expiresAt: Date.now() + 60000, hardDeadline: Date.now() + 90000 };
   await room.webSocketMessage(ws, JSON.stringify({ t: 'offer', sdp: 'test-sdp' }));
   assert.equal(forwarded[1].relayAllowed, true);
-  pending = [{}, {}, {}, {}];
+  pending = Array.from({ length: 4 }, () => ({ deserializeAttachment: () => ({ expiresAt: Date.now() + 60000 }) }));
   assert.equal((await room.fetch(new Request('https://room/ws/view'))).status, 429, 'four pending viewers cannot create a fifth negotiation');
 });
