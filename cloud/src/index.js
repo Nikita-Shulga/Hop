@@ -152,7 +152,10 @@ export default {
       if ((request.headers.get('Upgrade') || '').toLowerCase() !== 'websocket') {
         return json({ error: 'Expected a WebSocket' }, 426);
       }
-      return env.ROOMS.get(env.ROOMS.idFromName(id)).fetch(request);
+      const headers = new Headers(request.headers);
+      headers.delete('X-Hop-Relay-Admission');
+      headers.delete('X-Hop-Managed-Service');
+      return env.ROOMS.get(env.ROOMS.idFromName(id)).fetch(new Request(request, { headers }));
     }
     return notFound();
   },
@@ -178,9 +181,12 @@ export class Room extends DurableObject {
       return relayRegistry(request, this.ctx, this.relayEnv);
     }
     if (url.hostname === 'public-service' && url.pathname === '/relay-host') {
-      const { hostHash } = await request.json();
+      const { hostHash, sid } = await request.json();
       const stored = await this.ctx.storage.get('keyHash');
-      return json({ online: !!this.host() }, this.host() && (!hostHash || hostHash === stored) ? 200 : 403);
+      const viewer = sid && this.ctx.getWebSockets('v:' + sid)[0];
+      const admission = viewer && viewer.deserializeAttachment();
+      const allowed = this.host() && (!hostHash || (hostHash === stored && admission && admission.offered && admission.relayAdmissionHash));
+      return json({ online: !!this.host(), viewerHash: admission && admission.relayAdmissionHash }, allowed ? 200 : 403);
     }
     if (url.hostname === 'public-service' && url.pathname === '/rate') {
       const now = Date.now();
@@ -220,6 +226,7 @@ export class Room extends DurableObject {
     }
 
     // Viewer
+    if (this.ctx.getWebSockets('view').length >= 4) return json({ error: 'Too many connection attempts. Try again shortly.' }, 429);
     const now = Date.now();
     this.joins = this.joins.filter((t) => now - t < 60000);
     if (this.joins.length >= JOINS_PER_MINUTE) return json({ error: 'Too many attempts. Wait a minute.' }, 429);
@@ -232,13 +239,18 @@ export class Room extends DurableObject {
       sid,
       ip: request.headers.get('CF-Connecting-IP') || '',
       ua: (request.headers.get('User-Agent') || '').slice(0, 400),
+      relayAdmissionHash: request.headers.get('X-Hop-Relay-Admission') || null,
+      managedService: request.headers.get('X-Hop-Managed-Service') === '1',
+      offered: false,
     });
     if (this.host()) server.send(JSON.stringify({ t: 'ready' }));
     else {
       server.send(JSON.stringify({ t: 'error', msg: MSG_OFFLINE }));
       server.close(4004, 'offline');
     }
-    return new Response(null, { status: 101, webSocket: client });
+    const protocol = (request.headers.get('Sec-WebSocket-Protocol') || '').split(',').map(x => x.trim());
+    return new Response(null, { status: 101, webSocket: client,
+      headers: protocol.includes('hop') ? { 'Sec-WebSocket-Protocol': 'hop' } : {} });
   }
 
   async alarm() {
@@ -255,12 +267,16 @@ export class Room extends DurableObject {
 
     if (a.role === 'view') {
       if (d.t !== 'offer' || typeof d.sdp !== 'string' || d.sdp.length > MAX_SDP) return;
+      if (a.offered) return;
       const host = this.host();
       if (!host) {
         ws.send(JSON.stringify({ t: 'error', msg: MSG_OFFLINE }));
         return;
       }
-      host.send(JSON.stringify({ t: 'offer', sid: a.sid, sdp: d.sdp, ip: a.ip, ua: a.ua }));
+      a.offered = true;
+      ws.serializeAttachment(a);
+      host.send(JSON.stringify({ t: 'offer', sid: a.sid, sdp: d.sdp, ip: a.ip, ua: a.ua,
+        relayAllowed: a.managedService ? !!a.relayAdmissionHash : undefined }));
       return;
     }
 

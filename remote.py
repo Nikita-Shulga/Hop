@@ -264,6 +264,7 @@ class CloudLink(object):
         self.state = "connecting"       # connecting | online | offline | error
         self.error = ""
         self.peers = {}                 # sid -> RTCPeerConnection (negotiating or live)
+        self._negotiating = set()        # Reserve capacity before the awaited ICE request.
         self._task = None
         self._ws = None
         self._stopped = False
@@ -386,7 +387,7 @@ class CloudLink(object):
         t = d.get("t")
         if t == "offer" and isinstance(d.get("sid"), str) and isinstance(d.get("sdp"), str):
             asyncio.ensure_future(self._answer(d["sid"], d["sdp"], str(d.get("ip") or "Internet"),
-                                               str(d.get("ua") or "")))
+                                               str(d.get("ua") or ""), d.get("relayAllowed")))
         elif t == "bye":
             # The viewer left before we answered: drop that negotiation. Once answered, the viewer may
             # close its signaling socket at any time; NEGOTIATION_TIMEOUT cleans up if it never connects.
@@ -394,10 +395,10 @@ class CloudLink(object):
             if pc is not None and not getattr(pc, "_lv_answered", False):
                 asyncio.ensure_future(pc.close())
 
-    async def _ice_servers(self):
+    async def _ice_servers(self, sid=None):
         try:
             async with self._http.get(self.base + "/api/ice",
-                                      params={"k": self.site_key, "id": self.host_id, "role": "host"},
+                                      params={"k": self.site_key, "id": self.host_id, "role": "host", "sid": sid or ""},
                                       headers={"Authorization": "Bearer " + self.key},
                                       timeout=ClientTimeout(total=8)) as r:
                 j = await r.json(content_type=None)
@@ -415,13 +416,23 @@ class CloudLink(object):
             log.info("ICE server list unavailable (%s); using public STUN", e)
             return [RTCIceServer(urls=["stun:stun.cloudflare.com:3478"])]
 
-    async def _answer(self, sid, sdp, ip, ua):
-        if len([p for p in self.peers.values() if p.connectionState != "closed"]) >= MAX_REMOTE:
+    async def _answer(self, sid, sdp, ip, ua, relay_allowed=None):
+        if sid in self._negotiating or sid in self.peers:
+            return
+        if len(self._negotiating) + len([p for p in self.peers.values() if p.connectionState != "closed"]) >= MAX_REMOTE:
             await self._send({"t": "error", "sid": sid, "msg": "Too many people are connected to this computer"})
             return
-        pc = RTCPeerConnection(RTCConfiguration(iceServers=await self._ice_servers()))
-        pc._lv_answered = False
-        self.peers[sid] = pc
+        self._negotiating.add(sid)
+        try:
+            servers = ([RTCIceServer(urls=["stun:stun.cloudflare.com:3478"])] if relay_allowed is False
+                       else await self._ice_servers(sid))
+            if self._stopped:
+                return
+            pc = RTCPeerConnection(RTCConfiguration(iceServers=servers))
+            pc._lv_answered = False
+            self.peers[sid] = pc
+        finally:
+            self._negotiating.discard(sid)
         track = ScreenTrack()
         channel_fut = asyncio.get_event_loop().create_future()
 

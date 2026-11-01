@@ -3,7 +3,7 @@
 const ID_RE = /^\d{9}$/;
 const METHODS = new Set(['GET', 'HEAD']);
 const PUBLIC_HOST = 'hop.nikitashulga.com';
-import { relayIce, relayEnrollment } from './public-relay.mjs';
+import { relayIce, relayEnrollment, relayViewerAdmission } from './public-relay.mjs';
 
 export function isPublicService(url, env) {
   return url.hostname === (env.PUBLIC_SERVICE_HOST || PUBLIC_HOST);
@@ -81,5 +81,11 @@ export async function publicServiceRequest(request, env, version) {
     return json({ error: 'Too many connection attempts. Wait a minute and try again.' }, 429, { 'retry-after': '60' });
   }
   const room = env.ROOMS.get(env.ROOMS.idFromName('public:' + id));
-  return room.fetch(request);
+  const headers = new Headers(request.headers);
+  // Public clients cannot assert this trust boundary themselves.
+  headers.delete('X-Hop-Relay-Admission');
+  headers.set('X-Hop-Managed-Service', '1');
+  const admission = path === '/ws/view' ? await relayViewerAdmission(request, env) : null;
+  if (admission) headers.set('X-Hop-Relay-Admission', admission);
+  return room.fetch(new Request(request, { headers }));
 }

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { SourceTextModule, SyntheticModule, createContext } from 'node:vm';
 import { webcrypto } from 'node:crypto';
 import { isPublicService, publicServiceRequest } from '../src/public-service.mjs';
-import { relayRegistry, cleanRelayRegistry } from '../src/public-relay.mjs';
+import { relayRegistry, cleanRelayRegistry, digest } from '../src/public-relay.mjs';
 
 function environment() {
   const calls = [];
@@ -129,8 +129,10 @@ test('legacy origins still reject unkeyed requests and never use public rooms', 
 
 test('actual Room relay gate requires online host and its matching stored secret hash', async () => {
   let online = true;
+  let viewerAdmission = { offered: true, relayAdmissionHash: 'approved-browser-hash' };
   const stored = new Map([['keyHash', 'owner-host-hash']]);
-  const ctx = { setWebSocketAutoResponse() {}, getWebSockets: () => online ? [{}] : [],
+  const ctx = { setWebSocketAutoResponse() {}, getWebSockets: tag => tag === 'host' ? (online ? [{}] : []) :
+    tag === 'v:0123456789abcdef' ? [{ deserializeAttachment: () => viewerAdmission }] : [],
     storage: { get: async k => stored.get(k), put: async (k, v) => stored.set(k, v) } };
   const context = createContext({ Response, Request, URL, TextEncoder, crypto: webcrypto,
     WebSocketRequestResponsePair: class {} });
@@ -146,12 +148,54 @@ test('actual Room relay gate requires online host and its matching stored secret
   });
   await source.evaluate();
   const room = new source.namespace.Room(ctx, {});
-  const check = hostHash => room.fetch(new Request('https://public-service/relay-host', {
-    method: 'POST', body: JSON.stringify({ hostHash }) }));
+  const check = (hostHash, sid = '0123456789abcdef') => room.fetch(new Request('https://public-service/relay-host', {
+    method: 'POST', body: JSON.stringify({ hostHash, sid }) }));
   assert.equal((await check('attacker-hash')).status, 403);
+  assert.equal((await check('owner-host-hash', '')).status, 403);
   assert.equal((await check('owner-host-hash')).status, 200);
   assert.equal((await check(null)).status, 200, 'owner-approved browser still needs an online target');
+  viewerAdmission = { offered: true, relayAdmissionHash: null };
+  assert.equal((await check('owner-host-hash')).status, 403, 'unapproved viewer cannot trigger host-funded relay');
   online = false;
   assert.equal((await check(null)).status, 403);
   assert.equal((await check('owner-host-hash')).status, 403);
+});
+
+test('public signaling authenticates relay subprotocol capability and strips forged admission headers', async () => {
+  const { env, calls } = environment(), token = 'c'.repeat(64), hash = await digest(token);
+  Object.assign(env, { RELAY_ENABLED: 'true', PUBLIC_TURN_KEY_ID: 'test', PUBLIC_TURN_KEY_API_TOKEN: 'test',
+    RELAY_ADMISSIONS: JSON.stringify([{ role: 'browser', tokenHash: hash, hostIds: ['123456789'], expiresAt: Date.now() + 10000 }]) });
+  await publicServiceRequest(request('/ws/view?id=123456789', { Upgrade: 'websocket', 'X-Hop-Relay-Admission': hash }), env, 'test');
+  assert.equal(calls.at(-1).request.headers.get('X-Hop-Relay-Admission'), null);
+  await publicServiceRequest(request('/ws/view?id=123456789', { Upgrade: 'websocket', 'Sec-WebSocket-Protocol': 'hop, hop-relay.' + token }), env, 'test');
+  assert.equal(calls.at(-1).request.headers.get('X-Hop-Relay-Admission'), hash);
+  assert.equal(calls.at(-1).request.url.includes(token), false);
+  await publicServiceRequest(request('/ws/view?id=987654321', { Upgrade: 'websocket', 'Sec-WebSocket-Protocol': 'hop, hop-relay.' + token }), env, 'test');
+  assert.equal(calls.at(-1).request.headers.get('X-Hop-Relay-Admission'), null);
+});
+
+test('actual Room forwards only one offer per sid, without trusting viewer-supplied relay flags', async () => {
+  const forwarded = [];
+  let pending = [];
+  const ctx = { setWebSocketAutoResponse() {}, getWebSockets: tag => tag === 'host' ? [{ send: x => forwarded.push(JSON.parse(x)) }] : tag === 'view' ? pending : [] };
+  const context = createContext({ Response, Request, URL, TextEncoder, crypto: webcrypto,
+    WebSocketRequestResponsePair: class {}, WebSocketPair: class { constructor() { return { 0: {}, 1: {} }; } } });
+  const source = new SourceTextModule(readFileSync(new URL('../src/index.js', import.meta.url), 'utf8'), { context });
+  await source.link(async specifier => {
+    const values = specifier === 'cloudflare:workers' ? { DurableObject: class { constructor(ctx) { this.ctx = ctx; } } } :
+      specifier === './public-relay.mjs' ? { relayRegistry, cleanRelayRegistry } : { isPublicService, publicServiceRequest };
+    return new SyntheticModule(Object.keys(values), function () { Object.entries(values).forEach(([k, v]) => this.setExport(k, v)); }, { context });
+  });
+  await source.evaluate();
+  const room = new source.namespace.Room(ctx, {});
+  let attachment = { role: 'view', sid: '0123456789abcdef', managedService: true, relayAdmissionHash: null };
+  const ws = { deserializeAttachment: () => attachment, serializeAttachment: a => { attachment = a; }, send() {} };
+  for (let i = 0; i < 12; i++) await room.webSocketMessage(ws, JSON.stringify({ t: 'offer', sdp: 'test-sdp', relayAllowed: true }));
+  assert.equal(forwarded.length, 1);
+  assert.equal(forwarded[0].relayAllowed, false);
+  attachment = { role: 'view', sid: 'fedcba9876543210', managedService: true, relayAdmissionHash: 'approved-hash' };
+  await room.webSocketMessage(ws, JSON.stringify({ t: 'offer', sdp: 'test-sdp' }));
+  assert.equal(forwarded[1].relayAllowed, true);
+  pending = [{}, {}, {}, {}];
+  assert.equal((await room.fetch(new Request('https://room/ws/view'))).status, 429, 'four pending viewers cannot create a fifth negotiation');
 });

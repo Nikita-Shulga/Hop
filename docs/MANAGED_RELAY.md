@@ -13,12 +13,14 @@ enabled it and created **HopApp**, verified in the account dashboard, and saved 
 `TURN_KEY_API_TOKEN` on the Worker. Reuse that resource; do not create another key or subscription.
 The introduction states 1,000 GB/month free.
 
-Current deployment: Worker version `8de9ba04-e86a-4878-be8b-7ada10c2ce48`, with `RELAY_ENABLED=true`,
+Initial relay deployment: Worker version `8de9ba04-e86a-4878-be8b-7ada10c2ce48`, with `RELAY_ENABLED=true`,
 `RELAY_USE_LEGACY_KEY=true`, and `RELAY_DAILY_ISSUANCE_LIMIT=24`. It reuses the owner's existing
 HopApp key via the existing `TURN_KEY_*` secret names. No browser admission has yet been installed;
 anonymous `/api/ice` returns only STUN with `relayAvailable:true, relayAuthorized:false`.
 The intended phone's enrollment code is pending. The TURN key has not yet been validated through
 a live credential issue or allocation. Do not claim the phone-to-PC failure is resolved yet.
+The source also includes subsequent session-admission, duplicate-offer and delayed-ICE fixes; use
+the PR's current deployment checkpoint for the latest deployed Worker version and source commit.
 
 For new installations, after explicit owner approval (the existing account has already completed
 the TURN resource/key step):
@@ -67,7 +69,12 @@ while an older host uses STUN. The explicit registry is `.relay-admissions.json`
 mode 0600). Preserve it when approving further browsers; Worker secrets cannot be read back.
 
 `/api/ice` checks owner admission, expiry, exact target computer ID and online host before issuing
-any relay credentials. Hosts additionally prove their existing host secret against the actual room.
+any relay credentials. Hosts additionally prove their existing host secret against the actual room,
+provide a server-generated active viewer sid, and require that offered viewer's current relay
+admission. The viewer capability is carried in a WebSocket subprotocol header, not its URL; client
+admission headers are discarded and replaced only after owner-admission validation. Each sid may
+forward one offer. Desktop hosts reserve pending capacity before awaiting ICE, reject duplicate
+sids and bypass funded ICE entirely for unadmitted public viewers.
 Issued credentials expire after one hour and are cached per capability/target, with a global daily
 issuance ceiling. Failed provider requests consume an issuance slot to bound repeated attempts.
 New sessions refresh credentials when the cached credentials approach expiry. Long sessions may
@@ -77,6 +84,10 @@ Cloudflare TLS/443 is included. aiortc currently supports only the first TURN UR
 client deliberately places verified `turns:turn.cloudflare.com:443?transport=tcp` first.
 The bundled CA roots also apply to asyncio/aioice's default TLS context; certificate and hostname
 checks remain enabled. Custom private TURN servers retain their existing fallback behavior.
+
+The browser sends its single offer only after complete ICE gathering (45-second explicit deadline),
+so relay candidates arriving after the old three-second cutoff remain in the SDP. The overall
+connection deadline is 90 seconds. Provider/limit failures remain visible if STUN fallback fails.
 
 ## Shutoff
 
@@ -92,7 +103,7 @@ Do not claim the issuance counter or Worker flag instantly terminates provider a
 ```sh
 node cloud/build.mjs
 node packaging/check-js.mjs
-node --experimental-vm-modules --test cloud/test/public-service.test.mjs cloud/test/public-relay.test.mjs
+node --experimental-vm-modules --test cloud/test/*.test.mjs
 python -m pytest tests -q
 ```
 

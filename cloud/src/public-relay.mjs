@@ -38,6 +38,16 @@ function registry(env) {
   return env.ROOMS.get(env.ROOMS.idFromName('__public_relay__'));
 }
 
+export async function relayViewerAdmission(request, env) {
+  if (!configured(env)) return null;
+  const protocol = (request.headers.get('Sec-WebSocket-Protocol') || '').split(',').map(x => x.trim());
+  const token = (protocol.find(x => x.startsWith('hop-relay.')) || '').slice('hop-relay.'.length);
+  if (!TOKEN.test(token)) return null;
+  const id = new URL(request.url).searchParams.get('id'), hash = await digest(token), now = Date.now();
+  return entries(env).some(e => e && e.role === 'browser' && e.tokenHash === hash &&
+    Array.isArray(e.hostIds) && e.hostIds.includes(id) && Number.isFinite(e.expiresAt) && e.expiresAt > now) ? hash : null;
+}
+
 export async function relayIce(request, env) {
   const url = new URL(request.url), id = url.searchParams.get('id') || '';
   const fallback = { iceServers: STUN, relayAvailable: configured(env), relayAuthorized: false };
@@ -51,9 +61,16 @@ export async function relayIce(request, env) {
   if (!admission) return json(fallback);
   // Only the actual online host may use its owner-approved host capability.
   const room = env.ROOMS.get(env.ROOMS.idFromName('public:' + id));
+  const sid = url.searchParams.get('sid') || '';
+  if (host && !/^[a-f0-9]{16}$/.test(sid)) return json(fallback);
   const state = await room.fetch('https://public-service/relay-host', { method: 'POST',
-    body: JSON.stringify({ hostHash: host ? hash : null }) });
+    body: JSON.stringify({ hostHash: host ? hash : null, sid: host ? sid : null }) });
   if (!state.ok) return json({ ...fallback, relayAuthorized: true, relayError: 'Computer is offline' });
+  if (host) {
+    const session = await state.json();
+    if (!entries(env).some(e => e && e.role === 'browser' && e.tokenHash === session.viewerHash &&
+      Array.isArray(e.hostIds) && e.hostIds.includes(id) && Number.isFinite(e.expiresAt) && e.expiresAt > now)) return json(fallback);
+  }
   const gate = await registry(env).fetch('https://relay/issue', { method: 'POST',
     body: JSON.stringify({ hash, id }) });
   if (!gate.ok) return json({ ...fallback, relayAuthorized: true, relayError: 'Relay connection limit reached. Try again later.' }, 429);

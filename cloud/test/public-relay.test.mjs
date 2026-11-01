@@ -21,19 +21,19 @@ function registry() {
 }
 async function setup() {
   const { ctx, map } = registry();
-  let online = true, expectedHostHash = null;
+  let online = true, expectedHostHash = null, viewerHash = null;
   const env = { RELAY_ENABLED: 'true', PUBLIC_TURN_KEY_ID: 'test-key', PUBLIC_TURN_KEY_API_TOKEN: 'server-only-token',
     RELAY_ADMISSIONS: JSON.stringify([{ role: 'browser', tokenHash: await digest(TOKEN), hostIds: [ID], expiresAt: Date.now() + 86400000 }]),
     ROOMS: { idFromName: x => x, get: name => ({ fetch: async (input, init) => {
       const r = new Request(input, init);
       if (name === '__public_relay__') return relayRegistry(r, ctx, env);
       const { hostHash } = await r.json();
-      return Response.json({}, { status: online && (!hostHash || hostHash === expectedHostHash) ? 200 : 403 });
+      return Response.json({ viewerHash }, { status: online && (!hostHash || hostHash === expectedHostHash) ? 200 : 403 });
     } }) },
   };
   const request = (token = TOKEN, id = ID, extra = '') => new Request('https://hop.nikitashulga.com/api/ice?id=' + id + extra,
     { headers: { Authorization: 'Bearer ' + token } });
-  return { env, ctx, map, request, offline: () => { online = false; }, setHostHash: h => { expectedHostHash = h; } };
+  return { env, ctx, map, request, offline: () => { online = false; }, setHostHash: h => { expectedHostHash = h; }, setViewerHash: h => { viewerHash = h; } };
 }
 
 test('TURN is fail-closed for anonymous, unapproved, expired, mismatched host or disabled access', async () => {
@@ -95,7 +95,20 @@ test('a public host registration is insufficient; host capability must be owner-
   const s = await setup(), hash = await digest(TOKEN);
   assert.equal((await (await relayIce(s.request(TOKEN, ID, '&role=host'), s.env)).json()).relayAuthorized, false);
   s.env.RELAY_ADMISSIONS = JSON.stringify([{ role: 'host', tokenHash: hash, hostIds: [ID], expiresAt: Date.now() + 10000 }]);
-  assert.equal((await (await relayIce(s.request(TOKEN, ID, '&role=host'), s.env)).json()).relayError, 'Computer is offline');
+  assert.equal((await (await relayIce(s.request(TOKEN, ID, '&role=host'), s.env)).json()).relayAuthorized, false);
+});
+
+test('an approved host cannot issue relay credentials for an unapproved viewer negotiation', async () => {
+  const s = await setup(), hostHash = await digest(TOKEN);
+  s.env.RELAY_ADMISSIONS = JSON.stringify([{ role: 'host', tokenHash: hostHash, hostIds: [ID], expiresAt: Date.now() + 10000 }]);
+  s.setHostHash(hostHash);
+  const original = globalThis.fetch; let calls = 0;
+  globalThis.fetch = async () => { calls++; throw new Error('must not fund unapproved viewer'); };
+  try {
+    const ice = await (await relayIce(s.request(TOKEN, ID, '&role=host&sid=0123456789abcdef'), s.env)).json();
+    assert.equal(ice.relayAuthorized, false);
+    assert.equal(calls, 0);
+  } finally { globalThis.fetch = original; }
 });
 
 test('enrollment reveals only an expiring code; lookup hash does not grant relay admission', async () => {
@@ -110,6 +123,24 @@ test('enrollment reveals only an expiring code; lookup hash does not grant relay
   assert.deepEqual(await (await relayEnrollment(enroll(), env)).json(), j);
   map.get('code:' + j.code).expiresAt = Date.now() - 1;
   assert.equal((await relayEnrollment(lookup, env)).status, 404);
+});
+
+test('host relay requires both live session approval and current viewer funding admission, even for cached credentials', async () => {
+  const s = await setup(), hostHash = await digest(TOKEN), viewerHash = await digest('b'.repeat(64));
+  const host = { role: 'host', tokenHash: hostHash, hostIds: [ID], expiresAt: Date.now() + 10000 };
+  const browser = { role: 'browser', tokenHash: viewerHash, hostIds: [ID], expiresAt: Date.now() + 10000 };
+  s.env.RELAY_ADMISSIONS = JSON.stringify([host, browser]); s.setHostHash(hostHash); s.setViewerHash(viewerHash);
+  const original = globalThis.fetch; let calls = 0;
+  globalThis.fetch = async () => { calls++; return Response.json({ iceServers: [{
+    urls: ['turns:turn.cloudflare.com:443?transport=tcp'], username: 'short', credential: 'short' }] }); };
+  try {
+    const req = () => s.request(TOKEN, ID, '&role=host&sid=0123456789abcdef');
+    assert.equal((await (await relayIce(req(), s.env)).json()).relayAuthorized, true);
+    assert.equal(calls, 1);
+    s.env.RELAY_ADMISSIONS = JSON.stringify([host]);
+    assert.equal((await (await relayIce(req(), s.env)).json()).relayAuthorized, false);
+    assert.equal(calls, 1);
+  } finally { globalThis.fetch = original; }
 });
 
 test('registry cleanup preserves its marker and current daily limit while expiring credentials and codes', async () => {

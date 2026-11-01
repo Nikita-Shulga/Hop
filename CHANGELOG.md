@@ -1,6 +1,9 @@
 # Changelog
 
 ## Managed relay preparation
+- Bind host relay allocation to an owner-admitted viewer session; reject duplicate offers and
+  reserve host negotiation capacity before awaited work. Existing password/pairing stays required.
+- Include delayed relay candidates in the browser offer and show actual relay outages/limits.
 - Owner-approved browser/computer relay admission, expiring credentials and bounded issuance;
   no anonymous funded TURN endpoint. Relay remains disabled until account provisioning is approved.
 - Prefer verified TURN TLS/TCP 443 on desktop because aiortc consumes only one TURN URL.

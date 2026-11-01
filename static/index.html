@@ -31,6 +31,7 @@ if (/^\/k\/[A-Za-z0-9_-]{16,64}\//.test(location.pathname)) document.getElementB
 })();
 </script>
 <script src="/static/i18n.js"></script>
+<script src="/static/ice-gather.js"></script>
 <script>
 /* the saved language: English unless chosen in Settings (or passed as #lang=ru by the Hop app that opened this) */
 (function () {
@@ -2781,13 +2782,6 @@ function teardownRtc() {
   try { rv.srcObject = null; } catch (e) {}
   if (bmp === rv) bmp = null;
 }
-function waitIce(pc, ms) {
-  return new Promise(function (res) {
-    if (pc.iceGatheringState === 'complete') { res(); return; }
-    var t = setTimeout(res, ms);
-    pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } });
-  });
-}
 function connectCloud() {
   clearTimeout(retryTimer); clearTimeout(connectTimer);
   if (ws) { var old = ws; ws = null; try { old.onclose = null; old.close(); } catch (e) {} }
@@ -2809,8 +2803,8 @@ function connectCloud() {
     onClosed(had);
   }
   connectTimer = setTimeout(function () {
-    if (!st.gotHello) end(everHello ? null : M('msg.noAnswer'));
-  }, 30000);
+    if (!st.gotHello) end(everHello ? null : (r.relayError || M('msg.noAnswer')));
+  }, 90000);
   var iceUrl = cloudApi('/api/ice');
   var iceOptions = { cache: 'no-store' };
   if (PUBLIC_SERVICE) {
@@ -2819,10 +2813,14 @@ function connectCloud() {
   }
   fetch(iceUrl, iceOptions).then(function (x) { return x.json(); }).catch(function () { return {}; }).then(function (ice) {
     if (rtc !== r) return;
+    r.relayError = ice.relayError || null;
     $('#relaySetup').hidden = !(PUBLIC_SERVICE && ice.relayAvailable && !ice.relayAuthorized);
     var servers = (ice && ice.iceServers && ice.iceServers.length) ? ice.iceServers : [{ urls: 'stun:stun.cloudflare.com:3478' }];
     var sig;
-    try { sig = new WebSocket(CLOUD_BASE.replace(/^http/, 'ws') + '/ws/view?id=' + cloudId + '&k=' + encodeURIComponent(CLOUD_KEY)); }
+    try {
+      var sigUrl = CLOUD_BASE.replace(/^http/, 'ws') + '/ws/view?id=' + cloudId + '&k=' + encodeURIComponent(CLOUD_KEY);
+      sig = PUBLIC_SERVICE && ice.relayAuthorized ? new WebSocket(sigUrl, ['hop', 'hop-relay.' + relayIdentity()]) : new WebSocket(sigUrl);
+    }
     catch (e) { end(everHello ? null : M('msg.cantReachServer')); return; }
     r.sig = sig;
     sig.onmessage = function (ev) {
@@ -2854,7 +2852,7 @@ function connectCloud() {
         return;
       }
       if (rtc === r && (pc.connectionState === 'failed' || pc.connectionState === 'closed')) {
-        end(st.gotHello || everHello ? null : M('msg.notDirect'));
+        end(st.gotHello || everHello ? null : (r.relayError || M('msg.notDirect')));
       }
     };
     dc.onopen = function () {
@@ -2878,13 +2876,13 @@ function connectCloud() {
     };
     dc.onclose = function () { end(null); };
     pc.createOffer().then(function (o) { return pc.setLocalDescription(o); })
-      .then(function () { return waitIce(pc, 3000); })
+      .then(function () { return HopIce.waitForGathering(pc, 45000); })
       .then(function () {
         if (rtc !== r) return;
         if (r.sig && r.sig.readyState === 1) r.sig.send(JSON.stringify({ t: 'offer', sdp: pc.localDescription.sdp }));
         else end(everHello ? null : M('msg.cantReachServer'));
       })
-      .catch(function () { end(null); });
+      .catch(function (e) { end(e && e.code === 'ICE_GATHERING_TIMEOUT' ? M('msg.routeTimeout') : null); });
   }
 }
 // Video frames → the same canvas the Wi-Fi JPEG frames use (zoom, gestures and cursor work unchanged)

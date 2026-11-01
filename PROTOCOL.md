@@ -394,7 +394,15 @@ anonymously. The optional managed relay requires separate owner-approved provisi
 - `GET /api/ice?id=<ID>` with `Authorization: Bearer <relay capability>` returns TURN only if
   `RELAY_ENABLED=true`, the capability's SHA-256 hash, browser role, exact target and expiry are in
   the owner's `RELAY_ADMISSIONS`, and the target is online. A host uses `role=host` and its existing
-  host secret instead; the room also verifies that secret against the actual registered computer.
+  host secret plus `sid=<server-generated viewer sid>`; the room verifies that secret and an active
+  offered viewer session. The session's browser capability must still have current target admission.
+- A funded browser presents its independent relay capability in the WebSocket subprotocol header
+  (`hop, hop-relay.<capability>`), never in the URL. The gateway validates it for this exact target,
+  strips any caller-supplied admission header and attaches only the validated hash internally. The
+  room accepts protocol `hop`, stores that admission on the viewer socket and forwards one offer per
+  sid. Unadmitted public viewers can negotiate STUN sessions but cannot cause host-funded TURN.
+  New hosts reserve a pending slot before any awaited ICE fetch and reject duplicate sids; the
+  room also caps pending viewer sockets to four for compatibility with older desktop clients.
 - `POST /api/relay/enroll` accepts `{tokenHash, hostId}` and returns a ten-minute six-digit code.
   `GET /api/relay/enroll?code=...` returns its hash/target for owner review. Neither operation grants
   relay access. Only the authenticated Cloudflare owner may update the admissions Worker secret.
@@ -405,3 +413,8 @@ anonymously. The optional managed relay requires separate owner-approved provisi
 
 See `docs/MANAGED_RELAY.md` for provisioning, shutoff limitations and validation scope. Computers
 must remain powered, online and awake; new browsers must be paired before unattended use overseas.
+
+The browser waits for complete ICE gathering before its single SDP offer, with an explicit 45-second
+failure instead of silently sending a partial list after three seconds. The full connection deadline
+is 90 seconds to leave time for host gathering/authentication. Provider outages and issuance limits
+are preserved as the actual connection error if STUN fallback cannot connect.
