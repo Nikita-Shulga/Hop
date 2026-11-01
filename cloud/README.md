@@ -1,5 +1,37 @@
 # Hop connection server
 
+## Managed browser service
+
+Open **https://hop.nikitashulga.com/** in a browser and enter the computer ID and password from Hop.
+On each computer you want to reach, open Hop, turn on **Internet access**, and use
+`https://hop.nikitashulga.com` as the connection server. No private `/k/.../` URL is needed for this
+managed service. Pair each browser once while you can approve it on the computer, before travelling.
+The computer must stay powered on, online and awake; macOS also needs Screen Recording and
+Accessibility permissions. Keep the computer password private.
+
+This hostname uses separate device rooms. Existing private deployments below keep their private
+links and are not enrolled automatically. Passwords, the initial pairing code and screen/control data
+are still handled by the host over an encrypted peer connection. The public portal exposes no device
+list, desktop image, file or control endpoint without that host authentication.
+
+The initial managed service uses direct connections with STUN. A managed TURN relay is not yet
+provisioned; restrictive networks that prevent direct connections need that relay before remote
+access can be promised from those networks. Do not enable billable relay services without the owner's
+approval.
+
+### Managed service checks
+
+```sh
+node --experimental-vm-modules --test cloud/test/public-service.test.mjs
+node cloud/build.mjs
+node packaging/check-js.mjs
+```
+
+Use the same existing Worker and Durable Object namespace when deploying an update. This does not
+require replacing any private server data or device credentials.
+
+## Your own private server
+
 A tiny Cloudflare Worker that lets your devices find each other over the internet. You set it up once;
 it runs on Cloudflare's free plan.
 

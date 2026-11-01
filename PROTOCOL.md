@@ -369,3 +369,26 @@ which copies the picked file in) to offer them to viewers.
 - Computer to computer: `POST /api/host/connect {"cloud": id}` opens `http://127.0.0.1:<port>/remote#id=…` —
   `index.html` served by this computer (loopback only), which reads `{base, key}` from `GET /api/remote-config`
   (loopback only) and talks to the server cross-origin (CORS on `/api/*`).
+# Managed browser service
+
+`https://hop.nikitashulga.com/` is a public browser entry point. A visitor enters the computer's
+9-digit ID and internet password. A computer opts in by using that hostname as its connection
+server and enabling Internet access in Hop. The existing desktop protocol is unchanged.
+
+The managed hostname routes signaling into `public:<ID>` Durable Object rooms. Other hostnames
+continue to require their existing `/k/<key>/` address and use their original room names. Private
+hosts are never silently enrolled into the managed service. On the managed hostname, old generated
+`/k/.../` links redirect to the root entry point; the browser keeps the device-ID fragment.
+
+The server still checks each host's persistent secret before registering or replacing it. It never
+checks, stores or receives the computer password. That password, the mandatory first-browser pairing
+and any optional connection approval are enforced by the host over the encrypted WebRTC channel.
+Video remains black and input/file operations unavailable until that authentication completes.
+The public gateway rejects cross-origin browser socket requests and limits connection attempts per
+source IP; source IPs are hashed before selecting the rate-limit object. Existing host-side password
+lockouts and paired-device revocation remain in force.
+
+Public ICE configuration contains STUN only. Paid TURN credentials from a private deployment are
+never published by the public service. A managed relay must be provisioned separately before claiming
+support for networks that prevent direct connections. Computers must remain powered, online and awake;
+new browsers must be paired before unattended use overseas.

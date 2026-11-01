@@ -13,6 +13,7 @@
 // stranger who finds the address sees nothing. The first Hop computer to connect claims the key
 // (it generates one); after that only that key works. Only /static/ (styles, fonts, icons) is public.
 import { DurableObject } from 'cloudflare:workers';
+import { isPublicService, publicServiceRequest } from './public-service.mjs';
 
 const VERSION = '2.1.2';
 const ID_RE = /^\d{9}$/;
@@ -108,6 +109,11 @@ export default {
     // Styles, fonts and icons only: nothing in them identifies you or your computers.
     if (path.startsWith('/static/') && !path.endsWith('.html')) return env.ASSETS.fetch(request);
 
+    // The managed hostname is an opt-in public meeting point. Its hosts use a separate namespace
+    // and still require the device password, first-device pairing and any host approval setting.
+    // Existing private origins, links, host keys and rooms retain their original authorization.
+    if (isPublicService(url, env)) return publicServiceRequest(request, env, VERSION);
+
     // The private page: /k/<key>/  (and its manifest for "Add to Home Screen")
     const m = path.match(/^\/k\/([A-Za-z0-9_-]{16,64})(\/.*)?$/);
     if (m) {
@@ -165,6 +171,15 @@ export class Room extends DurableObject {
 
   async fetch(request) {
     const url = new URL(request.url);
+    if (url.hostname === 'public-service' && url.pathname === '/rate') {
+      const now = Date.now();
+      const hits = (await this.ctx.storage.get('publicJoins') || []).filter(t => now - t < 60000);
+      if (hits.length >= JOINS_PER_MINUTE) return json({ error: 'Too many connection attempts' }, 429);
+      hits.push(now);
+      await this.ctx.storage.put('publicJoins', hits);
+      await this.ctx.storage.setAlarm(now + 60000);
+      return json({ ok: true });
+    }
     if (url.hostname === 'site' && url.pathname === '/check') {
       const { hash, claim } = await request.json();
       const stored = await this.ctx.storage.get('siteHash');
@@ -213,6 +228,10 @@ export class Room extends DurableObject {
       server.close(4004, 'offline');
     }
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async alarm() {
+    await this.ctx.storage.delete('publicJoins');
   }
 
   async webSocketMessage(ws, message) {

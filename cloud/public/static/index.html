@@ -333,6 +333,14 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
 #hero.pairing .summary{white-space:normal;overflow:visible}
 #rv{position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none}
 .mark.hop{width:27px;height:19px;color:var(--text)}
+.service-setup{padding:16px;color:var(--text-2);font-size:13px;line-height:1.6}
+.service-setup summary{cursor:pointer;color:var(--text);font-weight:600}
+.service-setup ol{padding-left:20px;margin:12px 0}
+.service-setup li+li{margin-top:12px}
+.service-setup a{color:var(--amber);text-decoration:underline}
+.service-address{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.service-address code{overflow-wrap:anywhere;user-select:text;font-size:12px}
+.service-note{margin:12px 0 0;color:var(--text-3);font-size:12px}
 </style>
 </head>
 <body>
@@ -383,6 +391,20 @@ body.cloud #connectForm, body.cloud #lanDevices{display:none}
         <label class="remember"><input type="checkbox" id="cRemember" checked><span data-i18n="v.remember">Remember on this device</span></label>
         <div class="perr" id="cloudErr" role="alert"></div>
       </form>
+
+      <section class="block" id="serviceSetup" hidden>
+        <details class="panel service-setup">
+          <summary data-i18n="v.serviceSetup">Set up a computer for access anywhere</summary>
+          <ol>
+            <li><a href="https://github.com/Nikita-Shulga/Hop/releases/latest" target="_blank" rel="noopener noreferrer" data-i18n="v.serviceDownload">Download Hop for Mac or Windows</a><span data-i18n="v.serviceInstall"> and open it on each computer you want to reach.</span></li>
+            <li><span data-i18n="v.serviceEnable">In Hop, turn on Internet access and enter this connection server:</span>
+              <div class="service-address"><code id="serviceOrigin"></code><button id="copyServiceOrigin" class="button sm" type="button" data-i18n="c.copy">Copy</button></div>
+              <span data-i18n="v.serviceCredentials">Use the computer ID and password shown in that app to connect here.</span></li>
+            <li data-i18n="v.servicePair">Before travelling, connect once from each browser you will use and enter its pairing code in Hop on the computer. Keep that browser’s saved data.</li>
+          </ol>
+          <p class="service-note" data-i18n="v.serviceAwake">Leave the computer powered on, connected to the internet and awake. On a Mac, allow Hop in Screen Recording and Accessibility. You can turn Internet access off at any time.</p>
+        </details>
+      </section>
 
       <section class="block" id="recentBlock" hidden>
         <div class="block-head"><h2 data-i18n="v.yourComputers">Your computers</h2><span class="note" id="recentNote"></span></div>
@@ -1023,7 +1045,15 @@ function loadInfo() {
     }).catch(function () { enterCloudMode(); cloudError(M('msg.turnOnInternet')); });
   }
   return fetch('/api/info', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
-    if (j && j.cloud) { enterCloudMode(); return; }
+    if (j && j.cloud) {
+      enterCloudMode();
+      if (j.publicService) {
+        $('#serviceSetup').hidden = false;
+        $('#serviceOrigin').textContent = location.origin;
+        $('#manifestLink').href = '/manifest.webmanifest';
+      }
+      return;
+    }
     hostInfo = j;
     plain('#headline', j.name || location.hostname);
     renderSummary();
@@ -2609,6 +2639,11 @@ var CLOUD = false, cloudId = '', cloudPw = '', rtc = null, cloudRetry = 0;
 // page comes from the server, or from this computer's Hop when opened at http://127.0.0.1/remote.
 var CLOUD_BASE = location.origin, CLOUD_KEY = '';
 function cloudApi(path) { return CLOUD_BASE + path + '?k=' + encodeURIComponent(CLOUD_KEY); }
+$('#copyServiceOrigin').addEventListener('click', function () {
+  if (!navigator.clipboard || !navigator.clipboard.writeText) { toast(location.origin); return; }
+  navigator.clipboard.writeText(location.origin).then(function () { toast(t('v.serviceCopied')); })
+    .catch(function () { toast(location.origin); });
+});
 var rv = $('#rv');
 function fmtId(v) { return String(v || '').replace(/\D/g, '').slice(0, 9).replace(/(\d{3})(?=\d)/g, '$1 '); }
 function recents() { var r = LS.get('recent', []); return Array.isArray(r) ? r : []; }
