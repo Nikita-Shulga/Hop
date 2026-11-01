@@ -97,6 +97,7 @@ test('connection-rate limits reject before forwarding to a device room', async (
 test('anonymous requests cannot receive paid relay credentials', async () => {
   const { env } = environment();
   env.TURN_KEY_ID = 'configured'; env.TURN_KEY_API_TOKEN = 'not-for-the-browser';
+  env.PUBLIC_TURN_KEY_ID = 'configured'; env.PUBLIC_TURN_KEY_API_TOKEN = 'not-for-the-browser';
   const ice = await (await publicServiceRequest(request('/api/ice'), env, 'test')).json();
   assert.ok(ice.iceServers.every(s => !s.credential && s.urls.every(u => u.startsWith('stun:'))));
 });

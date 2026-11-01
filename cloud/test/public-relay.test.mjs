@@ -16,7 +16,7 @@ function registry() {
 async function setup() {
   const { ctx, map } = registry();
   let online = true, expectedHostHash = null;
-  const env = { RELAY_ENABLED: 'true', TURN_KEY_ID: 'test-key', TURN_KEY_API_TOKEN: 'server-only-token',
+  const env = { RELAY_ENABLED: 'true', PUBLIC_TURN_KEY_ID: 'test-key', PUBLIC_TURN_KEY_API_TOKEN: 'server-only-token',
     RELAY_ADMISSIONS: JSON.stringify([{ role: 'browser', tokenHash: await digest(TOKEN), hostIds: [ID], expiresAt: Date.now() + 86400000 }]),
     ROOMS: { idFromName: x => x, get: name => ({ fetch: async (input, init) => {
       const r = new Request(input, init);

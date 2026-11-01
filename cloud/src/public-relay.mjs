@@ -24,7 +24,7 @@ function entries(env) {
 }
 
 export function configured(env) {
-  return env.RELAY_ENABLED === 'true' && !!env.TURN_KEY_ID && !!env.TURN_KEY_API_TOKEN;
+  return env.RELAY_ENABLED === 'true' && !!env.PUBLIC_TURN_KEY_ID && !!env.PUBLIC_TURN_KEY_API_TOKEN;
 }
 
 function registry(env) {
@@ -39,7 +39,7 @@ export async function relayIce(request, env) {
   const host = url.searchParams.get('role') === 'host';
   if (!ID.test(id) || !(host ? token.length >= 24 && token.length <= 200 : TOKEN.test(token))) return json(fallback);
   const hash = await digest(token), now = Date.now();
-  const admission = entries(env).find(e => e.tokenHash === hash && e.role === (host ? 'host' : 'browser') &&
+  const admission = entries(env).find(e => e && e.tokenHash === hash && e.role === (host ? 'host' : 'browser') &&
     Array.isArray(e.hostIds) && e.hostIds.includes(id) && Number.isFinite(e.expiresAt) && e.expiresAt > now);
   if (!admission) return json(fallback);
   // Only the actual online host may use its owner-approved host capability.
@@ -53,8 +53,8 @@ export async function relayIce(request, env) {
   const cached = await gate.json();
   if (cached.ice) return json(cached.ice);
   try {
-    const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`, {
-      method: 'POST', headers: { Authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`, 'content-type': 'application/json' },
+    const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.PUBLIC_TURN_KEY_ID}/credentials/generate-ice-servers`, {
+      method: 'POST', headers: { Authorization: `Bearer ${env.PUBLIC_TURN_KEY_API_TOKEN}`, 'content-type': 'application/json' },
       body: JSON.stringify({ ttl: TTL }), signal: AbortSignal.timeout(8000),
     });
     if (!r.ok) throw new Error('TURN provider unavailable');
@@ -82,7 +82,7 @@ export async function relayEnrollment(request, env) {
       if (raw.length > 1024) return json({ error: 'Request too large' }, 413);
       data = JSON.parse(raw);
     } catch { return json({ error: 'Invalid request' }, 400); }
-    if (!HASH.test(data.tokenHash || '') || !ID.test(data.hostId || '')) return json({ error: 'Invalid request' }, 400);
+    if (!data || typeof data !== 'object' || !HASH.test(data.tokenHash || '') || !ID.test(data.hostId || '')) return json({ error: 'Invalid request' }, 400);
     return registry(env).fetch('https://relay/enroll', { method: 'POST', body: JSON.stringify(data) });
   }
   const code = new URL(request.url).searchParams.get('code') || '';

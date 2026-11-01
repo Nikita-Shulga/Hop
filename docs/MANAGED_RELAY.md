@@ -15,8 +15,10 @@ After explicit owner approval:
 
 1. Enable Cloudflare Realtime TURN in that account and create a dedicated **Hop** TURN key.
    Use its key-specific API token, not an account-wide token. This credential can issue and revoke
-   TURN credentials for that key. Keep `TURN_KEY_ID` and `TURN_KEY_API_TOKEN` only as encrypted
+   TURN credentials for that key. Keep `PUBLIC_TURN_KEY_ID` and `PUBLIC_TURN_KEY_API_TOKEN` only as encrypted
    Worker secrets, never in source, browser storage, URLs, logs or desktop configuration.
+   These public-service secrets are distinct from legacy private-deployment `TURN_KEY_*` secrets;
+   enabling the managed relay does not fund the old private origin's ICE endpoint.
 2. Set `RELAY_ENABLED=true`. Set `RELAY_DAILY_ISSUANCE_LIMIT=24` initially.
 3. Approve the specific owner's browser and computer as described below, with a 30-day admission
    expiry. No other public hosts or anonymous visitors are automatically admitted.
