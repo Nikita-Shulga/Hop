@@ -41,7 +41,7 @@ async function sha256(text) {
 // offered when the TURN_KEY_ID / TURN_KEY_API_TOKEN secrets are set on this Worker.
 async function iceServers(env) {
   const servers = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
-  if (env.TURN_KEY_ID && env.TURN_KEY_API_TOKEN) {
+  if (env.RELAY_USE_LEGACY_KEY !== 'true' && env.TURN_KEY_ID && env.TURN_KEY_API_TOKEN) {
     try {
       const r = await fetch(
         `https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`,

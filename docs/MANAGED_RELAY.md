@@ -1,17 +1,27 @@
 # Managed-service relay
 
-The public service defaults to STUN only. Registering a computer or knowing its ID does not
+The public service defaults to STUN only without an owner-funded relay configuration. Registering a computer or knowing its ID does not
 authorize use of owner-funded TURN. The device password, device pairing and optional connection
 approval continue to be checked by the computer through its encrypted WebRTC channel.
 
-## Provisioning proposal (not activated)
+## Provisioning and current account
 
 Target: Cloudflare account `9fb7170757d6dd4bb0a6b9aac196e2c7`,
 **Nikos1279@gmail.com's Account**, Worker **localview**, hostname **hop.nikitashulga.com**.
-The account dashboard currently redirects TURN Server to its Realtime subscription introduction;
-there is no enabled TURN resource available to reuse. The introduction states 1,000 GB/month free.
+The account initially redirected TURN Server to its subscription introduction. The owner subsequently
+enabled it and created **HopApp**, verified in the account dashboard, and saved `TURN_KEY_ID` and
+`TURN_KEY_API_TOKEN` on the Worker. Reuse that resource; do not create another key or subscription.
+The introduction states 1,000 GB/month free.
 
-After explicit owner approval:
+Current deployment: Worker version `8de9ba04-e86a-4878-be8b-7ada10c2ce48`, with `RELAY_ENABLED=true`,
+`RELAY_USE_LEGACY_KEY=true`, and `RELAY_DAILY_ISSUANCE_LIMIT=24`. It reuses the owner's existing
+HopApp key via the existing `TURN_KEY_*` secret names. No browser admission has yet been installed;
+anonymous `/api/ice` returns only STUN with `relayAvailable:true, relayAuthorized:false`.
+The intended phone's enrollment code is pending. The TURN key has not yet been validated through
+a live credential issue or allocation. Do not claim the phone-to-PC failure is resolved yet.
+
+For new installations, after explicit owner approval (the existing account has already completed
+the TURN resource/key step):
 
 1. Enable Cloudflare Realtime TURN in that account and create a dedicated **Hop** TURN key.
    Use its key-specific API token, not an account-wide token. This credential can issue and revoke
@@ -19,6 +29,9 @@ After explicit owner approval:
    Worker secrets, never in source, browser storage, URLs, logs or desktop configuration.
    These public-service secrets are distinct from legacy private-deployment `TURN_KEY_*` secrets;
    enabling the managed relay does not fund the old private origin's ICE endpoint.
+   To reuse the owner's existing `TURN_KEY_*` names, set `RELAY_USE_LEGACY_KEY=true` instead.
+   This explicitly reserves that key for the managed admission flow and turns off funded TURN
+   delivery at the old private-origin ICE endpoint; its existing STUN and authentication still work.
 2. Set `RELAY_ENABLED=true`. Set `RELAY_DAILY_ISSUANCE_LIMIT=24` initially.
 3. Approve the specific owner's browser and computer as described below, with a 30-day admission
    expiry. No other public hosts or anonymous visitors are automatically admitted.

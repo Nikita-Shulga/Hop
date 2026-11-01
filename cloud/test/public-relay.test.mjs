@@ -1,8 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { relayIce, relayEnrollment, relayRegistry, cleanRelayRegistry, digest } from '../src/public-relay.mjs';
+import { relayIce, relayEnrollment, relayRegistry, cleanRelayRegistry, digest, configured } from '../src/public-relay.mjs';
 
 const TOKEN = 'a'.repeat(64), ID = '123456789';
+test('existing TURN names require explicit owner-selected migration to the managed admission flow', () => {
+  const env = { RELAY_ENABLED: 'true', TURN_KEY_ID: 'existing', TURN_KEY_API_TOKEN: 'server-only' };
+  assert.equal(configured(env), false);
+  env.RELAY_USE_LEGACY_KEY = 'true';
+  assert.equal(configured(env), true);
+});
 function registry() {
   const map = new Map();
   const ctx = { storage: {

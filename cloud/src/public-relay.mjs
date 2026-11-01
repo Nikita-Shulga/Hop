@@ -24,7 +24,14 @@ function entries(env) {
 }
 
 export function configured(env) {
-  return env.RELAY_ENABLED === 'true' && !!env.PUBLIC_TURN_KEY_ID && !!env.PUBLIC_TURN_KEY_API_TOKEN;
+  return env.RELAY_ENABLED === 'true' && !!key(env);
+}
+
+function key(env) {
+  if (env.PUBLIC_TURN_KEY_ID && env.PUBLIC_TURN_KEY_API_TOKEN) return { id: env.PUBLIC_TURN_KEY_ID, token: env.PUBLIC_TURN_KEY_API_TOKEN };
+  // Explicit migration of an owner's already-created key; do not duplicate or reveal secrets.
+  if (env.RELAY_USE_LEGACY_KEY === 'true' && env.TURN_KEY_ID && env.TURN_KEY_API_TOKEN) return { id: env.TURN_KEY_ID, token: env.TURN_KEY_API_TOKEN };
+  return null;
 }
 
 function registry(env) {
@@ -53,8 +60,9 @@ export async function relayIce(request, env) {
   const cached = await gate.json();
   if (cached.ice) return json(cached.ice);
   try {
-    const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.PUBLIC_TURN_KEY_ID}/credentials/generate-ice-servers`, {
-      method: 'POST', headers: { Authorization: `Bearer ${env.PUBLIC_TURN_KEY_API_TOKEN}`, 'content-type': 'application/json' },
+    const provider = key(env);
+    const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${provider.id}/credentials/generate-ice-servers`, {
+      method: 'POST', headers: { Authorization: `Bearer ${provider.token}`, 'content-type': 'application/json' },
       body: JSON.stringify({ ttl: TTL }), signal: AbortSignal.timeout(8000),
     });
     if (!r.ok) throw new Error('TURN provider unavailable');
